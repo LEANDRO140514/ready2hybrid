@@ -12,3 +12,15 @@ test-results/
 
 # Kimchi local state
 .kimchi/
+
+# Editor / local (Vite defaults)
+logs
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
