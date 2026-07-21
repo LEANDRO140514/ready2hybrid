@@ -118,6 +118,47 @@ stf_accreditation gafete, QR de staff, estado
 Consumido por: `checkin` (quién escaneó), incidencias (responsable),
 `timing` (juez asignado al heat). Todo por eventos y lecturas, sin acoplarse.
 
+### 1.5 Contrato PWA + InsForge para tickets y QR
+
+```text
+INSFORGE / NÚCLEO
+- emite exactamente un ticket por acceso real;
+- asigna y protege el token público;
+- revoca y reemite;
+- autoriza manifiestos offline;
+- resuelve sincronizaciones y duplicados;
+- conserva activity_log y estado canónico.
+
+MÓDULO CHECKIN
+- descarga una vista mínima autorizada;
+- lee el QR y registra intentos localmente;
+- sincroniza con idempotency_key, operador y dispositivo;
+- nunca cambia directamente el estado canónico del ticket.
+
+PWA / INDEXEDDB
+- copia temporal limitada a evento, rol y dispositivo;
+- incluye expiración y versión de manifiesto;
+- se borra al cerrar sesión o cerrar el evento;
+- nunca sustituye a InsForge.
+```
+
+El QR contiene solo un token opaco. La imagen puede regenerarse; el ticket y
+su validez viven en InsForge.
+
+### 1.6 Stack frontend confirmado
+
+```text
+Vite + React 19 + TypeScript strict
+TanStack Router + Query + Table
+Zustand + Zod
+vite-plugin-pwa/Workbox
+IndexedDB + cola idempotente
+Vitest + Playwright
+```
+
+Esta decisión ya está elevada a `01` y `02`; este anexo no puede volver a
+proponer Next.js ni otra arquitectura de frontend.
+
 ---
 
 ## 2. Pasarela: Mercado Pago
@@ -131,16 +172,15 @@ local usa y que suben conversión. Stripe queda como posible módulo
 
 ### 2.2 El MCP de Mercado Pago: herramienta de construcción, no de runtime
 
-El MCP Server oficial de Mercado Pago se conecta al IDE (Cursor, Claude Code,
-Windsurf) y sirve para buscar documentación, generar la integración de
-Checkout Pro guiada, y diagnosticar notificaciones. **Se usa durante F2 para
+El MCP Server oficial de Mercado Pago se conecta a Kimchi y sirve para
+buscar documentación, guiar la integración de Checkout Pro y diagnosticar
+notificaciones. **Se usa durante F2 para
 construir y depurar**; en producción no interviene: el cobro corre por
 Checkout Pro + webhook. Está en beta — útil como acelerador, no como
 dependencia.
 
-Acción concreta: conectar el MCP de MP al entorno de desarrollo desde el
-inicio de F2 y usar sus tools de diagnóstico de notificaciones durante las
-pruebas del webhook.
+Acción concreta: conectar el MCP de Mercado Pago a Kimchi desde el preflight
+y usar sus herramientas de diagnóstico durante las pruebas del webhook.
 
 ### 2.3 Adaptador de pasarela (contrato del núcleo)
 
@@ -218,6 +258,9 @@ mínimos, waiver, política de reembolso, **métodos de pago habilitados**
 tal cual) y los presets de módulos por plantilla.
 
 ### F1 — Núcleo en InsForge
+El MCP de InsForge debe estar conectado al proyecto correcto desde F0. La
+migración sigue siendo la fuente de verdad; no se crean tablas manualmente en
+la consola sin reflejo en Git.
 Tablas del núcleo + `modules`, `event_modules`, `domain_events`,
 `webhook_events`. Policies: anon sin escritura en ninguna tabla; toda
 mutación por edge functions. Migraciones numeradas en `insforge/` — el repo
@@ -225,7 +268,8 @@ es la fuente de verdad, no la UI de InsForge. Seeds del evento y productos.
 **Salida:** kernel operable + prueba explícita de que anon no escribe.
 
 ### F2 — Módulo pay-mercadopago  ← desbloquea ventas
-Conectar el MCP de MP al IDE. Implementar adaptador + las dos functions del
+Usar el MCP de Mercado Pago conectado a Kimchi. Implementar el adaptador y
+las functions del
 §2.4. Página de éxito de la landing en modo "confirmando…" con polling a
 `get-order-status`. Pruebas de cierre:
 
@@ -245,7 +289,9 @@ Auth, roles v1 (OWNER, OPERATIONS_MANAGER, CHECKIN_STAFF, FINANCE), shell que
 monta módulos desde manifests, dashboard con widgets aportados por módulos,
 CRM (búsqueda, ficha 360, notas, etiquetas), órdenes/registros con acciones
 solo vía funciones protegidas, exportación CSV.
-Stack: Vite + React + TS + SDK InsForge, TanStack Router/Query/Table, SPA.
+Stack canónico: Vite + React 19 + TypeScript strict + SDK InsForge,
+TanStack Router/Query/Table, Zustand, Zod y Vitest. Ready2Hybrid es SPA/PWA;
+no se usa Next.js.
 
 ### F4 — Módulos staff y checkin
 `staff` primero (checkin depende de él): perfiles, turnos, asignaciones,

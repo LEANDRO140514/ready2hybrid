@@ -104,8 +104,15 @@ Dolor fuera:         el capitán no dicta datos ajenos por teléfono; nadie
 ### J5 — Staff de check-in (el journey más exigente del sistema)
 
 ```text
-ANTES DE ABRIR   inicia sesión en su celular, abre /checkin
-   Sistema:      descarga el manifiesto completo a IndexedDB y muestra
+PREPARAR DISPOSITIVO instala o abre la PWA, inicia sesión con rol autorizado,
+                 selecciona el evento y registra el dispositivo
+   Sistema:      solicita a InsForge un manifiesto mínimo, vigente y expirable;
+                 muestra fecha, cantidad de tickets y dispositivo autorizado
+   Regla:        no se abre puerta con sesión vencida, manifiesto expirado o
+                 evento equivocado
+
+ANTES DE ABRIR   abre /checkin
+   Sistema:      descarga el manifiesto autorizado a IndexedDB y muestra
                  "LISTO PARA OPERAR SIN INTERNET · N tickets cargados"
    Regla:        el manual prohíbe abrir puertas sin ver ese banner
 
@@ -118,12 +125,13 @@ SIN QR           botón grande "Buscar por nombre" → teclea 3 letras
    Sistema:      resultados locales instantáneos → tap en la persona → check-in
    Taps:         máximo 2
 
-PANTALLA ROJA    QR ya usado / no pagado / waiver faltante
+PANTALLA ROJA    QR ya usado / no pagado / waiver faltante / revocado / sustituido
    Sistema:      muestra EL MOTIVO y EL SIGUIENTE PASO en la misma pantalla
-                 ("Enviar a mesa de soluciones"), y crea la incidencia sola
+                 ("Enviar a mesa de soluciones"), y crea la incidencia sola.
+                 Un QR reemitido invalida al anterior aunque exista una captura
    Regla:        el staff de puerta nunca discute ni resuelve; canaliza
 
-SE CAE INTERNET  nada cambia visualmente
+SE CAE INTERNET  nada cambia visualmente; IndexedDB es copia temporal, no autoridad
    Sistema:      encola check-ins, ícono discreto "N pendientes de sincronizar",
                  sincroniza solo al volver la red; conflictos entre dispositivos
                  los resuelve el servidor (primer escaneo gana, el otro →

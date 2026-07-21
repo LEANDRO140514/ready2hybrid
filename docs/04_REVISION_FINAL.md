@@ -94,7 +94,9 @@ Journeys cubiertos: J1 (tarjeta), J2 (efectivo), J3 (asistente), J4 (capitán)
 
 **Si falta tiempo, se recorta:** MSI (se activan después sin código), correo
 bonito (texto plano sirve), página pública de consulta de ticket.
-**No se recorta jamás:** idempotencia, firma del webhook, auditoría, cupos.
+**No se recorta jamás:** idempotencia, firma del webhook, auditoría, cupos,
+emisión única del ticket, token QR sin datos personales y autoridad canónica
+de InsForge.
 
 **[ APROBAR / AJUSTAR ]**
 
@@ -127,6 +129,10 @@ Mesa de soluciones (subset de N4 adelantado): ficha 360 de solo-lo-necesario
    "pertenezcan" al CRM.
 4. *UX bajo sol:* pantallas semafóricas gigantes (P3), cero teclado salvo
    3 letras de búsqueda (P4).
+5. *InsForge manda:* la PWA descarga una copia mínima y expirable. Emitir,
+   revocar, reemitir y resolver check-ins es responsabilidad de InsForge.
+6. *QR seguro:* el código contiene solo un token opaco; nunca PII, pagos o
+   datos médicos. Reemitir invalida el token anterior.
 
 **Criterio de terminado**
 
@@ -137,12 +143,17 @@ Mesa de soluciones (subset de N4 adelantado): ficha 360 de solo-lo-necesario
 ✓ staff recibe su turno por correo y aparece como operador en cada escaneo
 ✓ puntos 9–10 del checklist MVP
 ✓ principios P1–P5, P9, P11, P12 verificados en sitio
+✓ webhook duplicado no crea tickets adicionales
+✓ QR emitido, revocado y reemitido correctamente
+✓ dos celulares escanean el mismo QR offline: uno gana y otro crea incidencia
+✓ manifiesto expirado bloquea apertura y logout borra datos locales sensibles
 ```
 
 **Si falta tiempo, se recorta:** drag&drop de reasignación (se hace con un
 select), acreditación con QR de staff (gafete impreso simple).
-**No se recorta jamás:** modo offline, incidencia automática, auditoría de
-acciones en sitio.
+**No se recorta jamás:** modo offline, autoridad de InsForge, emisión única,
+revocación/reemisión, sincronización idempotente, resolución de duplicados,
+búsqueda por nombre, incidencia automática y auditoría de operador/dispositivo.
 
 **[ APROBAR / AJUSTAR ]**
 
@@ -273,3 +284,16 @@ Para dar por aprobado este documento:
 Con eso, el siguiente entregable es mecánico: `spec-v1.md` + migraciones del
 núcleo (`insforge/schema/000X_*.sql`) + esqueleto de `pay-mercadopago`, y
 arranca N1 bajo el protocolo de fases del workspace.
+
+---
+
+## 10. Puerta técnica transversal confirmada
+
+```text
+✓ Vite + React 19 + TypeScript strict; no Next.js
+✓ npm run typecheck, test y build en verde
+✓ PWA instalable y actualización del service worker probada
+✓ IndexedDB y cola offline probadas
+✓ lógica sensible fuera del navegador y dentro de InsForge Functions/RLS
+✓ Kimchi no redefine stack ni autoridad documental
+```

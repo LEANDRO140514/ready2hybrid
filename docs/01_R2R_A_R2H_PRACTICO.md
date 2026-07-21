@@ -1,119 +1,175 @@
 # De Ready2Race a Ready2Hybrid — versión práctica
 
-> Objetivo: la funcionalidad de Ready2Race (lambda9), sin su complejidad de
-> ingeniería, sobre lo que ya tenemos: landing hecha + InsForge + Mercado Pago.
-> Ready2Race = Kotlin/Ktor + jOOQ + Postgres autohospedado + React.
-> Nosotros = InsForge nos regala backend, auth, storage y realtime.
-> Lo único que hay que construir de verdad son las tablas y las pantallas.
+> Objetivo: obtener la funcionalidad útil de Ready2Race sin copiar su
+> complejidad de ingeniería. Partimos de una landing existente, InsForge,
+> Mercado Pago y una aplicación operativa propia.
+>
+> **Decisión canónica:** Ready2Hybrid será una **SPA/PWA offline-first con
+> Vite + React 19 + TypeScript**. InsForge será la fuente de verdad de datos,
+> tickets, QR, check-ins, sincronización, resultados y auditoría.
 
-## 1. Qué es Ready2Race realmente (visto en su código)
-
-Sus módulos, agrupados:
+## 1. Qué es Ready2Race realmente
 
 ```text
 CUENTAS       usuarios, roles, clubes, participantes
 EVENTO        evento, días, documentos, info pública
-COMPETENCIA   setup y plantillas, categorías, registro, bajas, sustituciones
-EJECUCIÓN     rondas y matches, listas de salida, equipos por match
-RESULTADOS    resultados, importación de resultados, categorías de rating
-DINERO        cuotas → FACTURA PDF + cuenta bancaria (¡sin pasarela!)
-              alguien marca la factura como pagada
-OPERACIÓN     app de QR (check-in), tracking de participantes, requisitos
-STAFF         turnos (workShift), tipos de trabajo, tareas
-EXTRAS        certificados PDF, plantillas de documentos, catering, webDAV
+COMPETENCIA   categorías, registros, bajas, sustituciones
+EJECUCIÓN     rondas, matches, listas de salida, equipos
+RESULTADOS    captura, importación, validación y publicación
+DINERO        cuotas y facturas; confirmación de pago principalmente manual
+OPERACIÓN     QR, check-in, tracking y requisitos
+STAFF         turnos, tipos de trabajo y tareas
+EXTRAS        certificados, documentos, catering y archivos
 ```
 
-Conclusión: es un CRUD grande y bien ordenado. Nada exótico.
+Conclusión: es un CRUD grande y ordenado. Copiamos el modelo mental, no su
+infraestructura ni sus motores complejos.
 
-## 2. Mapeo módulo por módulo → nuestra versión práctica
+## 2. Mapeo Ready2Race → Ready2Hybrid
 
-| Ready2Race | Versión práctica R2H | Con qué | Cuándo |
+| Ready2Race | Ready2Hybrid práctico | Tecnología | v1 |
 |---|---|---|---|
-| appuser, auth, role | Auth de InsForge + tabla de perfiles con rol | InsForge Auth | Ya |
-| club | campo "club/box" en el participante (tabla después si crece) | Postgres | Ya |
-| event, eventDay, eventInfo | events + event_days; la info pública ya la da la landing | Postgres + landing | Ya |
-| fee, invoice, bankAccount | products + Mercado Pago Checkout Pro + webhook. MÁS simple que R2R: nadie marca pagos a mano | MP + Edge Function | Ya |
-| eventRegistration, participant, namedParticipant | registrations + members; el formulario ya existe en la landing | landing + Postgres | Ya |
-| participantRequirement | waiver aceptado + datos de emergencia (un check, no un motor de requisitos) | Postgres | Ya |
-| qrCodeApp, appUserWithQrCode | check-in con QR desde el celular del staff | PWA + InsForge | Ya |
-| competitionSetup/Template/Category | categorías + heats/rondas configurables por evento; plantillas = copiar evento anterior | Postgres | Ya |
-| competitionExecution (matches, rounds) | heats con carriles (hybrid) / partidos (torneo); mismo esqueleto de tabla | Postgres | Ya (hybrid) |
-| startListConfig | lista de salida = vista imprimible de heats asignados | pantalla + export | Ya |
-| results, matchResultImportConfig | captura simple de tiempos/marcadores + import CSV + publicar | pantalla + Edge Function | Ya |
-| substitution, deregistration | botones "sustituir miembro" y "dar de baja" auditados | acciones protegidas | Ya |
-| task, workShift, workType | tareas + turnos de staff (dos tablas y una pantalla) | Postgres | Ya |
-| email | correos transaccionales (confirmación, QR, recordatorio) | Edge Function | Ya |
-| eventDocument, webDAV | archivos del evento en Storage | InsForge Storage | Ya |
-| certificate, documentTemplate | constancias PDF | después | Fase 2 |
-| participantTracking, timecode | splits detallados / chips | después | Fase 2 |
-| ratingcategory | rankings entre eventos | después | Fase 2 |
-| caterer | no aplica | — | Nunca |
-| captcha | ya lo resuelve la landing | — | — |
+| usuarios, auth, roles | InsForge Auth + perfiles y roles | InsForge | Sí |
+| club | campo club/box; tabla futura si crece | Postgres | Sí |
+| evento y días | `events`, `event_days`, información pública en landing | InsForge + landing | Sí |
+| cuotas y facturas | productos + Checkout Pro + webhook | Mercado Pago + Functions | Sí |
+| registros y participantes | `registrations`, `registration_members` | landing + InsForge | Sí |
+| requisitos | waiver versionado + emergencia + carta responsiva | InsForge | Sí |
+| QR app | PWA con escaneo offline y sincronización | Vite PWA + InsForge | Sí |
+| categorías y setup | categorías, heats y presets simples | InsForge | Sí |
+| ejecución | heats y carriles para hybrid | InsForge | Sí |
+| listas de salida | vista imprimible/exportable | PWA | Sí |
+| resultados | captura, revisión, validación y publicación | PWA + Functions | Sí |
+| sustitución/baja | acciones protegidas y auditadas | Functions | Sí |
+| staff | perfiles, turnos, tareas e incidencias | InsForge + PWA | Sí |
+| correo | confirmaciones, QR y recordatorios | servicio transaccional | Sí |
+| documentos | archivos del evento | InsForge Storage | Sí |
+| certificados | constancias PDF | — | Fase 2 |
+| tracking/chips | splits detallados e integración de chips | — | Fase 2 |
+| rankings | histórico entre eventos | — | Fase 2 |
 
-## 3. El sistema completo, en corto
+## 3. Arquitectura canónica
 
 ```text
-LANDING (hecha)  →  vende y registra
-INSFORGE         →  ~15 tablas + 4 edge functions + storage + auth
-PANEL R2H        →  6 pantallas de trabajo
-MERCADO PAGO     →  cobra solo (webhook confirma, nadie concilia a mano)
+HYBRID EVENT LANDING
+  experiencia pública, registro y CTA de compra
+                 │
+                 ▼
+INSFORGE
+  Auth + PostgreSQL + RLS + Functions + Storage + Realtime
+  fuente de verdad de registros, pagos, tickets, QR, check-ins y auditoría
+                 │
+                 ▼
+READY2HYBRID PWA
+  Vite + React 19 + TypeScript; instalable en celular, tablet y escritorio
+                 │
+                 ▼
+MERCADO PAGO
+  Checkout Pro; webhook confirma, nadie concilia pagos a mano
 ```
 
-### Las ~15 tablas
+### Stack obligatorio
+
+```text
+Frontend       Vite + React 19 + TypeScript strict
+Routing        TanStack Router
+Datos          TanStack Query
+Tablas         TanStack Table
+Estado local   Zustand
+Validación     Zod
+Backend        InsForge SDK + Functions + PostgreSQL/RLS
+PWA            vite-plugin-pwa/Workbox
+Offline        IndexedDB + cola idempotente de sincronización
+Testing        Vitest + Playwright
+Deploy         hosting HTTPS para SPA/PWA
+```
+
+No se usa Next.js, App Router, Server Components ni API Routes. La landing
+pública ya vive en otro repo y el backend vive en InsForge.
+
+## 4. Datos mínimos
 
 ```text
 contacts, events, event_days, products, registrations, registration_members,
-orders, payments, tickets, webhook_events, categories, heats, heat_entries,
-results, staff, shifts, tasks, incidents, activity_log
+orders, order_items, payments, tickets, webhook_events, categories, heats,
+heat_entries, results, staff, shifts, tasks, incidents, activity_log
 ```
-(19 contando auditoría; sin prefijos por módulo ni bus de eventos: eso era
-sobre-ingeniería para esta escala. Se agregan tablas cuando un evento real
-las pida.)
 
-### Las 4 edge functions
+El número es orientativo. Se agregan las tablas que exija el comportamiento
+real; no se conserva un límite artificial de 15 o 19 tablas.
+
+## 5. Functions mínimas de comercio y operación
 
 ```text
-create-checkout    valida cupo, crea registro y orden, abre Mercado Pago
-mp-webhook         confirma pago, folio, ticket QR, correo (idempotente)
-admin-actions      acciones auditadas: pago en sitio, reenviar QR, baja,
-                   sustitución, corrección de resultado
-send-email         confirmaciones y recordatorios
+create-checkout         valida producto/cupo, crea registro y orden, abre MP
+mp-webhook              confirma pago y dispara emisión idempotente de tickets
+get-order-status        consulta segura para la pantalla “confirmando…”
+import-registrations    absorbe ventas existentes y emite folio/ticket
+admin-actions           baja, sustitución, pago en sitio y correcciones auditadas
+get-checkin-manifest    entrega copia mínima, autorizada y expirable para offline
+sync-checkins           recibe cola idempotente y resuelve conflictos
+send-transactional      confirmaciones, voucher, QR, reemisiones y recordatorios
 ```
 
-### Las 6 pantallas del panel
+Pueden agruparse técnicamente si InsForge lo exige, pero el contrato de
+negocio y sus pruebas permanecen separados.
+
+## 6. Ciclo canónico del ticket y QR
 
 ```text
-1. Evento       crear/configurar: días, productos, categorías, cupos
-2. Personas     buscar a cualquiera y ver todo lo suyo + acciones
-3. Check-in     escanear QR (offline), buscar por nombre, kits
-4. Competencia  armar heats, lista de salida, capturar y publicar resultados
-5. Staff        turnos, tareas, incidencias
-6. Caja         ventas, pagos, conciliación con MP, exportaciones
+payment.approved
+→ registration CONFIRMED
+→ InsForge emite exactamente un ticket por acceso real
+→ asigna token público opaco (sin datos personales)
+→ la aplicación genera la representación visual QR
+→ correo entrega folio + QR
+→ la PWA descarga manifiesto autorizado desde InsForge
+→ escanea online u offline
+→ encola intento con idempotency_key, operador y dispositivo
+→ sincroniza
+→ InsForge acepta, rechaza o crea incidencia
 ```
 
-## 4. El ciclo (idéntico al documento rector, ahora aterrizado)
+Reglas duras:
+
+1. InsForge es la fuente de verdad; IndexedDB es una copia temporal.
+2. La imagen QR puede regenerarse; el estado canónico vive en `tickets`.
+3. Cada integrante y cada acceso de asistente tiene su propio ticket.
+4. Un webhook duplicado no crea otro ticket, folio ni correo.
+5. Reemitir revoca el token anterior y crea uno nuevo, con auditoría.
+6. El QR no contiene nombre, correo, teléfono, pago ni datos médicos.
+7. Dos escaneos offline del mismo QR se resuelven en servidor: primero gana,
+   el segundo crea incidencia.
+
+## 7. Las seis áreas de trabajo
 
 ```text
-CONFIGURAR (pantalla 1) → VENDER (landing+MP, solo) → PREPARAR (3-5)
-→ OPERAR día D (3-4-5) → CERRAR (4 publica, 6 concilia y exporta)
+1. Evento       días, productos, categorías, cupos y estado del ciclo
+2. Personas     búsqueda 360 y acciones protegidas
+3. Check-in     QR offline, nombre, carta responsiva, kits y sincronización
+4. Competencia  heats, salida, captura, revisión y publicación
+5. Staff        turnos, tareas e incidencias
+6. Caja         ventas, pagos, conciliación MP y exportaciones
 ```
 
-## 5. Orden de construcción práctico
+Ready2Hybrid es una sola PWA con vistas por rol. Check-in, timing, staff e
+incidencias deben operar offline; caja y acciones financieras sensibles
+requieren conexión.
+
+## 8. Orden práctico
 
 ```text
-Semana 1-2   tablas + create-checkout + mp-webhook + correo con QR
-             → LA LANDING EMPIEZA A VENDER
-Semana 3-4   pantallas 1, 2 y 6 (evento, personas, caja)
-Semana 5     pantalla 3 (check-in offline) + ensayo sin wifi
-Semana 6-7   pantalla 4 (heats y resultados) + pantalla 5 (staff)
-Semana 8     simulacro completo + congelar
-Después      certificados PDF, tracking fino, rankings, carreras, torneos
-             (todo existe en R2R como referencia de cómo modelarlo)
+F0            baseline, MCPs, Vite/PWA base, InsForge y contrato aprobado
+Semanas 1–2  núcleo + importación histórica + MP + correo + ticket/QR
+Semanas 3–4  Evento, Personas y Caja
+Semana 5     Check-in offline + ensayo de tres celulares sin wifi
+Semanas 6–7 Competencia, resultados y Staff
+Semana 8     simulacro general, auditoría y congelamiento
+Después      certificados, chips, rankings, carreras y torneos
 ```
 
-## 6. Regla de simplicidad
+## 9. Regla de simplicidad
 
-Ante cada duda de diseño: **¿cómo lo hace Ready2Race?** Si su solución es un
-CRUD, copiamos la idea con menos tablas. Si su solución es un motor complejo
-(plantillas de setup, requisitos, rating), lo sustituimos por la versión
-manual + un botón, y solo lo automatizamos cuando duela dos eventos seguidos.
+Ante cada duda: si Ready2Race lo resuelve con CRUD, copiamos la idea con menos
+piezas. Si usa un motor complejo, empezamos con configuración explícita y una
+acción manual auditada. Solo automatizamos lo que duela en dos eventos reales.

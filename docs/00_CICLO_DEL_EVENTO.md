@@ -93,6 +93,10 @@ Director       una pantalla: check-ins, próximos heats, incidencias, retraso;
 ```
 **Qué hace el sistema solo:** valida accesos, detecta duplicados, crea
 incidencias, funciona igual sin internet y sincroniza al volver la red.
+Ready2Hybrid opera como PWA offline-first: puede registrar operaciones de
+forma temporal sin conexión, pero **InsForge conserva la autoridad final**
+sobre tickets, QR, check-ins, resultados y auditoría. Al sincronizar,
+InsForge resuelve duplicados, revocaciones y conflictos entre dispositivos.
 **Sale cuando:** termina el último heat. Estado → EN_RESULTADOS.
 
 ## Etapa 7 — CERRAR
@@ -147,6 +151,9 @@ R3  Retroceder de etapa es excepcional, requiere rol de dirección y
 R4  Las etapas 4 y 8 son del sistema; las personas solo supervisan.
 R5  Un evento no se considera exitoso al terminar el día D, sino al
     llegar a CERRADO. El cierre es parte del evento, no un trámite.
+R6  La PWA puede operar temporalmente sin internet, pero no sustituye a
+    InsForge. La copia local expira y la autoridad canónica siempre vuelve
+    al backend al sincronizar.
 ```
 
 ## Cómo se conecta con lo demás
