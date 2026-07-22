@@ -9,8 +9,8 @@
 - Backend: InsForge
 - Pagos: Mercado Pago Checkout Pro
 - Evento: viernes 9 de octubre de 2026
-- Fase activa: F0-C - Vitest Foundation
-- Estado de fase: VALIDATED LOCALLY - pendiente de cierre controlado
+- Fase activa: F0-D - Playwright Foundation
+- Estado de fase: IMPLEMENTED y VALIDATED - cierre controlado autorizado
 
 ## Autoridad
 
@@ -24,7 +24,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - F0-B1 Scaffold temporal: PASS
 - F0-B2 Vite/React/TypeScript foundation: PASS en `e7d926c`
 - F0-B3 Spec Foundation: APPROVED v0.1.0, cerrado y publicado en `0d92a97`
-- F0-C Vitest Foundation: IMPLEMENTED y VALIDATED localmente, pendiente de commit
+- F0-C Vitest Foundation: cerrado y publicado en `be7bfa6`
+- F0-D Playwright Foundation: IMPLEMENTED y VALIDATED
 
 ## Artefactos F0-B3
 
@@ -85,18 +86,57 @@ Configuracion:
 No se agregaron Playwright, PWA, service workers, IndexedDB, TanStack,
 Zustand, Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
+## Artefactos F0-D
+
+Archivos modificados:
+
+- `package.json`
+- `package-lock.json`
+- `vite.config.ts`
+- `WORKSPACE_STATUS.md`
+
+Archivos creados:
+
+- `playwright.config.ts`
+- `tests/e2e/app.smoke.spec.ts`
+
+Dependencia instalada:
+
+- `@playwright/test@1.61.1`
+
+Configuracion:
+
+- Chromium como unico navegador inicial
+- Vite iniciado automaticamente en `127.0.0.1:4173` con `--strictPort`
+- Reporter de consola `line`
+- Screenshot y trace conservados solo al fallar
+- Video desactivado
+- Artefactos bajo rutas ignoradas por Git
+- Vitest excluye `tests/e2e/**`
+
+## Validacion F0-D
+
+- `npm ci`: PASS
+- `npm run typecheck`: PASS
+- `npm run lint`: PASS, 0 warnings y 0 errors
+- `npm run test`: PASS, 1 test file y 1 test
+- `npm run test:e2e`: PASS, 1 test en Chromium
+- Cierre automatico del servidor Vite: PASS
+- `npm run build`: PASS
+- `git diff --check`: PASS
+
+No se agregaron PWA, service workers, manifest, IndexedDB, TanStack, Zustand,
+Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
+
 ## Proximo gate
 
-`READY_FOR_F0-C-CLOSE`
+`READY_FOR_F0-E-IMPLEMENTATION-PLAN`
 
 Siguiente accion permitida:
 
-1. revisar el diff final de los seis archivos;
-2. crear un commit local controlado;
-3. no hacer push hasta recibir aprobacion explicita.
+1. preparar el plan trazable de F0-E - PWA Foundation;
+2. no implementar F0-E sin aprobacion humana explicita.
 
 ## Ultimo cierre
 
-F0-B3 cerrado y publicado en remoto con:
-
-`0d92a97 docs: establish Ready2Hybrid spec governance foundation`
+F0-D se cierra mediante el commit que contiene esta actualizacion.
