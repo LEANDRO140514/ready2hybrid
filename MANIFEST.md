@@ -1,14 +1,63 @@
-# MANIFEST — Ready2Hybrid Kimchi baseline
+# MANIFEST — Ready2Hybrid Cursor baseline
 
-Generated: 2026-07-21
+Updated: 2026-07-23
 
-- `.gitignore` — `0cbbee465ac451c5a4f3b00b02dccb8f4437183007a0eb8478e414ae9a2a5be7`
-- `KIMCHI_START_PROMPT.md` — `150bdf417a1683e2eb118154d701e8c0acdd30dbfc422c3bf3809e28aca1d472`
-- `WORKSPACE_STATUS.md` — `856ef7c39bf8adc1c453832dc6d6026b20419c2a1ab184b447a60b080b984494`
-- `docs/00_CICLO_DEL_EVENTO.md` — `656cc9f429c9b72cf7003316f2c5f7a99df6b8ce3c1b700a2d141a1a3db3e66d`
-- `docs/01_R2R_A_R2H_PRACTICO.md` — `a753c52e7ff4e99a952ce2ac03ae0e036f7ff5e08e4200fc61724ee2ae68d117`
-- `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md` — `aa14179e393cf02ac5434d2ec591379dca44931a8b2b98ea769334e388112883`
-- `docs/03_CUSTOMER_JOURNEYS.md` — `f7d076dee8df86eda31f1055f0efbc2addfab31b15865787aa397f1d154f1419`
-- `docs/04_REVISION_FINAL.md` — `ebeba152bd0332650b9a84e89bbffbd5f3c91b93b8dac47de09c3f13cad23e55`
-- `docs/05_ANEXO_PLAN_TECNICO.md` — `109b10f1da27f479adbe468151a9dca9f1a3c645930b8d23480ab2279d57f3c8`
-- `insforge/seeds/0002_seeds_hybrid_event.sql` — `cb8bc4f77c51785b93ddfd4d19ebe618e732c698857266d567a315e9058b9116`
+## Autoridad operativa
+
+```text
+Constructor operativo: Cursor
+Modelo: mejor LLM disponible para cada tarea
+```
+
+La autoridad de producto y arquitectura permanece en `docs/00-05`. Las
+specifications traducen esa autoridad a contratos verificables y solo el
+propietario humano puede aprobarlas.
+
+## Documentos de autoridad
+
+- `CURSOR_START_PROMPT.md`
+- `WORKSPACE_STATUS.md`
+- `docs/00_CICLO_DEL_EVENTO.md`
+- `docs/01_R2R_A_R2H_PRACTICO.md`
+- `docs/02_PLAN_DESARROLLO_CON_CURSOR.md`
+- `docs/03_CUSTOMER_JOURNEYS.md`
+- `docs/04_REVISION_FINAL.md`
+- `docs/05_ANEXO_PLAN_TECNICO.md`
+- `docs/specs/README.md`
+
+## Specifications
+
+- `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md` — versión aprobada vigente
+- `docs/specs/SPEC-000-GOVERNANCE.md` — revisión v0.2.0 propuesta, `DRAFT`
+- `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md` — v0.1.0, `APPROVED`
+- `docs/specs/SPEC-011-PWA-FOUNDATION.md` — v0.1.0, `APPROVED`
+- `skills/ready2hybrid-spec-governance/SKILL.md`
+
+## Artefactos implementados
+
+F0-B2:
+- `package.json`
+- `package-lock.json`
+- `vite.config.ts`
+- `tsconfig.json`
+- `tsconfig.app.json`
+- `tsconfig.node.json`
+- `src/main.tsx`
+- `src/App.tsx`
+
+F0-C:
+- `src/test/setup.ts`
+- `src/App.test.tsx`
+
+F0-D:
+- `playwright.config.ts`
+- `tests/e2e/app.smoke.spec.ts`
+
+Configuración local versionable:
+- `.cursor/mcp.json`
+- `.gitignore`
+
+Datos existentes, no ejecutados por esta unidad:
+- `insforge/seeds/0002_seeds_hybrid_event.sql`
+
+F0-E no está implementada.

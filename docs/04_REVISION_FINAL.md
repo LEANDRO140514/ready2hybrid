@@ -295,5 +295,5 @@ arranca N1 bajo el protocolo de fases del workspace.
 ✓ PWA instalable y actualización del service worker probada
 ✓ IndexedDB y cola offline probadas
 ✓ lógica sensible fuera del navegador y dentro de InsForge Functions/RLS
-✓ Kimchi no redefine stack ni autoridad documental
+✓ Cursor, el modelo seleccionado y los MCP no redefinen stack ni autoridad
 ```

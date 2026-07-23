@@ -14,17 +14,18 @@ autonomously.
 1. Confirm the repository, branch, HEAD, remote, and working tree when Git is
    available.
 2. Read these files in order:
-   - `KIMCHI_START_PROMPT.md`
+   - `CURSOR_START_PROMPT.md`
    - `MANIFEST.md`
    - `WORKSPACE_STATUS.md`
    - `docs/00_CICLO_DEL_EVENTO.md`
    - `docs/01_R2R_A_R2H_PRACTICO.md`
-   - `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md`
+   - `docs/02_PLAN_DESARROLLO_CON_CURSOR.md`
    - `docs/03_CUSTOMER_JOURNEYS.md`
    - `docs/04_REVISION_FINAL.md`
    - `docs/05_ANEXO_PLAN_TECNICO.md`
    - `docs/specs/README.md`
-   - `docs/specs/SPEC-000-GOVERNANCE.md`
+   - the SPEC-000 version marked `APPROVED` in the registry
+   - a newer SPEC-000 `DRAFT` only when it is the review subject
    - related specifications by dependency order
 3. Treat `docs/00-05` as product and architecture authority. When they conflict,
    prefer the lower numbered file unless the conflict requires a human business,
@@ -60,7 +61,11 @@ Before drafting:
 4. Stop the affected scope when a missing decision would otherwise be invented.
 5. Record non-blocking uncertainty in `Open decisions`.
 
-Never silently replace Kimchi, Vite, React 19, TypeScript strict, SPA/PWA,
+Cursor is the operational environment and the best available LLM is selected
+for each task. Neither the selected model nor an MCP gains product,
+architecture, approval, or scope authority.
+
+Never silently replace Cursor, Vite, React 19, TypeScript strict, SPA/PWA,
 InsForge authority, Mercado Pago Checkout Pro, or the approved event lifecycle.
 
 ## 4. Draft specifications
@@ -154,6 +159,10 @@ For a material change:
 
 Allow typo or formatting fixes without a version increment only when meaning is
 unchanged; record them after approval.
+
+SPEC-000 v0.2.0 remains a `DRAFT` until explicit human approval. While that
+review is pending, use the archived SPEC-000 v0.1.0 as the approved governance
+contract and do not infer implementation authority from the draft.
 
 ## 9. Enforce hard boundaries
 

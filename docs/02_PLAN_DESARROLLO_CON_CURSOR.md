@@ -1,14 +1,15 @@
-# Plan de desarrollo Ready2Hybrid — edición Kimchi
+# Plan de desarrollo Ready2Hybrid — edición Cursor
 
 > Este documento gobierna **cómo y cuándo** se construye Ready2Hybrid.
-> Kimchi es el constructor principal aprobado. Los documentos `00` y `01`
-> mandan sobre cualquier propuesta del agente. El trabajo se ejecuta por
-> fases controladas, con aprobación humana antes de cambios sensibles.
+> Cursor es el entorno operativo y selecciona el mejor LLM disponible para
+> cada tarea. Los documentos `00` y `01` mandan sobre cualquier propuesta del
+> agente. El trabajo se ejecuta por fases controladas, con aprobación humana
+> antes de cambios sensibles.
 
 ## 1. Decisiones no negociables
 
 ```text
-Constructor     Kimchi, ejecutado desde WSL dentro del repo
+Constructor     Cursor + mejor LLM disponible según la tarea
 Frontend        Vite + React 19 + TypeScript strict
 Aplicación      SPA/PWA offline-first
 Backend         InsForge: Auth, PostgreSQL, RLS, Functions, Storage, Realtime
@@ -18,8 +19,8 @@ Gobierno        PREFLIGHT → PLAN → APROBAR → EXECUTE → VALIDATE → CLOS
 Autonomía       prohibida para schema, RLS, pagos, webhooks, secretos y producción
 ```
 
-No se usa Next.js. Kimchi no puede redefinir stack, alcance, calendario,
-prioridades ni arquitectura modular.
+No se usa Next.js. Cursor, el modelo seleccionado y los MCP no pueden redefinir
+stack, alcance, calendario, prioridades ni arquitectura modular.
 
 ## 2. MCPs y herramientas obligatorias
 
@@ -29,7 +30,7 @@ Antes de escribir código deben quedar comprobados:
 InsForge MCP       conectado al proyecto correcto; lectura y metadata PASS
 Mercado Pago MCP   OAuth y documentación Checkout Pro México PASS
 Git/GitHub         status, diff, commit y remote operables
-Node/npm           versiones compatibles y ejecución desde WSL
+Node/npm           versiones compatibles en el entorno operativo vigente
 TypeScript         language server, typecheck y strict
 Browser            Playwright o equivalente para pruebas reales
 Secretos           fuera del repo y fuera de logs
@@ -45,7 +46,7 @@ CLI/SDK/documentación oficial solo con aprobación.
 > historial y convertirse inmediatamente en la fuente de verdad.
 
 ```text
-Jul 21–22       F0      baseline Git + Kimchi + MCPs + plan + Vite/PWA base
+Jul 21–22       F0      baseline Git + Cursor + MCPs + plan + Vite/PWA base
 Jul 23–Ago 2    S1–2    núcleo + importar ventas + MP + tickets/QR + correo
 Ago 3–16        S3–4    Evento / Personas / Caja
 Ago 17–23       S5      check-in offline + ensayo sin wifi
@@ -77,7 +78,7 @@ Nunca se recorre el congelamiento.
 
 ```text
 - inicializar Git y registrar el baseline documental;
-- conectar Kimchi al repo correcto;
+- conectar Cursor al repo correcto;
 - validar MCP de InsForge y MCP de Mercado Pago en modo lectura;
 - inicializar Vite + React + TypeScript strict;
 - definir arquitectura feature/module-first;
@@ -91,7 +92,7 @@ Nunca se recorre el congelamiento.
 ### Puerta de salida
 
 ```text
-✓ Kimchi respeta docs/00–05 y no propone Next.js
+✓ Cursor y el modelo seleccionado respetan docs/00–05 y no cambian el stack
 ✓ ambos MCP visibles y autenticados
 ✓ npm run typecheck, test y build en verde
 ✓ PWA instalable en preview HTTPS/localhost
@@ -209,7 +210,7 @@ Puerta:
 
 No se congela con fallos críticos o sin ensayo físico.
 
-## 11. Ritual obligatorio con Kimchi
+## 11. Flujo controlado de trabajo
 
 ```text
 ABRIR
@@ -253,5 +254,5 @@ aislados pueden delegarse, pero siempre dentro del alcance aprobado.
 
 Cerrar las tres dimensiones del evento, registrar lecciones en
 `WORKSPACE_STATUS.md`, emitir reporte ejecutivo y decidir el siguiente módulo
-según el segundo evento real. Kimchi sigue siendo herramienta global; el repo
-solo conserva código, configuración y memoria propia del proyecto.
+según el segundo evento real. Cursor sigue siendo el entorno operativo; el
+repositorio conserva código, configuración y memoria propia del proyecto.

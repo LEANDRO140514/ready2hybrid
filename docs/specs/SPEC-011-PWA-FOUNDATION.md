@@ -25,11 +25,11 @@ implemented.
 
 - `docs/00_CICLO_DEL_EVENTO.md`
 - `docs/01_R2R_A_R2H_PRACTICO.md`
-- `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md`
+- `docs/02_PLAN_DESARROLLO_CON_CURSOR.md`
 - `docs/03_CUSTOMER_JOURNEYS.md`
 - `docs/04_REVISION_FINAL.md`
 - `docs/05_ANEXO_PLAN_TECNICO.md`
-- `docs/specs/SPEC-000-GOVERNANCE.md`
+- `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`
 - `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md`
 
 ## 3. Context
@@ -378,7 +378,8 @@ Manual:
 | R005-R015, R021-R023 | InsForge authority and offline boundaries in `docs/00-05` |
 | Operator state distinctions | `docs/03` P5 and check-in readiness behavior |
 
-Implementation and evidence remain pending while this document is `DRAFT`.
+Implementation and validation evidence remain pending for this `APPROVED`
+specification.
 
 ## 16. Open decisions
 
@@ -396,3 +397,4 @@ These decisions do not authorize check-in or ticket manifest implementation.
 |---|---|---|---|
 | 0.1.0 | 2026-07-21 | DRAFT | Initial PWA foundation contract |
 | 0.1.0 | 2026-07-21 | APPROVED | Status transition DRAFT → APPROVED by Project Owner after F0-B3 review |
+| 0.1.0 | 2026-07-23 | APPROVED | Editorial consistency correction; no normative change. Updated renamed authority path and corrected residual DRAFT wording. |

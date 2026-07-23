@@ -12,16 +12,15 @@ those documents and must preserve traceability back to them.
 Read project authority in this order before drafting, reviewing, or validating a
 specification:
 
-1. `KIMCHI_START_PROMPT.md`
+1. `CURSOR_START_PROMPT.md`
 2. `MANIFEST.md`
 3. `WORKSPACE_STATUS.md`
-4. `docs/00_CICLO_DEL_EVENTO.md`
-5. `docs/01_R2R_A_R2H_PRACTICO.md`
-6. `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md`
-7. `docs/03_CUSTOMER_JOURNEYS.md`
-8. `docs/04_REVISION_FINAL.md`
-9. `docs/05_ANEXO_PLAN_TECNICO.md`
-10. Approved specifications in this directory
+4. `docs/00_CICLO_DEL_EVENTO.md` through
+   `docs/05_ANEXO_PLAN_TECNICO.md`, in numeric order
+5. `docs/specs/README.md`
+6. The SPEC-000 version marked `APPROVED` in the registry; a newer `DRAFT` is
+   read only as the subject of its review
+7. Related specifications in dependency order
 
 For product and architecture conflicts, the lower numbered file in `docs/00-05`
 has priority. A specification must not silently resolve a material conflict.
@@ -29,14 +28,28 @@ Record it as an open decision and stop the affected implementation.
 
 ## Specification registry
 
-| ID | Title | Status | Version | Phase | Depends on |
-|---|---|---|---|---|---|
-| SPEC-000 | Specification Governance | APPROVED | 0.1.0 | F0-B3 | None |
-| SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 |
-| SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000, SPEC-001 |
+| ID | Title | Status | Version | Phase | Depends on | Path |
+|---|---|---|---|---|---|---|
+| SPEC-000 | Specification Governance | APPROVED | 0.1.0 | F0-B3 | None | `archive/SPEC-000-GOVERNANCE-v0.1.0.md` |
+| SPEC-000 | Specification Governance | DRAFT | 0.2.0 | R1 | None | `SPEC-000-GOVERNANCE.md` |
+| SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.1.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
+| SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.1.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
+
+SPEC-000 v0.1.0 remains the approved governance contract. Version 0.2.0 is a
+proposed replacement and has no implementation authority until explicit human
+approval. If approved, status, approval metadata, registry supersession, and
+dependent authority references must be updated atomically in that approval
+unit, including replacing `proposed_supersedes` with `supersedes`.
+
+## Current review gate
+
+`READY_FOR_SPEC_REVIEW`
+
+The next permitted action is human review of SPEC-000 v0.2.0. Do not approve it
+automatically and do not begin F0-E from this draft.
 
 ## Lifecycle
 

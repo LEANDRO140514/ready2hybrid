@@ -1,13 +1,14 @@
 ---
 id: SPEC-000
 title: Specification Governance
-status: APPROVED
-version: 0.1.0
-phase: F0-B3
-created_at: 2026-07-21
-approved_at: 2026-07-21
-approved_by: Project Owner
+status: DRAFT
+version: 0.2.0
+phase: R1
+created_at: 2026-07-23
+approved_at:
+approved_by:
 supersedes:
+proposed_supersedes: SPEC-000 v0.1.0
 depends_on: []
 ---
 
@@ -23,24 +24,44 @@ product behavior by itself.
 
 ## 2. Authority sources
 
-This specification derives from:
+Read authority in this order:
 
-- `KIMCHI_START_PROMPT.md`
-- `MANIFEST.md`
-- `WORKSPACE_STATUS.md`
-- `docs/00_CICLO_DEL_EVENTO.md`
-- `docs/01_R2R_A_R2H_PRACTICO.md`
-- `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md`
-- `docs/03_CUSTOMER_JOURNEYS.md`
-- `docs/04_REVISION_FINAL.md`
-- `docs/05_ANEXO_PLAN_TECNICO.md`
+1. `CURSOR_START_PROMPT.md`
+2. `MANIFEST.md`
+3. `WORKSPACE_STATUS.md`
+4. `docs/00_CICLO_DEL_EVENTO.md` through
+   `docs/05_ANEXO_PLAN_TECNICO.md`, in numeric order
+5. `docs/specs/README.md`
+6. The SPEC-000 version identified as `APPROVED` in the registry; while a new
+   version is under review, read its `DRAFT` only as the review subject
+7. Related specifications in dependency order
 
-The source order and conflict rules are defined in `docs/specs/README.md`.
+For product and architecture conflicts inside `docs/00-05`, the lower numbered
+document has priority unless resolution requires a human product, legal,
+security, privacy, or business decision. The current user instruction and
+physical Git state remain controlling evidence for the active unit.
 
-## 3. Scope
+Version resolution is atomic: SPEC-000 v0.1.0 remains the effective approved
+contract until the owner explicitly approves v0.2.0. Approval of v0.2.0 must,
+in the same controlled unit, set its status and approval metadata, record the
+transition actor and reason, replace `proposed_supersedes` with
+`supersedes: SPEC-000 v0.1.0`, mark v0.1.0 as superseded in the registry, and
+update dependent authority references. A draft never participates in
+implementation authority.
+
+## 3. Context
+
+Cursor is the operational construction environment for Ready2Hybrid. The best
+available LLM is selected for each task type, including architecture,
+planning, implementation, debugging, adversarial review, security,
+documentation, and validation. Cursor, models, MCP servers, and other tools do
+not become product or approval authorities.
+
+## 4. Scope
 
 This specification governs:
 
+- operational construction authority and task-specific model selection;
 - specification identifiers and numbering;
 - required document structure;
 - requirement identifiers and normative language;
@@ -51,10 +72,12 @@ This specification governs:
 - change control and supersession;
 - implementation and validation closure.
 
-## 4. Non-goals
+## 5. Non-goals
 
 This specification does not:
 
+- change runtime code, dependencies, architecture, data, migrations, security,
+  privacy, offline behavior, payment behavior, QR behavior, or audit behavior;
 - approve product prices, capacity, refund policy, waiver text, or payment
   methods;
 - define database tables, RLS, edge functions, or webhooks;
@@ -63,9 +86,12 @@ This specification does not:
 - replace `docs/00-05`;
 - approve another specification automatically.
 
-## 5. Definitions
+## 6. Definitions
 
 - **Authority source:** A project document that constrains a specification.
+- **Cursor:** The approved operational environment for repository work.
+- **Task-specific model:** The best available LLM selected for the current task;
+  it remains subordinate to project authority and scope.
 - **Specification:** A versioned, testable contract for one coherent area.
 - **Requirement:** A normative statement with a stable identifier.
 - **Acceptance criterion:** An observable condition proving one or more
@@ -76,7 +102,7 @@ This specification does not:
   interfaces, failure handling, or acceptance criteria.
 - **Project authority:** The human owner authorized to approve a specification.
 
-## 6. Invariants
+## 7. Invariants
 
 ### SPEC-000-R001
 
@@ -127,7 +153,83 @@ A specification MUST define failure modes and security or privacy implications
 when the covered behavior can affect payments, personal data, access, offline
 state, audit history, or public results.
 
-## 7. Numbering
+### SPEC-000-R017
+
+Ready2Hybrid repository work MUST use Cursor as the operational environment and
+MUST select the best available LLM for the task without transferring product,
+architecture, approval, or scope authority to that model.
+
+### SPEC-000-R018
+
+No agent, model, MCP, library, or historical constructor instruction MAY
+silently replace Cursor, Vite, React 19, TypeScript strict, the SPA/PWA
+architecture, InsForge authority, Mercado Pago Checkout Pro, or the approved
+event lifecycle.
+
+### SPEC-000-R019
+
+Every model selection MUST identify the task type, available eligible models,
+relevant restrictions, selected model, and reason for selection in the unit
+evidence. Model selection MUST NOT weaken validation or human approval
+requirements.
+
+## 8. Functional requirements
+
+- Every unit MUST identify its operation, governing sources, scope, protected
+  paths, validation, rollback, and closing gate before implementation.
+- Cursor MAY select different models for different tasks, but every result MUST
+  be checked against the same repository authority and approval boundaries.
+- Every model selection MUST leave the evidence required by R019.
+- Material changes to approved specifications MUST preserve the approved
+  version and prepare a separately reviewable replacement.
+
+## 9. Non-functional requirements
+
+- Governance documents MUST remain reviewable without access to secret values
+  or external runtime state.
+- Authority paths, versions, statuses, requirements, and gates MUST be
+  deterministic and auditable in Git.
+- Documentation-only governance changes MUST NOT create runtime, data, build,
+  deployment, or dependency side effects.
+
+## 10. Interfaces and contracts
+
+```text
+Human project authority
+  -> approves product, architecture, security, data, and specification states
+
+Cursor + selected LLM
+  -> analyzes, proposes, implements within authorization, validates, evidences
+
+MCP and other tools
+  -> execute bounded operations; never establish authority or expand scope
+```
+
+The specification registry MUST distinguish approved versions from drafts and
+MUST identify the approved version that remains effective during review.
+
+## 11. Failure modes
+
+- **Conflicting authorities:** Stop affected work, report the conflict, and
+  request a human decision when hierarchy alone cannot resolve it.
+- **Model or tool overreach:** Reject scope, architecture, or resource changes
+  not authorized by project authority.
+- **Draft treated as approved:** Block implementation and use the last approved
+  version until explicit human approval.
+- **Stale constructor or path reference:** Treat it as historical or migrate it
+  in an authorized documentation unit; do not execute obsolete instructions.
+- **Missing evidence:** Do not transition to `VALIDATED`.
+
+## 12. Security and privacy
+
+- Governance work MUST NOT expose, copy, log, or version secret values.
+- A draft MUST NOT authorize SQL, RLS, payments, webhooks, QR authority,
+  production operations, or access to personal data.
+- Security, privacy, offline authority, payment verification, QR opacity, and
+  audit requirements from approved product and architecture sources MUST remain
+  unchanged unless a separately authorized specification changes them.
+
+## 13. Numbering
 
 Use these ranges:
 
@@ -148,7 +250,7 @@ Use these ranges:
 Numbers MAY be reserved, but a reserved number does not create an approved
 scope commitment.
 
-## 8. Required structure
+## 14. Required structure
 
 Every specification MUST contain these sections, using `Not applicable` with a
 reason when needed:
@@ -172,7 +274,7 @@ reason when needed:
 17. Open decisions
 18. Change log
 
-## 9. Lifecycle
+## 15. Lifecycle
 
 ### DRAFT
 
@@ -209,7 +311,7 @@ A later approved specification or version replaces this contract.
 
 The proposal was reviewed and intentionally declined.
 
-## 10. Transition rules
+## 16. Transition rules
 
 ### SPEC-000-R011
 
@@ -240,7 +342,7 @@ failed mandatory gate.
 `APPROVED` or later documents MAY move to `SUPERSEDED` only when the replacing
 contract is identified.
 
-## 11. Review gates
+## 17. Review gates
 
 A review MUST check:
 
@@ -257,7 +359,7 @@ A review MUST check:
 A reviewer MUST stop the affected scope when a missing business, legal,
 security, or data authority decision would otherwise be invented.
 
-## 12. Traceability contract
+## 18. Traceability contract
 
 Each requirement MUST be traceable through this chain:
 
@@ -274,7 +376,7 @@ The implementation traceability table MUST use these columns:
 | Requirement | Source | Implementation | Validation | Evidence | State |
 |---|---|---|---|---|---|
 
-## 13. Change control
+## 19. Change control
 
 A proposed material change MUST include:
 
@@ -290,7 +392,43 @@ A proposed material change MUST include:
 Typos and formatting fixes MAY be applied without a version increment only when
 they do not alter meaning. Record them in the change log after `APPROVED`.
 
-## 14. Acceptance criteria
+### Proposed v0.2.0 change impact
+
+- **Reason:** Replace the discarded constructor-specific operating authority
+  with Cursor and task-specific model selection.
+- **Affected requirements:** R001-R002 gain updated authority sources; R017-R018
+  add explicit operational boundaries. R003-R016 retain their intent.
+- **Documentation impact:** Startup prompt, development plan, manifest,
+  workspace status, spec index, governance skill, and direct constructor
+  references are migrated.
+- **Documentation migration status:** The authorized R1 path and authority
+  updates are implemented in Git; specification review and approval remain
+  pending.
+- **Runtime implementation impact:** None.
+- **Runtime and compatibility impact:** None.
+- **Data and migration impact:** None.
+- **Security and privacy impact:** None; existing secret and least-privilege
+  boundaries are preserved.
+- **Offline, payment, QR, and audit impact:** None.
+- **Validation impact:** Documentation, metadata, links, authority order, and
+  stale constructor references must be reviewed.
+- **Pre-approval rollback:** If v0.2.0 is not approved, no authority transition
+  occurs: retain `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md` as the
+  approved governance contract and revise or discard this draft. The R1
+  operational documents remain aligned with the owner's current Cursor
+  decision; historical Kimchi text in the archive is not reactivated as
+  operational authority. A corrected replacement draft remains required.
+- **Post-approval rollback:** Do not silently reactivate v0.1.0. Prepare a new
+  reviewed governance version that supersedes v0.2.0, or perform an explicit
+  owner-authorized reactivation unit that atomically updates status, registry,
+  dependent references, change log, and compatibility evidence.
+- **Dependent specifications:** SPEC-001 and SPEC-011 remain bound to approved
+  v0.1.0 during review. If v0.2.0 is approved, their authority references move
+  to v0.2.0 in the same approval unit; their requirements, versions, and
+  approval states remain unchanged because this governance migration has no
+  architecture or runtime impact.
+
+## 20. Acceptance criteria
 
 ### SPEC-000-AC001
 
@@ -320,35 +458,67 @@ its authority source and future evidence.
 
 Validates: R001, R004, R014, R015.
 
-## 15. Validation plan
+### SPEC-000-AC005
+
+The authority documents consistently identify Cursor as the operational
+environment, require task-specific model selection, preserve human approval,
+and contain no active constructor authority for Kimchi or Forge.
+
+Validates: R001, R002, R003, R017, R018.
+
+### SPEC-000-AC006
+
+A governance review demonstrates that an unapproved draft cannot authorize
+implementation, tools cannot expand scope, approved versions remain available,
+and documentation-only changes introduce no runtime or data effects.
+
+Validates: R003-R006, R017, R018.
+
+### SPEC-000-AC007
+
+For each model-selection example, the review evidence records task type,
+eligible alternatives, restrictions, selection, and rationale without changing
+authority, validation, or approval boundaries.
+
+Validates: R017, R019.
+
+## 21. Validation plan
 
 - Review all required sections for completeness.
+- Verify the archived v0.1.0 is byte-identical to the previously approved file.
 - Verify every requirement identifier is unique.
 - Verify every acceptance criterion maps to one or more requirements.
 - Verify no text grants autonomous approval.
 - Verify no text authorizes schema, RLS, payments, webhooks, secrets, or
   production without a separate approved spec.
+- Verify related approved specs retain their version, status, requirements,
+  acceptance criteria, architecture, and open decisions.
+- Search for stale constructor references and obsolete file paths.
 - Run Markdown link and formatting checks when available.
 
-## 16. Traceability
+## 22. Traceability
 
 | Requirement | Source |
 |---|---|
 | R001-R002 | Project authority hierarchy and controlled workflow |
 | R003-R005 | Human approval, controlled closure, no silent edits |
-| R006 | Sensitive change restrictions in the Kimchi plan |
+| R006 | Sensitive change restrictions in the Cursor plan |
 | R007-R016 | Formal Spec -> approval -> implementation -> validation workflow |
+| R017-R018 | Owner decision: Cursor + best available LLM per task |
+| R019 | Traceable task-specific model selection |
 
-Implementation and evidence remain pending while this document is `DRAFT`.
+The R1 documentation migration is implemented. Review and approval evidence for
+this governance draft remain pending; no runtime implementation is implied.
 
-## 17. Open decisions
+## 23. Open decisions
 
-None for the governance foundation. Product decisions belong in their domain
-specifications.
+Human review and approval of v0.2.0 remain pending. Product decisions continue
+to belong in their domain specifications and are not resolved by this draft.
 
-## 18. Change log
+## 24. Change log
 
-| Version | Date | Status | Change |
-|---|---|---|---|
-| 0.1.0 | 2026-07-21 | DRAFT | Initial governance foundation |
-| 0.1.0 | 2026-07-21 | APPROVED | Status transition DRAFT → APPROVED by Project Owner after F0-B3 review |
+| Version | Date | Status | Actor | Reason |
+|---|---|---|---|---|
+| 0.1.0 | 2026-07-21 | DRAFT | Project Owner | Initial governance foundation |
+| 0.1.0 | 2026-07-21 | APPROVED | Project Owner | Approved after F0-B3 review |
+| 0.2.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Propose migration of operational governance from Kimchi to Cursor with traceable task-specific LLM selection; no runtime or normative product change |

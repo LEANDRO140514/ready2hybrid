@@ -172,14 +172,14 @@ local usa y que suben conversión. Stripe queda como posible módulo
 
 ### 2.2 El MCP de Mercado Pago: herramienta de construcción, no de runtime
 
-El MCP Server oficial de Mercado Pago se conecta a Kimchi y sirve para
-buscar documentación, guiar la integración de Checkout Pro y diagnosticar
+El MCP Server oficial de Mercado Pago se conecta a Cursor y sirve para buscar
+documentación, guiar la integración de Checkout Pro y diagnosticar
 notificaciones. **Se usa durante F2 para
 construir y depurar**; en producción no interviene: el cobro corre por
 Checkout Pro + webhook. Está en beta — útil como acelerador, no como
 dependencia.
 
-Acción concreta: conectar el MCP de Mercado Pago a Kimchi desde el preflight
+Acción concreta: comprobar el MCP de Mercado Pago en Cursor desde el preflight
 y usar sus herramientas de diagnóstico durante las pruebas del webhook.
 
 ### 2.3 Adaptador de pasarela (contrato del núcleo)
@@ -268,7 +268,7 @@ es la fuente de verdad, no la UI de InsForge. Seeds del evento y productos.
 **Salida:** kernel operable + prueba explícita de que anon no escribe.
 
 ### F2 — Módulo pay-mercadopago  ← desbloquea ventas
-Usar el MCP de Mercado Pago conectado a Kimchi. Implementar el adaptador y
+Usar el MCP de Mercado Pago conectado a Cursor. Implementar el adaptador y
 las functions del
 §2.4. Página de éxito de la landing en modo "confirmando…" con polling a
 `get-order-status`. Pruebas de cierre:

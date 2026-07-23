@@ -21,14 +21,14 @@ later specifications cannot reintroduce conflicting stacks or data authority.
 
 ## 2. Authority sources
 
-- `KIMCHI_START_PROMPT.md`
+- `CURSOR_START_PROMPT.md`
 - `docs/00_CICLO_DEL_EVENTO.md`
 - `docs/01_R2R_A_R2H_PRACTICO.md`
-- `docs/02_PLAN_DESARROLLO_CON_KIMCHI.md`
+- `docs/02_PLAN_DESARROLLO_CON_CURSOR.md`
 - `docs/03_CUSTOMER_JOURNEYS.md`
 - `docs/04_REVISION_FINAL.md`
 - `docs/05_ANEXO_PLAN_TECNICO.md`
-- `docs/specs/SPEC-000-GOVERNANCE.md`
+- `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`
 
 ## 3. Context
 
@@ -350,7 +350,8 @@ Validates: R021-R024.
 | R022-R023 | `docs/05` modular architecture, subordinate to `docs/01-02` |
 | R029 | `docs/00`, `docs/02`, `docs/05` closure and backup requirements |
 
-Implementation and evidence remain pending while this document is `DRAFT`.
+Implementation and validation evidence remain pending for this `APPROVED`
+specification.
 
 ## 16. Open decisions
 
@@ -366,3 +367,4 @@ Implementation and evidence remain pending while this document is `DRAFT`.
 |---|---|---|---|
 | 0.1.0 | 2026-07-21 | DRAFT | Initial architecture contract |
 | 0.1.0 | 2026-07-21 | APPROVED | Status transition DRAFT → APPROVED by Project Owner after F0-B3 review |
+| 0.1.0 | 2026-07-23 | APPROVED | Editorial consistency correction; no normative change. Updated renamed authority paths and corrected residual DRAFT wording. |

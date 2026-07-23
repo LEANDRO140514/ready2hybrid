@@ -3,18 +3,22 @@
 ## Estado
 
 - Fecha de inicio: 2026-07-21
-- Constructor: Kimchi
+- Constructor operativo: Cursor
+- Modelo: mejor LLM disponible para cada tarea
 - Stack: Vite + React 19 + TypeScript
 - Aplicacion: PWA offline-first
 - Backend: InsForge
 - Pagos: Mercado Pago Checkout Pro
 - Evento: viernes 9 de octubre de 2026
-- Fase activa: F0-D - Playwright Foundation
-- Estado de fase: IMPLEMENTED y VALIDATED - cierre controlado autorizado
+- F0-D: CLOSED - Playwright Foundation implementada, validada y publicada
+- R1: DOCUMENTATION_MIGRATED - pendiente de revision humana de SPEC-000 v0.2.0
+- F0-E: NOT IMPLEMENTED - sin autorizacion de implementacion
 
 ## Autoridad
 
-Leer `docs/` por numero. Ante contradiccion manda el numero menor.
+Leer `CURSOR_START_PROMPT.md`, `MANIFEST.md`, este archivo y `docs/` por numero.
+Ante contradiccion de producto o arquitectura dentro de `docs/00-05`, manda el
+numero menor salvo que la resolucion exija una decision humana.
 Las specs traducen la autoridad a contratos verificables; no reemplazan
 `docs/00-05`.
 
@@ -36,9 +40,12 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
-Las specs `SPEC-000`, `SPEC-001` y `SPEC-011` quedaron APPROVED en v0.1.0.
-No autorizan schema, RLS, pagos, webhooks, secretos, produccion ni modulos
-funcionales.
+`SPEC-000`, `SPEC-001` y `SPEC-011` quedaron APPROVED en v0.1.0. La version
+aprobada de `SPEC-000` se preserva en
+`docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`. La revision v0.2.0 de
+`SPEC-000` queda propuesta como `DRAFT` y requiere revision y aprobacion
+humanas. Ninguna de estas specs autoriza schema, RLS, pagos, webhooks,
+secretos, produccion ni modulos funcionales.
 
 ## Artefactos F0-C
 
@@ -128,15 +135,28 @@ Configuracion:
 No se agregaron PWA, service workers, manifest, IndexedDB, TanStack, Zustand,
 Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
+## Unidad R1
+
+- Preflight inicial: branch `main`, working tree limpio, HEAD `8296aee`,
+  `origin/main` `8296aee`, divergencia `0/0`.
+- Autoridad operativa migrada a Cursor + mejor LLM disponible por tarea.
+- Documentos de inicio y plan renombrados.
+- `SPEC-000` v0.1.0 preservada sin cambios.
+- `SPEC-000` v0.2.0 preparada como revision `DRAFT`.
+- F0-E permanece fuera de alcance y no implementada.
+
 ## Proximo gate
 
-`READY_FOR_F0-E-IMPLEMENTATION-PLAN`
+`READY_FOR_SPEC_REVIEW`
 
 Siguiente accion permitida:
 
-1. preparar el plan trazable de F0-E - PWA Foundation;
-2. no implementar F0-E sin aprobacion humana explicita.
+1. revision humana de `SPEC-000-GOVERNANCE` v0.2.0;
+2. no aprobarla automaticamente;
+3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
+   autorizacion humana separada.
 
 ## Ultimo cierre
 
-F0-D se cierra mediante el commit que contiene esta actualizacion.
+F0-D esta cerrado en `c6f1131`. R1 se cierra mediante el commit que contiene
+esta actualizacion documental.
