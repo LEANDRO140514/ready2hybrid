@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "insforge-ready2hybrid": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@insforge/mcp@latest"
+      ],
+      "envFile": "${workspaceFolder}/.cursor/mcp.env"
+    },
+    "mercadopago-ready2hybrid": {
+      "url": "https://mcp.mercadopago.com/mcp"
+    }
+  }
+}
