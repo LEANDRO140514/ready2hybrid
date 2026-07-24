@@ -14,7 +14,7 @@
 - R1: CLOSED - migracion documental publicada en `b6e64c2`
 - R2: CLOSED - revision formal terminada en `CHANGES_REQUIRED`
 - R3: CLOSED - correcciones publicadas en `9d9bbb9`
-- SALE-1: STARTED - Fase A aprobacion de gobierno; Fase B catalogo publico
+- SALE-1: READY_FOR_APPROVAL - SPEC-000 aprobada; SPEC-030 revisada como DRAFT
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 
 ## Autoridad
@@ -43,6 +43,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   `docs/specs/SPEC-000-GOVERNANCE.md`
 - `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md`
 - `docs/specs/SPEC-011-PWA-FOUNDATION.md`
+- `docs/specs/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md`
+  - v0.1.0 `DRAFT`
+  - catalogo: COMPITE 13, EXPERIENCE 7, ASISTE 8, total 28
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
@@ -51,6 +54,12 @@ La version v0.1.0 de `SPEC-000` esta `SUPERSEDED` y se preserva sin cambios en
 `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`. Ninguna de estas specs
 autoriza schema, RLS, pagos, webhooks, secretos, produccion ni modulos
 funcionales.
+
+Seguimiento documental no bloqueante: `MANIFEST.md` y las listas historicas de
+fuentes dentro de SPEC-001/SPEC-011 conservan referencias previas a SPEC-000
+v0.1.0. La aprobacion explicita de SALE-1, la metadata de SPEC-000 v0.2.0 y el
+registro vigente resuelven la autoridad actual. Corregir esas referencias
+protegidas requiere una unidad documental separada; SALE-1 no las modifica.
 
 ## Artefactos F0-C
 
@@ -152,12 +161,12 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_SPEC_DRAFT`
+`READY_FOR_APPROVAL`
 
 Siguiente accion permitida:
 
-1. formalizar el catalogo publico y los journeys de venta de 28 productos;
-2. mantener la nueva specification como `DRAFT` hasta aprobacion humana;
+1. decision humana explicita sobre SPEC-030 v0.1.0;
+2. no aprobar automaticamente la specification;
 3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
    autorizacion humana separada.
 
@@ -165,5 +174,7 @@ Siguiente accion permitida:
 
 F0-D esta cerrado en `c6f1131`. R1 esta cerrado en `b6e64c2`. R2 termino en
 `CHANGES_REQUIRED`. R3 corrigio los nueve hallazgos y cerro en `9d9bbb9`.
-SALE-1 inicia con la aprobacion humana de SPEC-000 v0.2.0 y continua con la
-specification documental del catalogo publico.
+SALE-1 aprobo SPEC-000 v0.2.0 en `0765365` y preparo SPEC-030 v0.1.0 como
+`DRAFT` documental. La revision formal termino `READY_FOR_APPROVAL`, sin
+hallazgos accionables. Landing, seed, codigo y recursos externos permanecen
+fuera de alcance.

@@ -34,6 +34,7 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-000 | Specification Governance | APPROVED | 0.2.0 | R1 | None | `SPEC-000-GOVERNANCE.md` |
 | SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
 | SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | DRAFT | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
@@ -47,11 +48,12 @@ SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_SPEC_DRAFT`
+`READY_FOR_APPROVAL`
 
-SPEC-000 v0.2.0 is approved. The next authorized documentation action is to
-draft the public sales catalog and registration journeys specification. F0-E
-remains unauthorized and not started.
+SPEC-000 v0.2.0 is approved. The formal review of SPEC-030 v0.1.0 found no
+actionable findings and recommends human approval. SPEC-030 remains `DRAFT`
+with no implementation or production authority. F0-E remains unauthorized and
+not started.
 
 ## Lifecycle
 
