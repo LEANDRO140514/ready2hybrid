@@ -58,19 +58,22 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2/IMPL-3 `VALIDATED`; ACCESS-DEC APPROVED;
-    IMPL-4 SQL `READY_FOR_IMPL_4_EXECUTION`
+  - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4 `VALIDATED`;
+    IMPL-5 `PROPOSED / NOT AUTHORIZED`
 - `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
-  - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado;
-    SQL/RLS aun no ejecutado
+  - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
   - apply aislado PostgreSQL 16 PASS; seed no ejecutado; InsForge write = 0
 - `docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`
   - constraints/indexes aislados PASS; N01-N30 PASS; RLS = 0
+- `docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md`
+  - RLS deny-by-default PASS; A01-A16 PASS; InsForge write = 0
 - `insforge/migrations/0001_minimal_sales_schema.sql`
   - migracion minima IMPL-2 publicada en `ac2be55`
 - `insforge/migrations/0002_sales_constraints_and_indexes.sql`
   - constraints e indices IMPL-3 publicados en `b459e80`
+- `insforge/migrations/0003_rls_and_access_limits.sql`
+  - RLS deny-by-default IMPL-4 publicado en `cbbeecc`
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
@@ -186,18 +189,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_4_EXECUTION`
+`ACCESS_READY_FOR_SEED`
 
 Siguiente accion permitida:
 
-1. autorizacion humana separada para ejecutar IMPL-4 SQL/RLS
-   (`0003_rls_and_access_limits.sql`), en modo access-only, validacion local
-   aislada y sin despliegue en InsForge;
-2. no iniciar el SQL de IMPL-4, F0-E ni runtime hasta esa autorizacion;
-3. no desplegar migraciones en InsForge;
-4. no ejecutar el seed;
-5. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
-   autorizada.
+1. autorizacion humana separada para IMPL-5 (aplicar seed de catalogo), si
+   procede;
+2. no ejecutar el seed ni desplegar en InsForge hasta esa autorizacion;
+3. no iniciar checkout, webhooks, Mercado Pago ni tickets;
+4. no modificar la landing;
+5. no modificar seed/SQL/InsForge/Mercado Pago sin unidad autorizada.
 
 ## Ultimo cierre
 
@@ -211,21 +212,18 @@ publicada en `4e85409`, abrio SALE-3 Fase A sin cambiar su fase de origen
 SALE-2. SPEC-032 v0.1.0 fue publicada como `DRAFT` en `07471d7` y aprobada
 explicitamente por el propietario el 2026-07-24. El contrato documental de
 SALE-3 queda CLOSED. IMPL-0 preparo trazabilidad. IMPL-1 cerro el seed
-corregido en `31c9eb7`. IMPL-2 publico la migracion minima en `ac2be55` y
-cerro la validacion aislada PostgreSQL 16 con evidencia en
-`docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`.
-IMPL-3 publico constraints/indexes en `b459e80` y cerro la validacion aislada
-con evidencia en
-`docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`.
-El Project Owner aprobo ACCESS-DEC-001..008 el 2026-07-24 y autorizo el modelo
-deny-by-default para preparar IMPL-4 como unidad RLS/access-only con
-validacion local y sin InsForge.
+corregido en `31c9eb7`. IMPL-2 publico la migracion minima en `ac2be55`.
+IMPL-3 publico constraints/indexes en `b459e80`. ACCESS-DEC-001..008 fueron
+aprobados en `66cf9ff`. IMPL-4 publico RLS deny-by-default en `cbbeecc` y
+cerro la validacion aislada A01-A16 con evidencia en
+`docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md`.
 
 ```text
-ACCESS-DEC-001..008: APPROVED
-Deny-by-default model: AUTHORIZED
-IMPL-4 SQL/RLS: NOT STARTED
-Gate: READY_FOR_IMPL_4_EXECUTION
+IMPL-4: VALIDATED
+RLS deny-by-default: PASS
+Gate: ACCESS_READY_FOR_SEED
+IMPL-5: PROPOSED / NOT AUTHORIZED
+LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
 Landing, InsForge runtime, Mercado Pago y ejecucion del seed permanecen fuera

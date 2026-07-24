@@ -122,19 +122,19 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 |---|---|
 | Related requirements | R010, R020, R044-R047, R053 |
 | Dependencies | IMPL-3 validated; auth decisions for enabled paths |
-| Anticipated files | `insforge/migrations/0003_rls_and_access_limits.sql` (future); `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md` |
-| External resources | Local ephemeral PostgreSQL for validation; InsForge write not authorized in approved mode |
+| Anticipated files | `insforge/migrations/0003_rls_and_access_limits.sql`; `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`; evidence |
+| External resources | Local ephemeral PostgreSQL for validation; InsForge write not authorized |
 | Blocking open decisions | ACCESS-DEC-001..008 APPROVED; API-OD-004 TTL/transport deferred+feature-disabled; API-OD-005 narrow (UUID+activity_log); API-OD-007 remains PRODUCTION_BLOCKER |
-| Scope | Anonymous denial; role/capability/service matrix; named abuse/rate profiles |
-| Out of scope | Checkout, webhook, tickets, landing UI, InsForge deployment |
-| Automated tests | Anonymous denial; enumeration-safe errors; capability/service matrix |
+| Scope | Anonymous denial; FORCE RLS deny-by-default; backend BYPASSRLS boundary; named abuse/rate profiles (documentary) |
+| Out of scope | Checkout, webhook, tickets, landing UI, InsForge deployment, end-user policies |
+| Automated tests | A01-A16 local ephemeral suite |
 | Manual tests | Actor/permission walkthrough |
-| Expected evidence | Access matrix PASS; local isolated RLS validation |
-| Rollback | Disable affected release; revoke capabilities; corrective policy migration |
+| Expected evidence | `docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md` |
+| Rollback | Replacement access migration; revoke unintended grants |
 | Entry gate | IMPL-3 validated; ACCESS-DEC-001..008 approved |
 | Exit gate | `ACCESS_READY_FOR_SEED` |
 | Separate human authorization | Required for SQL/RLS execution unit |
-| Current state | `ACCESS DECISIONS APPROVED / SQL NOT STARTED` |
+| Current state | `VALIDATED` |
 
 ### IMPL-5 — Apply catalog seed
 
@@ -154,7 +154,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | IMPL-1/4 closed; execution authorization |
 | Exit gate | `CATALOG_SEEDED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `PROPOSED / NOT AUTHORIZED` |
 
 ### IMPL-6 — Validate 28 products
 
@@ -409,22 +409,57 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-4 — RLS and access limits (SQL / local validation)
-Status: READY_FOR_IMPL_4_EXECUTION
-Approved mode: RLS/access-only · local isolated validation · NO InsForge deploy
-Access decisions: ACCESS-DEC-001..008 APPROVED (2026-07-24)
+IMPL-5 — Apply catalog seed
+Status: PROPOSED / NOT AUTHORIZED
 ```
 
-Do not execute IMPL-4 SQL in this documentary closure.
+Do not execute IMPL-5 in this unit.
 
-Before the SQL unit may start, require all of:
+Before IMPL-5 may start, require all of:
 
-1. separate human authorization for RLS/access-only migration `0003`;
+1. separate human authorization for seed execution only;
 2. a fresh Git preflight;
-3. confirmation that IMPL-3 remains `VALIDATED` and migration blobs unchanged;
-4. adherence to ACCESS-DEC-001..008 and deferred API-OD-004/007 posture;
-5. no seed execution and no InsForge write;
-6. independent SQL and evidence commits after local validation.
+3. confirmation that IMPL-4 remains `VALIDATED` and migration blobs unchanged;
+4. target environment authorization (still not implied by this pack);
+5. no landing changes and no checkout/payment enablement;
+6. an independent commit after review.
+
+## I. IMPL-0 change set
+
+Authorized documentary files for this preparation unit:
+
+```text
+docs/specs/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md
+docs/specs/README.md
+WORKSPACE_STATUS.md
+docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md
+```
+
+Commit and push remain unauthorized until the Project Owner issues a separate
+instruction.
+
+## J. Gate
+
+```text
+ACCESS_READY_FOR_SEED
+```
+
+IMPL-4 closure evidence:
+
+```text
+IMPL-4: VALIDATED
+ACCESS-DEC-001..008: APPROVED
+SQL commit: cbbeecc
+Evidence: docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md
+Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
+Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
+Migration 0003 blob: d2c3778364cae4cada03c8a7e3d5b6b6f6365dbd
+Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
+InsForge deployment: NO
+Seed executed: NO
+IMPL-5: PROPOSED / NOT AUTHORIZED
+LANDING_READY_FOR_READY2HYBRID_MATCH
+```
 
 ## I. IMPL-0 change set
 
