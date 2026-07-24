@@ -13,7 +13,8 @@
 - F0-D: CLOSED - Playwright Foundation implementada, validada y publicada
 - R1: CLOSED - migracion documental publicada en `b6e64c2`
 - R2: CLOSED - revision formal terminada en `CHANGES_REQUIRED`
-- R3: CORRECTIONS_COMPLETED - revision post-correccion `READY_FOR_APPROVAL`
+- R3: CLOSED - correcciones publicadas en `9d9bbb9`
+- SALE-1: STARTED - Fase A aprobacion de gobierno; Fase B catalogo publico
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 
 ## Autoridad
@@ -36,21 +37,20 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 ## Artefactos F0-B3
 
 - `docs/specs/README.md`
-- SPEC-000 v0.1.0 `APPROVED`:
+- SPEC-000 v0.1.0 historically `APPROVED`, now `SUPERSEDED`:
   `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`
-- SPEC-000 v0.2.0 `DRAFT`:
+- SPEC-000 v0.2.0 `APPROVED` y vigente:
   `docs/specs/SPEC-000-GOVERNANCE.md`
 - `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md`
 - `docs/specs/SPEC-011-PWA-FOUNDATION.md`
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
-`SPEC-000`, `SPEC-001` y `SPEC-011` quedaron APPROVED en v0.1.0. La version
-aprobada de `SPEC-000` se preserva en
-`docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`. La revision v0.2.0 de
-`SPEC-000` queda propuesta como `DRAFT` y requiere revision y aprobacion
-humanas. Ninguna de estas specs autoriza schema, RLS, pagos, webhooks,
-secretos, produccion ni modulos funcionales.
+`SPEC-000` v0.2.0, `SPEC-001` v0.1.0 y `SPEC-011` v0.1.0 estan `APPROVED`.
+La version v0.1.0 de `SPEC-000` esta `SUPERSEDED` y se preserva sin cambios en
+`docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`. Ninguna de estas specs
+autoriza schema, RLS, pagos, webhooks, secretos, produccion ni modulos
+funcionales.
 
 ## Artefactos F0-C
 
@@ -152,17 +152,18 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_APPROVAL`
+`READY_FOR_SPEC_DRAFT`
 
 Siguiente accion permitida:
 
-1. decision humana explicita sobre `SPEC-000-GOVERNANCE` v0.2.0;
-2. no aprobarla automaticamente;
+1. formalizar el catalogo publico y los journeys de venta de 28 productos;
+2. mantener la nueva specification como `DRAFT` hasta aprobacion humana;
 3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
    autorizacion humana separada.
 
 ## Ultimo cierre
 
 F0-D esta cerrado en `c6f1131`. R1 esta cerrado en `b6e64c2`. R2 termino en
-`CHANGES_REQUIRED`. R3 corrigio los nueve hallazgos y termino su revision
-formal en `READY_FOR_APPROVAL`; SPEC-000 v0.2.0 permanece `DRAFT`.
+`CHANGES_REQUIRED`. R3 corrigio los nueve hallazgos y cerro en `9d9bbb9`.
+SALE-1 inicia con la aprobacion humana de SPEC-000 v0.2.0 y continua con la
+specification documental del catalogo publico.

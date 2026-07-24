@@ -1,14 +1,14 @@
 ---
 id: SPEC-000
 title: Specification Governance
-status: DRAFT
+status: APPROVED
 version: 0.2.0
 phase: R1
 created_at: 2026-07-23
-approved_at:
-approved_by:
-supersedes:
-proposed_supersedes: SPEC-000 v0.1.0
+approved_at: 2026-07-23
+approved_by: Project Owner
+approval_basis: Explicit human authorization after READY_FOR_APPROVAL review
+supersedes: SPEC-000 v0.1.0
 depends_on: []
 ---
 
@@ -803,3 +803,5 @@ to belong in their domain specifications and are not resolved by this draft.
 | 0.1.0 | 2026-07-21 | APPROVED | Project Owner | Approved after F0-B3 review |
 | 0.2.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Propose migration of operational governance from Kimchi to Cursor with non-binding task-specific LLM selection; no runtime or normative product change |
 | 0.2.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Resolved R2 findings: removed the unsupported per-model evidence obligation; clarified human authority versus Git evidence; added explicit review and validation transitions; made acceptance criteria observable; added verifiable rollback; aligned the index and workspace status. No runtime, architecture, data, payment, QR, privacy, or infrastructure change. |
+| 0.2.0 | 2026-07-23 | IN_REVIEW | Project Owner | Authorized formal review after R3 corrections; review result `READY_FOR_APPROVAL`. |
+| 0.2.0 | 2026-07-23 | APPROVED | Project Owner | Explicit human approval; lifecycle completed `DRAFT -> IN_REVIEW -> APPROVED` with zero normative changes during this approval unit. |

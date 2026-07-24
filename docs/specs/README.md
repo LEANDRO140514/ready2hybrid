@@ -30,30 +30,28 @@ Record it as an open decision and stop the affected implementation.
 
 | ID | Title | Status | Version | Phase | Depends on | Path |
 |---|---|---|---|---|---|---|
-| SPEC-000 | Specification Governance | APPROVED | 0.1.0 | F0-B3 | None | `archive/SPEC-000-GOVERNANCE-v0.1.0.md` |
-| SPEC-000 | Specification Governance | DRAFT | 0.2.0 | R1 | None | `SPEC-000-GOVERNANCE.md` |
-| SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.1.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
-| SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.1.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
+| SPEC-000 | Specification Governance | SUPERSEDED | 0.1.0 | F0-B3 | None | `archive/SPEC-000-GOVERNANCE-v0.1.0.md` |
+| SPEC-000 | Specification Governance | APPROVED | 0.2.0 | R1 | None | `SPEC-000-GOVERNANCE.md` |
+| SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
+| SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
 
-SPEC-000 v0.1.0 remains the approved governance contract. Version 0.2.0 is a
-proposed replacement and has no implementation authority until explicit human
-approval. If approved, status, approval metadata, registry supersession, and
-dependent authority references must be updated atomically in that approval
-unit, including replacing `proposed_supersedes` with `supersedes`.
-Version 0.1.0 moves to `SUPERSEDED` only after that human approval. A draft,
-rejected proposal, or `READY_FOR_APPROVAL` recommendation does not supersede or
-invalidate the approved contract.
+SPEC-000 v0.2.0 is the approved and effective governance contract after
+explicit human authorization on 2026-07-23. Version 0.1.0 is historically
+approved, now `SUPERSEDED` by v0.2.0, and preserved unchanged in the archive.
+SPEC-001 and SPEC-011 retain their versions, requirements, acceptance criteria,
+and approval states; their governance authority reference now resolves to
+SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_APPROVAL`
+`READY_FOR_SPEC_DRAFT`
 
-The R3 post-correction review found no blocking findings. The next permitted
-action is an explicit human approval decision for SPEC-000 v0.2.0. Do not apply
-`APPROVED` automatically and do not begin F0-E from this draft.
+SPEC-000 v0.2.0 is approved. The next authorized documentation action is to
+draft the public sales catalog and registration journeys specification. F0-E
+remains unauthorized and not started.
 
 ## Lifecycle
 
