@@ -58,11 +58,15 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2 `VALIDATED`; IMPL-3 `PROPOSED / NOT AUTHORIZED`
+  - plan trazable IMPL-1..12; IMPL-2/IMPL-3 `VALIDATED`; IMPL-4 `PROPOSED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
   - apply aislado PostgreSQL 16 PASS; seed no ejecutado; InsForge write = 0
+- `docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`
+  - constraints/indexes aislados PASS; N01-N30 PASS; RLS = 0
 - `insforge/migrations/0001_minimal_sales_schema.sql`
   - migracion minima IMPL-2 publicada en `ac2be55`
+- `insforge/migrations/0002_sales_constraints_and_indexes.sql`
+  - constraints e indices IMPL-3 publicados en `b459e80`
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
@@ -178,14 +182,14 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`SCHEMA_MIGRATION_READY_FOR_CONSTRAINTS`
+`CONSTRAINTS_READY_FOR_ACCESS`
 
 Siguiente accion permitida:
 
-1. autorizacion humana separada para IMPL-3 (constraints and indexes), si
+1. autorizacion humana separada para IMPL-4 (RLS and access limits), si
    procede;
-2. no iniciar IMPL-3, F0-E ni runtime hasta una autorizacion humana separada;
-3. no desplegar la migracion en InsForge;
+2. no iniciar IMPL-4, F0-E ni runtime hasta una autorizacion humana separada;
+3. no desplegar migraciones en InsForge;
 4. no ejecutar el seed;
 5. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
    autorizada.
@@ -205,12 +209,15 @@ SALE-3 queda CLOSED. IMPL-0 preparo trazabilidad. IMPL-1 cerro el seed
 corregido en `31c9eb7`. IMPL-2 publico la migracion minima en `ac2be55` y
 cerro la validacion aislada PostgreSQL 16 con evidencia en
 `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`.
+IMPL-3 publico constraints/indexes en `b459e80` y cerro la validacion aislada
+con evidencia en
+`docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`.
 
 ```text
-IMPL-2: VALIDATED
-Isolated PostgreSQL apply: PASS
-Gate: SCHEMA_MIGRATION_READY_FOR_CONSTRAINTS
-IMPL-3: PROPOSED / NOT AUTHORIZED
+IMPL-3: VALIDATED
+Constraints/indexes isolated apply: PASS
+Gate: CONSTRAINTS_READY_FOR_ACCESS
+IMPL-4: PROPOSED / NOT AUTHORIZED
 ```
 
 Landing, InsForge runtime, Mercado Pago y ejecucion del seed permanecen fuera

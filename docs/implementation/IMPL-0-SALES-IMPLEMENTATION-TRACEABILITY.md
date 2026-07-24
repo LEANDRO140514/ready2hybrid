@@ -102,19 +102,19 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 |---|---|
 | Related requirements | R033-R043, R054-R055 |
 | Dependencies | IMPL-2 validated |
-| Anticipated files | same or follow-up migration files |
-| External resources | InsForge database |
+| Anticipated files | `insforge/migrations/0002_sales_constraints_and_indexes.sql` |
+| External resources | Local ephemeral PostgreSQL only for validation; InsForge write not authorized |
 | Blocking open decisions | Folio format (OD-019) may affect public-reference uniqueness shape but not the uniqueness obligation |
 | Scope | Cardinality, uniqueness, money/capacity concurrency constraints |
 | Out of scope | RLS, functions, seed apply, payments |
 | Automated tests | Uniqueness, FK/cardinality, team-member registration, token-generation, money/capacity concurrency |
 | Manual tests | Constraint inventory review |
-| Expected evidence | Constraint/index coverage matrix; failing-case tests |
+| Expected evidence | `docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md` |
 | Rollback | Replacement migration; no destructive production rollback |
 | Entry gate | IMPL-2 validated |
 | Exit gate | `CONSTRAINTS_READY_FOR_ACCESS` |
 | Separate human authorization | Required |
-| Current state | `PROPOSED / NOT AUTHORIZED` |
+| Current state | `VALIDATED` |
 
 ### IMPL-4 — RLS and access limits
 
@@ -134,7 +134,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | IMPL-3 validated; API-OD-004/005/007 and applicable auth decisions approved |
 | Exit gate | `ACCESS_READY_FOR_SEED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `PROPOSED / NOT AUTHORIZED` |
 
 ### IMPL-5 — Apply catalog seed
 
@@ -409,18 +409,18 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-3 — Constraints and indexes
+IMPL-4 — RLS and access limits
 Status: PROPOSED / NOT AUTHORIZED
 ```
 
-Do not execute IMPL-3 in this unit.
+Do not execute IMPL-4 in this unit.
 
-Before IMPL-3 may start, require all of:
+Before IMPL-4 may start, require all of:
 
-1. separate human authorization for constraints/indexes only;
+1. separate human authorization for RLS/access policies only;
 2. a fresh Git preflight;
-3. confirmation that IMPL-2 remains `VALIDATED` and migration blob unchanged;
-4. isolated or approved validation plan for constraint coverage;
+3. confirmation that IMPL-3 remains `VALIDATED` and migration blobs unchanged;
+4. resolution or explicit deferral of applicable auth open decisions;
 5. no seed execution and no InsForge write unless separately authorized;
 6. an independent commit after review.
 
@@ -441,16 +441,18 @@ instruction.
 ## J. Gate
 
 ```text
-SCHEMA_MIGRATION_READY_FOR_CONSTRAINTS
+CONSTRAINTS_READY_FOR_ACCESS
 ```
 
-IMPL-2 closure evidence:
+IMPL-3 closure evidence:
 
 ```text
-IMPL-2: VALIDATED
-Isolated PostgreSQL apply: PASS
-Evidence: docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md
-Migration blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
+IMPL-3: VALIDATED
+Constraints/indexes isolated apply: PASS
+Evidence: docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md
+SQL commit: b459e80
+Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
+Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
 Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
-IMPL-3: PROPOSED / NOT AUTHORIZED
+IMPL-4: PROPOSED / NOT AUTHORIZED
 ```
