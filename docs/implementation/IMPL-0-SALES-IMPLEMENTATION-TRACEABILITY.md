@@ -460,37 +460,3 @@ Seed executed: NO
 IMPL-5: PROPOSED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
-
-## I. IMPL-0 change set
-
-Authorized documentary files for this preparation unit:
-
-```text
-docs/specs/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md
-docs/specs/README.md
-WORKSPACE_STATUS.md
-docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md
-```
-
-Commit and push remain unauthorized until the Project Owner issues a separate
-instruction.
-
-## J. Gate
-
-```text
-READY_FOR_IMPL_4_EXECUTION
-```
-
-Access-decision closure evidence:
-
-```text
-ACCESS-DEC-001..008: APPROVED (Project Owner, 2026-07-24)
-Deny-by-default model: AUTHORIZED
-Evidence pack: docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md
-IMPL-3: VALIDATED
-Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
-Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
-Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
-IMPL-4 SQL/RLS: NOT STARTED
-Authorized future mode: RLS/access-only; local isolated validation; no InsForge
-```
