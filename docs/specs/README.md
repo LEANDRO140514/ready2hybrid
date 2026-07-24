@@ -35,7 +35,7 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
 | SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
 | SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
-| SPEC-031 | Public Sales API and Backend Contract | DRAFT | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
+| SPEC-031 | Public Sales API and Backend Contract | APPROVED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
@@ -49,12 +49,12 @@ SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_APPROVAL`
+`READY_FOR_SPEC_DRAFT`
 
-SPEC-000 v0.2.0 and SPEC-030 v0.1.0 are approved. The formal review of
-SPEC-031 v0.1.0 found no actionable findings and recommends human approval.
-SPEC-031 remains `DRAFT` with no implementation or production authority. F0-E
-remains unauthorized and not started.
+SPEC-000 v0.2.0, SPEC-030 v0.1.0, and SPEC-031 v0.1.0 are approved. The next
+authorized documentation action is to draft the minimal sales data model and
+transaction integrity specification. F0-E remains unauthorized and not
+started.
 
 ## Lifecycle
 

@@ -1,12 +1,13 @@
 ---
 id: SPEC-031
 title: Public Sales API and Backend Contract
-status: DRAFT
+status: APPROVED
 version: 0.1.0
 phase: SALE-2
 created_at: 2026-07-23
-approved_at:
-approved_by:
+approved_at: 2026-07-24
+approved_by: Project Owner
+approval_basis: Explicit human authorization after READY_FOR_APPROVAL review
 supersedes:
 depends_on:
   - SPEC-000 v0.2.0
@@ -1612,3 +1613,5 @@ criterion. Runtime, browser, provider, database, and physical tests remain
 |---|---|---|---|---|
 | 0.1.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Define the public sales API and backend contract for 28 configured products and five journeys without implementing code, SQL, payment resources, or landing changes. |
 | 0.1.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Formal documentary review completed `READY_FOR_APPROVAL`: 0 blockers, 0 major findings after corrections; SPEC-031 remains unapproved and has no implementation authority. |
+| 0.1.0 | 2026-07-24 | IN_REVIEW | Project Owner | Accepted the formal review record: `READY_FOR_APPROVAL`, 0 blockers. |
+| 0.1.0 | 2026-07-24 | APPROVED | Project Owner | Explicit human authorization completed `DRAFT -> IN_REVIEW -> APPROVED`; no normative changes were made during approval. |
