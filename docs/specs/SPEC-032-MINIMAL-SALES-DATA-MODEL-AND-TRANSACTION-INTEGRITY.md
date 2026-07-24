@@ -1,12 +1,13 @@
 ---
 id: SPEC-032
 title: Minimal Public Sales Data Model and Transaction Integrity
-status: DRAFT
+status: APPROVED
 version: 0.1.0
 phase: SALE-3
 created_at: 2026-07-24
-approved_at:
-approved_by:
+approved_at: 2026-07-24
+approved_by: Project Owner
+approval_basis: Explicit human authorization after READY_FOR_APPROVAL review
 supersedes:
 depends_on:
   - SPEC-000 v0.2.0
@@ -1411,8 +1412,8 @@ Each criterion records documentary result separately from runtime result.
 
 ## Appendix J - Traceability
 
-All SPEC-032 requirements remain `DRAFT`. `Source status` describes parent
-authority only.
+All SPEC-032 requirements are now under an `APPROVED` specification.
+`Source status` describes parent or originating authority status only.
 
 | Requirement | Authority | Entity | Invariant | Transaction | Failure mode | AC | Open decision | Implementation impact | Source status |
 |---|---|---|---|---|---|---|---|---|---|
@@ -1421,8 +1422,8 @@ authority only.
 | R006 | SPEC-030/031 | Buyer/Payment/Registration/Ticket/Participant/TeamMember | Buyer/payer/access-holder separation | TX-1-3 | Unauthorized inferred identity control | AC001-AC002, AC009, AC014 | Buyer distinct/fields | Explicit role associations | APPROVED |
 | R007 | SPEC-001/031 | Payment/Webhook/Idempotency | Receipt != verification; one effect | TX-2 | Duplicate/out-of-order | AC008, AC013 | Retry storage | Payment processing | APPROVED |
 | R008-R010 | SPEC-001/030/031 | Registration/Ticket/Credential/Capacity/Audit | Member registrations, complete ticket sets, capacity/service boundary | All | Missing team ticket/duplicate/oversale/anonymous write | AC005-AC006, AC009, AC011, AC014-AC015, AC018 | Three-day/access | Entitlement/security | APPROVED |
-| R011-R032 | SALE-3 SPEC-032 draft entity decisions | Appendix A entities | Responsibility separation | TX-1-4 | Missing/merged responsibility | AC001-AC002, AC007-AC010, AC012-AC016 | Exact fields/medical/retention | Minimal schema model | DRAFT |
-| R033 | SALE-3 SPEC-032 draft; parent contracts | All related | Cardinality/forbidden states | TX-1-4 | Orphan/overflow/mismatch | AC002 | Duplicate registration policy | Constraints/FKs | DRAFT |
+| R011-R032 | SALE-3 SPEC-032 entity decisions | Appendix A entities | Responsibility separation | TX-1-4 | Missing/merged responsibility | AC001-AC002, AC007-AC010, AC012-AC016 | Exact fields/medical/retention | Minimal schema model | APPROVED |
+| R033 | SALE-3 SPEC-032; parent contracts | All related | Cardinality/forbidden states | TX-1-4 | Orphan/overflow/mismatch | AC002 | Duplicate registration policy | Constraints/FKs | APPROVED |
 | R034 | SPEC-030 | Product/Hold/Registration/Team | Capacity unit by journey | TX-1/TX-2 | Participant multiplier/oversale | AC005, AC011 | Multi-unit | Capacity constraints | APPROVED |
 | R035 | SPEC-030/031 | Product/Item/Order/Payment | Money snapshot/history | TX-1/TX-2 | Stale/duplicate charge | AC004, AC007-AC008 | Promotions | Money constraints | APPROVED |
 | R036 | SPEC-030/031 | Stateful entities | Authorized transitions | TX-1-4 | Invalid transition | AC006, AC010, AC012 | Refund/substitution policies | State constraints/services | APPROVED |
@@ -1431,17 +1432,17 @@ authority only.
 | R039 | SPEC-030/031 | Invitation/Member/Registration/Participant/Waiver/Ticket | One-use exchange, personal completion, complete team ticket set | TX-3 | Replay/duplicate/delegated waiver/missing team ticket | AC005, AC009, AC015 | Invitation duration/fields | Roster transaction | APPROVED |
 | R040 | SPEC-030/031 | TeamMember/Invitation/Ticket | Preserve history/payment | TX-4 | Stale access/lost history | AC010, AC015 | Substitution policy/deadline | Substitution transaction | APPROVED |
 | R041-R042 | SPEC-030/031 | Hold/Order/Payment | One last hold; late review | TX-1/TX-2 | Concurrent/late payment | AC011-AC012 | Hold duration/recovery | Concurrency/reconciliation | APPROVED |
-| R043 | SPEC-031/SALE-3 draft | Identity-generating entities | Cross-generation token and namespace uniqueness | All | Duplicate/reused identity | AC002, AC008-AC009, AC013 | Idempotency TTL/folio format | Unique constraints/indexes | DRAFT |
+| R043 | SPEC-031/SALE-3 | Identity-generating entities | Cross-generation token and namespace uniqueness | All | Duplicate/reused identity | AC002, AC008-AC009, AC013 | Idempotency TTL/folio format | Unique constraints/indexes | APPROVED |
 | R044-R045 | SPEC-001/031 | Access/data entities | Least privilege/classification | All | Data/authority exposure | AC014, AC018 | Fields/retention | RLS/service design later | APPROVED |
 | R046-R047 | SPEC-001/031 | Ticket/Credential/Entitlement/Verification/Audit/Outbox | Opaque generation/daily use/durable staged evidence | TX-1-4 | Token/audit/delivery/domain-rollback failure | AC008, AC014-AC015 | Folio/email/three-day | Entitlement/audit/outbox | APPROVED |
 | R048 | SPEC-030/seed | EventDay/Product | Seed parity before execution | Future IMPL-1/5 | Wrong count/label/comment | AC003, AC016 | Saturday label | Seed correction | APPROVED |
 | R049 | SPEC-000/030/031 | Decisions | No hidden default/MODEL_BLOCKER | Planning | Open choice treated approved | AC017 | Appendix K | Governance gate | APPROVED |
 | R050 | SPEC-030/031 | Product/Journey relations | Shared model for 28/J1-J5 | All | Product-specific structures | AC003, AC005 | None | Config-driven schema | APPROVED |
-| R051 | SALE-3 SPEC-032 draft | Implementation plan | Separate gates/non-authorization | IMPL-1-12 | Premature execution | AC017 | All applicable | Delivery roadmap | DRAFT |
-| R052 | SALE-3 SPEC-032 draft protection | Documentation only | No external/runtime mutation | None | Protected modification | AC018 | None | No implementation | DRAFT |
+| R051 | SALE-3 SPEC-032 | Implementation plan | Separate gates/non-authorization | IMPL-1-12 | Premature execution | AC017 | All applicable | Delivery roadmap | APPROVED |
+| R052 | SALE-3 SPEC-032 protection | Documentation only | No external/runtime mutation | None | Protected modification | AC018 | None | No implementation | APPROVED |
 | R053 | SPEC-031 R014/R017/R037/R046 | Access/capability/webhook/audit boundaries | Named abuse/rate/enumeration/size/concurrency profiles | TX-1-4 | Enumeration, flooding, retry/polling abuse | AC014 | API-OD-004/005 | Rate/abuse controls in IMPL-4/7-11 | APPROVED |
-| R054 | SALE-3 SPEC-032 draft; SPEC-031 R047 | TicketCredentialGeneration | Immutable generation, one active, global hash uniqueness | TX-2-4 | Reuse/stale QR/multi-day exhaustion | AC001-AC002, AC005, AC009-AC010, AC013-AC014 | OD-019/020; API-OD-004/010 | Credential schema/service | DRAFT |
-| R055 | SALE-3 SPEC-032 draft; SPEC-031 R022-R025/R049 | PaymentVerificationRecord | Durable verification before atomic effects/audit/outbox | TX-2 | Lost provider truth or partial domain effect | AC001-AC002, AC008, AC015 | API-OD-005/006/007 | Verification inbox/reconciliation | DRAFT |
+| R054 | SALE-3 SPEC-032; SPEC-031 R047 | TicketCredentialGeneration | Immutable generation, one active, global hash uniqueness | TX-2-4 | Reuse/stale QR/multi-day exhaustion | AC001-AC002, AC005, AC009-AC010, AC013-AC014 | OD-019/020; API-OD-004/010 | Credential schema/service | APPROVED |
+| R055 | SALE-3 SPEC-032; SPEC-031 R022-R025/R049 | PaymentVerificationRecord | Durable verification before atomic effects/audit/outbox | TX-2 | Lost provider truth or partial domain effect | AC001-AC002, AC008, AC015 | API-OD-005/006/007 | Verification inbox/reconciliation | APPROVED |
 
 ## Appendix K - Open decisions
 
@@ -1523,8 +1524,11 @@ Formal documentary review against SPEC-000, SPEC-001, SPEC-011, SPEC-030,
 SPEC-031, the 28-product catalog, journeys, privacy, payments, capacity,
 concurrency, idempotency, tickets, seed, open decisions, requirements, AC,
 traceability, implementability, and landing isolation found 0 blockers and
-0 major findings after remediation. SPEC-032 remains `DRAFT` with no
-implementation authority.
+0 major findings after remediation. SPEC-032 was subsequently approved
+explicitly by the Project Owner on 2026-07-24. Approval authorizes
+implementation planning and gated unit authorization; it does not by itself
+authorize seed correction, SQL, InsForge mutation, Mercado Pago runtime,
+landing changes, or F0-E execution.
 
 ## Appendix M - Change log
 
@@ -1532,3 +1536,5 @@ implementation authority.
 |---|---|---|---|---|
 | 0.1.0 | 2026-07-24 | DRAFT | Cursor, authorized by Project Owner | Define minimum logical sales entities, transactional integrity, concurrency, idempotency, privacy, seed reconciliation, and gated implementation preparation without SQL or external changes. |
 | 0.1.0 | 2026-07-24 | DRAFT | Cursor, authorized by Project Owner | Formal documentary review completed `READY_FOR_APPROVAL`: 0 blockers, 0 major findings after remediation; 18 documentary AC PASS; runtime AC remain `NOT_RUN`; SPEC-032 remains unapproved and has no implementation authority. |
+| 0.1.0 | 2026-07-24 | IN_REVIEW | Project Owner | Accepted the formal review record: `READY_FOR_APPROVAL`, 0 blockers. |
+| 0.1.0 | 2026-07-24 | APPROVED | Project Owner | Approved explicitly by the Project Owner; no normative requirement changed. |

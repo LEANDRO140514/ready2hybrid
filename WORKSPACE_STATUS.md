@@ -16,8 +16,11 @@
 - R3: CLOSED - correcciones publicadas en `9d9bbb9`
 - SALE-1: CLOSED - SPEC-030 v0.1.0 aprobada por el propietario
 - SALE-2: CLOSED - SPEC-031 v0.1.0 aprobada por el propietario
-- SALE-3: STARTED - SPEC-032 v0.1.0 DRAFT READY_FOR_APPROVAL
+- SALE-3: CLOSED - contrato documental; SPEC-032 v0.1.0 APPROVED
 - F0-E: NOT STARTED - sin autorizacion de implementacion
+- InsForge runtime changes: NONE
+- Mercado Pago runtime changes: NONE
+- Landing changes: NONE
 
 ## Autoridad
 
@@ -52,8 +55,10 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - contrato publico landing-backend para J1-J5
 - `docs/specs/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md`
-  - v0.1.0 `DRAFT`
+  - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
+- `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
+  - plan trazable IMPL-1..12; ninguna unidad runtime autorizada
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
@@ -169,14 +174,15 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_APPROVAL`
+`READY_FOR_IMPL_1_APPROVAL`
 
 Siguiente accion permitida:
 
-1. decision humana explicita sobre SPEC-032 v0.1.0;
-2. mantener SPEC-032 como `DRAFT` hasta aprobacion humana;
-3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
-   autorizacion humana separada.
+1. revision humana de IMPL-0;
+2. autorizacion humana separada para IMPL-1 (seed-only), si procede;
+3. no iniciar F0-E ni runtime hasta una autorizacion humana separada;
+4. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
+   autorizada.
 
 ## Ultimo cierre
 
@@ -187,6 +193,8 @@ draft en `4888511`. El propietario aprobo SPEC-030 v0.1.0 en SALE-2. La
 aprobacion fue publicada en `d30a77a`. SPEC-031 v0.1.0 fue publicada como
 `DRAFT` documental durante SALE-2 en `a7d8c51`; su transicion de aprobacion,
 publicada en `4e85409`, abrio SALE-3 Fase A sin cambiar su fase de origen
-SALE-2. SPEC-032 v0.1.0 queda como `DRAFT` documental; su revision formal
-termino `READY_FOR_APPROVAL`, sin hallazgos accionables. Landing, seed,
-codigo y recursos externos permanecen fuera de alcance.
+SALE-2. SPEC-032 v0.1.0 fue publicada como `DRAFT` en `07471d7` y aprobada
+explicitamente por el propietario el 2026-07-24. El contrato documental de
+SALE-3 queda CLOSED. IMPL-0 prepara trazabilidad; IMPL-1 permanece
+`PROPOSED / NOT AUTHORIZED`. Landing, seed, codigo y recursos externos
+permanecen fuera de alcance.
