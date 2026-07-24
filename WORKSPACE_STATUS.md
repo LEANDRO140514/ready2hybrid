@@ -58,7 +58,11 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; ninguna unidad runtime autorizada
+  - plan trazable IMPL-1..12; IMPL-2 `VALIDATED`; IMPL-3 `PROPOSED / NOT AUTHORIZED`
+- `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
+  - apply aislado PostgreSQL 16 PASS; seed no ejecutado; InsForge write = 0
+- `insforge/migrations/0001_minimal_sales_schema.sql`
+  - migracion minima IMPL-2 publicada en `ac2be55`
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
 
@@ -174,14 +178,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_1_APPROVAL`
+`SCHEMA_MIGRATION_READY_FOR_CONSTRAINTS`
 
 Siguiente accion permitida:
 
-1. revision humana de IMPL-0;
-2. autorizacion humana separada para IMPL-1 (seed-only), si procede;
-3. no iniciar F0-E ni runtime hasta una autorizacion humana separada;
-4. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
+1. autorizacion humana separada para IMPL-3 (constraints and indexes), si
+   procede;
+2. no iniciar IMPL-3, F0-E ni runtime hasta una autorizacion humana separada;
+3. no desplegar la migracion en InsForge;
+4. no ejecutar el seed;
+5. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
    autorizada.
 
 ## Ultimo cierre
@@ -195,6 +201,17 @@ aprobacion fue publicada en `d30a77a`. SPEC-031 v0.1.0 fue publicada como
 publicada en `4e85409`, abrio SALE-3 Fase A sin cambiar su fase de origen
 SALE-2. SPEC-032 v0.1.0 fue publicada como `DRAFT` en `07471d7` y aprobada
 explicitamente por el propietario el 2026-07-24. El contrato documental de
-SALE-3 queda CLOSED. IMPL-0 prepara trazabilidad; IMPL-1 permanece
-`PROPOSED / NOT AUTHORIZED`. Landing, seed, codigo y recursos externos
-permanecen fuera de alcance.
+SALE-3 queda CLOSED. IMPL-0 preparo trazabilidad. IMPL-1 cerro el seed
+corregido en `31c9eb7`. IMPL-2 publico la migracion minima en `ac2be55` y
+cerro la validacion aislada PostgreSQL 16 con evidencia en
+`docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`.
+
+```text
+IMPL-2: VALIDATED
+Isolated PostgreSQL apply: PASS
+Gate: SCHEMA_MIGRATION_READY_FOR_CONSTRAINTS
+IMPL-3: PROPOSED / NOT AUTHORIZED
+```
+
+Landing, InsForge runtime, Mercado Pago y ejecucion del seed permanecen fuera
+de alcance.
