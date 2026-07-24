@@ -1,15 +1,21 @@
 -- =====================================================================
--- 0002_seeds_hybrid_experience.sql
+-- 0002_seeds_hybrid_event.sql
 -- Catálogo oficial · HYBRID EXPERIENCE 2026
 -- Mérida, Yucatán · 9, 10 y 11 de octubre de 2026
 -- Fuente: TICKETS.xlsx + confirmaciones de dirección (19 jul 2026)
 --
 -- REGLAS DEL CATÁLOGO:
---  · Precios en centavos MXN. TODOS los precios YA INCLUYEN seguro y chip.
---    No hay cargos extra en el checkout: el precio mostrado es el cobrado.
---  · price_cents es POR UNIDAD DE VENTA (equipo completo, no por persona).
---  · Excepción WORKOUT: sin chip ni seguro (es clase, no competencia),
---    pero SÍ lleva registro completo y ticket QR.
+--  · Precios en centavos MXN. El precio aprobado es el precio final de la
+--    unidad completa (persona, pareja, equipo o acceso).
+--  · Chip y seguro están incluidos dentro del precio aprobado cuando
+--    corresponden. No se agregan nuevamente como cargos adicionales en
+--    checkout.
+--  · price_cents es POR UNIDAD DE VENTA: Dobles cobra la pareja completa;
+--    Relay cobra el equipo completo; no se multiplica por integrante en
+--    frontend.
+--  · Workout no incluye chip ni seguro (es clase, no competencia), pero
+--    sí lleva registro completo y ticket QR.
+--  · ASISTE (público y fotógrafo) no incluye chip ni seguro.
 --  · Cupos: provisionales, editables desde el panel.
 -- =====================================================================
 
@@ -20,7 +26,7 @@ VALUES ('HEX-2026', 'Hybrid Experience 2026', 'Mérida, Yucatán',
 
 INSERT INTO event_days (event_code, day_date, label) VALUES
 ('HEX-2026','2026-10-09','Viernes 9 — Dobles (PM)'),
-('HEX-2026','2026-10-10','Sábado 10 — ½ Hybrid y Workout (AM) · Relay (PM)'),
+('HEX-2026','2026-10-10','Sábado — ½ Hybrid, Dobles y Workout por la mañana; Relay por la tarde.'),
 ('HEX-2026','2026-10-11','Domingo 11 — Individual (AM)');
 
 -- =====================================================================
@@ -86,10 +92,11 @@ INSERT INTO products
 ('HEX-2026','FOT-3D','Fotógrafo · Pase 3 Días','ASISTE','press',1, 80000, 20,NULL,NULL,false,false);
 
 -- =====================================================================
--- RESUMEN: 29 productos
---   COMPITE 13 · EXPERIENCE 7 · ASISTE 9
+-- RESUMEN: 28 productos
+--   COMPITE 13 · EXPERIENCE 7 · ASISTE 8
 -- Notas operativas:
 --   · kind='workout'  → check-in sí, kit sin chip, sin carta de competencia
 --   · kind='press'    → acreditación de fotógrafo (gafete, no chip)
+--   · kind='spectator' → acceso público sin chip ni seguro
 --   · pase 3 días (day NULL) → el check-in valida los 3 días
 -- =====================================================================
