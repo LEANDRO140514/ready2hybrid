@@ -11,8 +11,10 @@
 - Pagos: Mercado Pago Checkout Pro
 - Evento: viernes 9 de octubre de 2026
 - F0-D: CLOSED - Playwright Foundation implementada, validada y publicada
-- R1: DOCUMENTATION_MIGRATED - pendiente de revision humana de SPEC-000 v0.2.0
-- F0-E: NOT IMPLEMENTED - sin autorizacion de implementacion
+- R1: CLOSED - migracion documental publicada en `b6e64c2`
+- R2: CLOSED - revision formal terminada en `CHANGES_REQUIRED`
+- R3: CORRECTIONS_COMPLETED - revision post-correccion `READY_FOR_APPROVAL`
+- F0-E: NOT STARTED - sin autorizacion de implementacion
 
 ## Autoridad
 
@@ -34,7 +36,10 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 ## Artefactos F0-B3
 
 - `docs/specs/README.md`
-- `docs/specs/SPEC-000-GOVERNANCE.md`
+- SPEC-000 v0.1.0 `APPROVED`:
+  `docs/specs/archive/SPEC-000-GOVERNANCE-v0.1.0.md`
+- SPEC-000 v0.2.0 `DRAFT`:
+  `docs/specs/SPEC-000-GOVERNANCE.md`
 - `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md`
 - `docs/specs/SPEC-011-PWA-FOUNDATION.md`
 - `skills/ready2hybrid-spec-governance/SKILL.md`
@@ -147,16 +152,17 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_SPEC_REVIEW`
+`READY_FOR_APPROVAL`
 
 Siguiente accion permitida:
 
-1. revision humana de `SPEC-000-GOVERNANCE` v0.2.0;
+1. decision humana explicita sobre `SPEC-000-GOVERNANCE` v0.2.0;
 2. no aprobarla automaticamente;
 3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
    autorizacion humana separada.
 
 ## Ultimo cierre
 
-F0-D esta cerrado en `c6f1131`. R1 se cierra mediante el commit que contiene
-esta actualizacion documental.
+F0-D esta cerrado en `c6f1131`. R1 esta cerrado en `b6e64c2`. R2 termino en
+`CHANGES_REQUIRED`. R3 corrigio los nueve hallazgos y termino su revision
+formal en `READY_FOR_APPROVAL`; SPEC-000 v0.2.0 permanece `DRAFT`.

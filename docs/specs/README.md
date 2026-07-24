@@ -43,25 +43,41 @@ proposed replacement and has no implementation authority until explicit human
 approval. If approved, status, approval metadata, registry supersession, and
 dependent authority references must be updated atomically in that approval
 unit, including replacing `proposed_supersedes` with `supersedes`.
+Version 0.1.0 moves to `SUPERSEDED` only after that human approval. A draft,
+rejected proposal, or `READY_FOR_APPROVAL` recommendation does not supersede or
+invalidate the approved contract.
 
 ## Current review gate
 
-`READY_FOR_SPEC_REVIEW`
+`READY_FOR_APPROVAL`
 
-The next permitted action is human review of SPEC-000 v0.2.0. Do not approve it
-automatically and do not begin F0-E from this draft.
+The R3 post-correction review found no blocking findings. The next permitted
+action is an explicit human approval decision for SPEC-000 v0.2.0. Do not apply
+`APPROVED` automatically and do not begin F0-E from this draft.
 
 ## Lifecycle
 
 ```text
-DRAFT -> IN_REVIEW -> APPROVED -> IMPLEMENTING -> IMPLEMENTED -> VALIDATED
-                                                               -> SUPERSEDED
+DRAFT -> IN_REVIEW
+IN_REVIEW -> DRAFT
+IN_REVIEW -> APPROVED
 IN_REVIEW -> REJECTED
+APPROVED -> IMPLEMENTING
+IMPLEMENTING -> IMPLEMENTED
+IMPLEMENTED -> VALIDATING
+VALIDATING -> IMPLEMENTED
+VALIDATING -> VALIDATED
+APPROVED -> SUPERSEDED
+VALIDATED -> SUPERSEDED
 ```
 
 Only a human project authority may move a specification to `APPROVED`. A
 specification may move to `VALIDATED` only when every acceptance criterion has
-linked evidence.
+linked evidence. An agent may recommend `READY_FOR_APPROVAL` but may not apply
+`APPROVED`. A review result of `CHANGES_REQUIRED` returns the proposal to
+`DRAFT`. `SUPERSEDED` requires an identified approved replacement; a
+replacement draft has no supersession effect. `REJECTED` does not invalidate a
+previously approved version.
 
 ## Required workflow
 
