@@ -58,7 +58,11 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2/IMPL-3 `VALIDATED`; IMPL-4 `PROPOSED / NOT AUTHORIZED`
+  - plan trazable IMPL-1..12; IMPL-2/IMPL-3 `VALIDATED`; ACCESS-DEC APPROVED;
+    IMPL-4 SQL `READY_FOR_IMPL_4_EXECUTION`
+- `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
+  - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado;
+    SQL/RLS aun no ejecutado
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
   - apply aislado PostgreSQL 16 PASS; seed no ejecutado; InsForge write = 0
 - `docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`
@@ -182,13 +186,14 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`CONSTRAINTS_READY_FOR_ACCESS`
+`READY_FOR_IMPL_4_EXECUTION`
 
 Siguiente accion permitida:
 
-1. autorizacion humana separada para IMPL-4 (RLS and access limits), si
-   procede;
-2. no iniciar IMPL-4, F0-E ni runtime hasta una autorizacion humana separada;
+1. autorizacion humana separada para ejecutar IMPL-4 SQL/RLS
+   (`0003_rls_and_access_limits.sql`), en modo access-only, validacion local
+   aislada y sin despliegue en InsForge;
+2. no iniciar el SQL de IMPL-4, F0-E ni runtime hasta esa autorizacion;
 3. no desplegar migraciones en InsForge;
 4. no ejecutar el seed;
 5. no modificar seed, SQL, InsForge, Mercado Pago ni landing sin unidad
@@ -212,13 +217,23 @@ cerro la validacion aislada PostgreSQL 16 con evidencia en
 IMPL-3 publico constraints/indexes en `b459e80` y cerro la validacion aislada
 con evidencia en
 `docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md`.
+El Project Owner aprobo ACCESS-DEC-001..008 el 2026-07-24 y autorizo el modelo
+deny-by-default para preparar IMPL-4 como unidad RLS/access-only con
+validacion local y sin InsForge.
 
 ```text
-IMPL-3: VALIDATED
-Constraints/indexes isolated apply: PASS
-Gate: CONSTRAINTS_READY_FOR_ACCESS
-IMPL-4: PROPOSED / NOT AUTHORIZED
+ACCESS-DEC-001..008: APPROVED
+Deny-by-default model: AUTHORIZED
+IMPL-4 SQL/RLS: NOT STARTED
+Gate: READY_FOR_IMPL_4_EXECUTION
 ```
 
 Landing, InsForge runtime, Mercado Pago y ejecucion del seed permanecen fuera
-de alcance.
+de alcance. La landing publica existente permanece protegida:
+
+```text
+LANDING_READY_FOR_READY2HYBRID_MATCH
+```
+
+La sustitucion de imagenes de template por imagenes propias es una tarea visual
+independiente y no bloqueante.

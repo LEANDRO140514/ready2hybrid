@@ -122,19 +122,19 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 |---|---|
 | Related requirements | R010, R020, R044-R047, R053 |
 | Dependencies | IMPL-3 validated; auth decisions for enabled paths |
-| Anticipated files | future access-policy migration/tests |
-| External resources | InsForge auth/database |
-| Blocking open decisions | API-OD-004/005/007 and applicable auth decisions for enabled paths |
+| Anticipated files | `insforge/migrations/0003_rls_and_access_limits.sql` (future); `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md` |
+| External resources | Local ephemeral PostgreSQL for validation; InsForge write not authorized in approved mode |
+| Blocking open decisions | ACCESS-DEC-001..008 APPROVED; API-OD-004 TTL/transport deferred+feature-disabled; API-OD-005 narrow (UUID+activity_log); API-OD-007 remains PRODUCTION_BLOCKER |
 | Scope | Anonymous denial; role/capability/service matrix; named abuse/rate profiles |
-| Out of scope | Checkout, webhook, tickets, landing UI |
+| Out of scope | Checkout, webhook, tickets, landing UI, InsForge deployment |
 | Automated tests | Anonymous denial; enumeration-safe errors; capability/service matrix |
 | Manual tests | Actor/permission walkthrough |
-| Expected evidence | Access matrix PASS; capability revoke on rollback |
+| Expected evidence | Access matrix PASS; local isolated RLS validation |
 | Rollback | Disable affected release; revoke capabilities; corrective policy migration |
-| Entry gate | IMPL-3 validated; API-OD-004/005/007 and applicable auth decisions approved |
+| Entry gate | IMPL-3 validated; ACCESS-DEC-001..008 approved |
 | Exit gate | `ACCESS_READY_FOR_SEED` |
-| Separate human authorization | Required |
-| Current state | `PROPOSED / NOT AUTHORIZED` |
+| Separate human authorization | Required for SQL/RLS execution unit |
+| Current state | `ACCESS DECISIONS APPROVED / SQL NOT STARTED` |
 
 ### IMPL-5 — Apply catalog seed
 
@@ -409,20 +409,22 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-4 — RLS and access limits
-Status: PROPOSED / NOT AUTHORIZED
+IMPL-4 — RLS and access limits (SQL / local validation)
+Status: READY_FOR_IMPL_4_EXECUTION
+Approved mode: RLS/access-only · local isolated validation · NO InsForge deploy
+Access decisions: ACCESS-DEC-001..008 APPROVED (2026-07-24)
 ```
 
-Do not execute IMPL-4 in this unit.
+Do not execute IMPL-4 SQL in this documentary closure.
 
-Before IMPL-4 may start, require all of:
+Before the SQL unit may start, require all of:
 
-1. separate human authorization for RLS/access policies only;
+1. separate human authorization for RLS/access-only migration `0003`;
 2. a fresh Git preflight;
 3. confirmation that IMPL-3 remains `VALIDATED` and migration blobs unchanged;
-4. resolution or explicit deferral of applicable auth open decisions;
-5. no seed execution and no InsForge write unless separately authorized;
-6. an independent commit after review.
+4. adherence to ACCESS-DEC-001..008 and deferred API-OD-004/007 posture;
+5. no seed execution and no InsForge write;
+6. independent SQL and evidence commits after local validation.
 
 ## I. IMPL-0 change set
 
@@ -441,18 +443,19 @@ instruction.
 ## J. Gate
 
 ```text
-CONSTRAINTS_READY_FOR_ACCESS
+READY_FOR_IMPL_4_EXECUTION
 ```
 
-IMPL-3 closure evidence:
+Access-decision closure evidence:
 
 ```text
+ACCESS-DEC-001..008: APPROVED (Project Owner, 2026-07-24)
+Deny-by-default model: AUTHORIZED
+Evidence pack: docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md
 IMPL-3: VALIDATED
-Constraints/indexes isolated apply: PASS
-Evidence: docs/implementation/evidence/IMPL-3-CONSTRAINTS-AND-INDEXES-VALIDATION.md
-SQL commit: b459e80
 Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
 Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
 Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
-IMPL-4: PROPOSED / NOT AUTHORIZED
+IMPL-4 SQL/RLS: NOT STARTED
+Authorized future mode: RLS/access-only; local isolated validation; no InsForge
 ```
