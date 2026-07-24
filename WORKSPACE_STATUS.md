@@ -14,7 +14,8 @@
 - R1: CLOSED - migracion documental publicada en `b6e64c2`
 - R2: CLOSED - revision formal terminada en `CHANGES_REQUIRED`
 - R3: CLOSED - correcciones publicadas en `9d9bbb9`
-- SALE-1: READY_FOR_APPROVAL - SPEC-000 aprobada; SPEC-030 revisada como DRAFT
+- SALE-1: CLOSED - SPEC-030 v0.1.0 aprobada por el propietario
+- SALE-2: STARTED - contrato tecnico landing-backend pendiente
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 
 ## Autoridad
@@ -44,7 +45,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/specs/SPEC-001-SYSTEM-ARCHITECTURE.md`
 - `docs/specs/SPEC-011-PWA-FOUNDATION.md`
 - `docs/specs/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md`
-  - v0.1.0 `DRAFT`
+  - v0.1.0 `APPROVED`
   - catalogo: COMPITE 13, EXPERIENCE 7, ASISTE 8, total 28
 - `skills/ready2hybrid-spec-governance/SKILL.md`
 - `skills/ready2hybrid-spec-governance/agents/openai.yaml`
@@ -161,12 +162,12 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_APPROVAL`
+`READY_FOR_SPEC_DRAFT`
 
 Siguiente accion permitida:
 
-1. decision humana explicita sobre SPEC-030 v0.1.0;
-2. no aprobar automaticamente la specification;
+1. definir el contrato tecnico landing-backend para 28 productos y 5 journeys;
+2. mantener la nueva specification como `DRAFT` hasta aprobacion humana;
 3. no iniciar F0-E hasta cerrar el gobierno documental y recibir una
    autorizacion humana separada.
 
@@ -175,6 +176,6 @@ Siguiente accion permitida:
 F0-D esta cerrado en `c6f1131`. R1 esta cerrado en `b6e64c2`. R2 termino en
 `CHANGES_REQUIRED`. R3 corrigio los nueve hallazgos y cerro en `9d9bbb9`.
 SALE-1 aprobo SPEC-000 v0.2.0 en `0765365` y preparo SPEC-030 v0.1.0 como
-`DRAFT` documental. La revision formal termino `READY_FOR_APPROVAL`, sin
-hallazgos accionables. Landing, seed, codigo y recursos externos permanecen
-fuera de alcance.
+draft en `4888511`. El propietario aprobo SPEC-030 v0.1.0 en SALE-2. La
+prioridad inmediata es formalizar el contrato tecnico landing-backend.
+Landing, seed, codigo y recursos externos permanecen fuera de alcance.

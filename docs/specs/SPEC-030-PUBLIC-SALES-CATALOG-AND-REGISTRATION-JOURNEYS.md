@@ -1,12 +1,13 @@
 ---
 id: SPEC-030
 title: Public Sales Catalog and Registration Journeys
-status: DRAFT
+status: APPROVED
 version: 0.1.0
 phase: SALE-1
 created_at: 2026-07-23
-approved_at:
-approved_by:
+approved_at: 2026-07-23
+approved_by: Project Owner
+approval_basis: Explicit human authorization after READY_FOR_APPROVAL review
 supersedes:
 depends_on:
   - SPEC-000 v0.2.0
@@ -1148,3 +1149,5 @@ production MUST remain gated by the applicable decisions above.
 |---|---|---|---|---|
 | 0.1.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Define the approved 28-product public sales catalog, reusable registration journeys, actors, capacity, payment boundaries, tickets, QR, privacy, failures, seed inconsistencies, and open decisions without implementing code or modifying the landing or seed. |
 | 0.1.0 | 2026-07-23 | DRAFT | Cursor, authorized by Project Owner | Formal post-draft review result `READY_FOR_APPROVAL`; no automatic approval and no implementation or production authority. |
+| 0.1.0 | 2026-07-23 | IN_REVIEW | Project Owner | Accepted the formal review record: `READY_FOR_APPROVAL`, 0 blockers. |
+| 0.1.0 | 2026-07-23 | APPROVED | Project Owner | Explicit human authorization completed `DRAFT -> IN_REVIEW -> APPROVED`; no normative changes were made during approval. |
