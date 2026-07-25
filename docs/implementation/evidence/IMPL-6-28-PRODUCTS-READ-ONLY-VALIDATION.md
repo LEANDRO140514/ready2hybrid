@@ -11,8 +11,9 @@ Host: 4bg9ufz2.us-east
 Deployment slug: enforma
 Result: PASS
 Technical recommendation: VALIDATED / CLOSED
-Human closure: PENDING
-Gate: READY_FOR_IMPL_6_HUMAN_CLOSURE
+Human closure: APPROVED 2026-07-25
+Final status: VALIDATED / CLOSED
+Gate: READY_FOR_IMPL_7_AUTHORIZATION
 ```
 
 ## 1. Baseline Git
@@ -279,7 +280,8 @@ Checkout/runtime capacity reservation, payments, tickets, and API surfaces remai
 IMPL-6 technical validation: PASS
 InsForge writes: 0
 Recommended technical state: VALIDATED / CLOSED
-Human closure: PENDING
+Human closure: APPROVED 2026-07-25
+Final status: VALIDATED / CLOSED
 IMPL-7: NOT AUTHORIZED
 ```
 
@@ -287,11 +289,45 @@ IMPL-7: NOT AUTHORIZED
 
 - Journey and economic/capacity unit labels are derived from SPEC-030; they are not stored as remote columns.
 - Product `status`/sale-state beyond event `CONFIGURADO` is not a separate product column in the minimal schema; sales remain closed at event level.
-- This unit does not authorize human closure; Project Owner retains final closure approval.
-- Read counts include only this validation harness plus declared identity/metadata reads; no secrets were printed.
+- Read counts include only the technical validation harness plus declared identity/metadata reads; no secrets were printed.
+- Human closure (below) did not re-run remote validation and did not alter technical counts or conclusions.
 
-## 16. Recommended gate
+## 16. Recommended gate (technical unit)
 
 ```text
 READY_FOR_IMPL_6_HUMAN_CLOSURE
+```
+
+Superseded by human closure below.
+
+## 17. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical evidence commit:
+78d3464
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final status:
+VALIDATED / CLOSED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in commit `78d3464`.
+- Remote validation was not repeated during this closure unit.
+- InsForge reads = 0 and InsForge writes = 0 during this closure unit.
+- Technical results, counts, and conclusions were not altered.
+- Approval of IMPL-6 does not authorize IMPL-7.
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_7_AUTHORIZATION
 ```

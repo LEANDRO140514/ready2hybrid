@@ -21,8 +21,9 @@
 - InsForge schema 0001-0003: DEPLOYED AND VALIDATED on `ready2hybrid` / `4bg9ufz2.us-east`
 - Catalog seed: ALIGNED AND LOCALLY VALIDATED (OD-022 APPROVED 2026-07-24)
 - InsForge catalog seed remote execution: EXECUTED AND VALIDATED (`0004` / IMPL-5)
-- Catalog remote validation IMPL-6: TECHNICAL PASS / PENDING HUMAN CLOSURE
+- Catalog remote validation IMPL-6: VALIDATED / CLOSED
 - Catalog: 1 event / 3 event days / 28 products
+- IMPL-7: NOT_STARTED / NOT AUTHORIZED
 - Mercado Pago runtime changes: NONE
 - Landing changes: NONE
 
@@ -62,15 +63,15 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4/IMPL-5 `VALIDATED`;
+  - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4/IMPL-5/IMPL-6 `VALIDATED`;
     InsForge 0001-0004 remote DEPLOYED/APPLIED AND VALIDATED;
-    IMPL-6 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`; IMPL-7 `NOT AUTHORIZED`
+    IMPL-7 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
   - remote `0004_hybrid-event-catalog`; 1/3/28 PASS; IMPL-5 `VALIDATED`
 - `docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md`
-  - read-only 28-product compare PASS; InsForge writes = 0
+  - read-only 28-product compare PASS; human closure APPROVED 2026-07-25
 - `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
   - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
@@ -202,17 +203,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_6_HUMAN_CLOSURE`
+`READY_FOR_IMPL_7_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision humana del resultado tecnico de IMPL-6 y cierre documental final;
-2. no marcar IMPL-6 `VALIDATED / CLOSED` sin esa aprobacion humana;
-3. no iniciar IMPL-7;
-4. no realizar nuevas escrituras en InsForge salvo una unidad explicitamente
+1. esperar autorizacion humana separada para IMPL-7;
+2. no iniciar IMPL-7 sin esa autorizacion;
+3. no realizar nuevas escrituras en InsForge salvo una unidad explicitamente
    autorizada;
-5. no iniciar checkout, webhooks, Mercado Pago ni tickets;
-6. no modificar la landing.
+4. no iniciar checkout, webhooks, Mercado Pago ni tickets;
+5. no modificar la landing.
 
 ## Ultimo cierre
 
@@ -235,27 +235,27 @@ El esquema remoto 0001-0003 se registro en `ad0a788`. IMPL-5A alineo el seed
 en `e1c1522`. IMPL-5 aplico remotamente `0004_hybrid-event-catalog` y queda
 `VALIDATED` con evidencia en
 `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`.
-IMPL-6 valido read-only los 28 productos (PASS tecnico; cierre humano pendiente)
-con evidencia en
+IMPL-6 valido read-only los 28 productos en `78d3464` y quedo
+`VALIDATED / CLOSED` el 2026-07-25 con evidencia en
 `docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md`.
 
 ```text
 IMPL-4: VALIDATED
-IMPL-5: VALIDATED
-IMPL-6: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-5: VALIDATED / CLOSED
+IMPL-6: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
-Gate: READY_FOR_IMPL_6_HUMAN_CLOSURE
-IMPL-7: NOT AUTHORIZED
+Gate: READY_FOR_IMPL_7_AUTHORIZATION
+IMPL-7: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
 El esquema minimo de ventas y el catalogo Hybrid Event ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`): 0001-0003 schema + 0004 catalog seed.
-El evento permanece en `CONFIGURADO`. IMPL-6 completo la validacion read-only
-tecnica y espera cierre humano. IMPL-7 permanece sin autorizacion.
+El evento permanece en `CONFIGURADO`. IMPL-6 quedo cerrado. IMPL-7 permanece
+sin autorizacion. La validacion del catalogo no autoriza comercio.
 Mercado Pago, checkout, webhooks y tickets permanecen fuera de alcance. La
 landing publica existente permanece protegida:
 

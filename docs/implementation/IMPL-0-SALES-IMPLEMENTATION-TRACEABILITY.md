@@ -168,7 +168,7 @@ this document does not authorize any unit by itself.
 | Dependencies | IMPL-5 |
 | Anticipated files | validators/test reports |
 | External resources | Read-only InsForge |
-| Blocking open decisions | None for count/price/flag/journey validation |
+| Blocking open decisions | None |
 | Scope | Codes, counts, prices, flags, schedule, journeys, capacity units |
 | Out of scope | Runtime sales, payments |
 | Automated tests | Catalog validators |
@@ -180,7 +180,10 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote mode | `READ_ONLY` · InsForge writes = 0 |
 | Technical result | PASS — 28/28 products match seed + SPEC-030 |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical validation commit | `78d3464` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-7 — Checkout initiation
 
@@ -200,7 +203,7 @@ this document does not authorize any unit by itself.
 | Entry gate | Schema/access/catalog validated; MP sandbox authorization; listed decisions resolved/disabled |
 | Exit gate | `CHECKOUT_READY_FOR_WEBHOOK` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `NOT_STARTED / NOT AUTHORIZED` |
 
 ### IMPL-8 — Webhook and payment effects
 
@@ -331,9 +334,9 @@ row-local and must not be read as a single global unit status.
 | R043 | SPEC-031/032 | IMPL-3 | Uniqueness across generations/namespaces | Uniqueness suite | AC002, AC008-AC009, AC013 | NOT_STARTED |
 | R044-R045 | SPEC-001/031 | IMPL-4, IMPL-9..11 | Access boundaries and data classes | Access/privacy matrix | AC014, AC018 | NOT_STARTED |
 | R046-R047 | SPEC-001/031 | IMPL-8, IMPL-11 | Opaque QR; durable audit/outbox | QR and audit/outbox tests | AC008, AC014-AC015 | NOT_STARTED |
-| R048 | SPEC-030/seed | IMPL-1, IMPL-5, IMPL-6 | Seed correction and later apply | Seed finding closure; 28-product apply + read-only confirm | AC003, AC016 | PARTIAL — apply + IMPL-6 compare PASS; human closure of IMPL-6 pending |
+| R048 | SPEC-030/seed | IMPL-1, IMPL-5, IMPL-6 | Seed correction and later apply | Seed finding closure; 28-product apply + read-only confirm | AC003, AC016 | PASS — catalog seed path closed under IMPL-5/IMPL-6; commerce runtime still out of scope |
 | R049 | SPEC-000/030/031 | IMPL-0 (documentary) | Open-decision parity | Decision matrix review | AC017 | NOT_STARTED (planning complete in this doc; no decision resolved) |
-| R050 | SPEC-030/031 | IMPL-1, IMPL-2, IMPL-5, IMPL-6 | Shared 28-product configuration | Catalog validators | AC003, AC005 | PARTIAL — IMPL-6 read-only validators PASS; human closure pending |
+| R050 | SPEC-030/031 | IMPL-1, IMPL-2, IMPL-5, IMPL-6 | Shared 28-product configuration | Catalog validators | AC003, AC005 | PASS — shared 28-product catalog validated read-only; checkout/API still out of scope |
 | R051 | SPEC-032 | IMPL-0..12 | Gated unit plan | This document | AC017 | NOT_STARTED for runtime; documentary planning present |
 | R052 | SPEC-032 | IMPL-0 | Protected-path discipline | Git/path evidence | AC018 | NOT_STARTED for future units; IMPL-0 scope limited to docs |
 | R053 | SPEC-031 | IMPL-4, IMPL-7..11 | Abuse/rate profiles | Rate/enumeration tests | AC014 | NOT_STARTED |
@@ -418,13 +421,12 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-6 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-7 — Checkout initiation
+Status: NOT_STARTED / NOT AUTHORIZED
 ```
 
-IMPL-6 technical validation is PASS under read-only authorization.
-Do not mark IMPL-6 `VALIDATED / CLOSED` until the Project Owner approves
-human closure. Do not start IMPL-7.
+IMPL-6 is `VALIDATED / CLOSED`. Do not start IMPL-7 until the Project Owner
+issues a separate authorization. Catalog validation does not authorize commerce.
 
 ## I. IMPL-0 change set
 
@@ -443,7 +445,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_6_HUMAN_CLOSURE
+READY_FOR_IMPL_7_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -502,16 +504,18 @@ Evidence: docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALI
 IMPL-6 read-only catalog validation evidence:
 
 ```text
-IMPL-6 technical result: PASS
+IMPL-6: VALIDATED / CLOSED
+Technical validation commit: 78d3464
+Human closure: APPROVED 2026-07-25
 Mode: READ_ONLY
-InsForge writes: 0
+InsForge writes during technical unit: 0
+InsForge reads/writes during human closure: 0
 Remote catalog: events=1, event_days=3, products=28
 Field mismatches vs seed: 0
 Blocks: COMPITE 13 / EXPERIENCE 7 / ASISTE 8
 Journeys: J1 6 / J2 9 / J3 3 / J4 2 / J5 8
 Evidence: docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md
-Current state: TECHNICAL_PASS / PENDING HUMAN CLOSURE
-IMPL-7: NOT AUTHORIZED
-Gate: READY_FOR_IMPL_6_HUMAN_CLOSURE
+IMPL-7: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_7_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
