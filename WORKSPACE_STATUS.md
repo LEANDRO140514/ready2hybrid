@@ -19,7 +19,8 @@
 - SALE-3: CLOSED - contrato documental; SPEC-032 v0.1.0 APPROVED
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 - InsForge schema 0001-0003: DEPLOYED AND VALIDATED on `ready2hybrid` / `4bg9ufz2.us-east`
-- InsForge catalog seed: NOT EXECUTED
+- Catalog seed: ALIGNED AND LOCALLY VALIDATED (OD-022 APPROVED 2026-07-24)
+- InsForge catalog seed remote execution: NOT EXECUTED / NOT AUTHORIZED
 - Mercado Pago runtime changes: NONE
 - Landing changes: NONE
 
@@ -61,7 +62,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4 `VALIDATED`;
     InsForge 0001-0003 remote DEPLOYED AND VALIDATED;
-    IMPL-5 `PROPOSED / NOT AUTHORIZED`
+    IMPL-5A seed aligned locally; IMPL-5 remote `PROPOSED / NOT AUTHORIZED`
+- `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
+  - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS; remote seed = NO
 - `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
   - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
@@ -193,16 +196,18 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_5_AUTHORIZATION`
+`READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW`
 
 Siguiente accion permitida:
 
-1. autorizacion humana separada para IMPL-5 (aplicar seed de catalogo), si
-   procede;
-2. no ejecutar el seed hasta esa autorizacion;
-3. no iniciar checkout, webhooks, Mercado Pago ni tickets;
-4. no modificar la landing;
-5. no modificar seed/SQL/InsForge/Mercado Pago sin unidad autorizada.
+1. revision humana del seed alineado (blob `530bdde7…`) y de la evidencia
+   IMPL-5A;
+2. autorizacion humana separada para commit/push documental+seed, si procede;
+3. autorizacion humana separada posterior para ejecucion remota del seed
+   (IMPL-5), si procede;
+4. no ejecutar el seed remoto hasta esa autorizacion;
+5. no iniciar checkout, webhooks, Mercado Pago ni tickets;
+6. no modificar la landing.
 
 ## Ultimo cierre
 
@@ -224,19 +229,20 @@ cerro la validacion aislada A01-A16 con evidencia en
 
 ```text
 IMPL-4: VALIDATED
-InsForge schema 0001: DEPLOYED AND VALIDATED
-InsForge constraints 0002: DEPLOYED AND VALIDATED
-InsForge access 0003: DEPLOYED AND VALIDATED
-Catalog seed: NOT EXECUTED
-Gate: READY_FOR_IMPL_5_AUTHORIZATION
-IMPL-5: PROPOSED / NOT AUTHORIZED
+InsForge schema 0001-0003: DEPLOYED AND VALIDATED
+OD-022: APPROVED
+Catalog seed: ALIGNED AND LOCALLY VALIDATED
+Remote seed execution: NO
+Gate: READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
+IMPL-5 remote: PROPOSED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
 El esquema minimo de ventas ya esta desplegado en InsForge
-(`ready2hybrid` / `4bg9ufz2.us-east`). Mercado Pago, checkout, webhooks,
-tickets y la ejecucion del seed permanecen fuera de alcance. La landing
-publica existente permanece protegida:
+(`ready2hybrid` / `4bg9ufz2.us-east`). El seed queda alineado y validado
+localmente bajo IMPL-5A; su ejecucion remota permanece sin autorizacion.
+Mercado Pago, checkout, webhooks y tickets permanecen fuera de alcance. La
+landing publica existente permanece protegida:
 
 ```text
 LANDING_READY_FOR_READY2HYBRID_MATCH

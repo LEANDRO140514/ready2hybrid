@@ -64,7 +64,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Dependencies | SPEC-032 APPROVED; SEED-001..005 documented; SEED-003 wording resolved by Project Owner |
 | Anticipated files | `insforge/seeds/0002_seeds_hybrid_event.sql`; seed review evidence |
 | External resources | None |
-| Blocking open decisions | OD-022 (Saturday public label / SEED-003) |
+| Blocking open decisions | OD-022 APPROVED 2026-07-24 |
 | Scope | Editorial/catalog seed correction only; preserve commercial values from SPEC-030 |
 | Out of scope | Schema, RLS, functions, payments, landing, seed execution against InsForge |
 | Automated tests | Documentary/static checks: 28 unique codes; `13+7+8`; comments/labels match |
@@ -74,7 +74,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | `READY_FOR_SEED_CORRECTION` + separate human authorization |
 | Exit gate | `SEED_CORRECTED_READY_FOR_SCHEMA` |
 | Separate human authorization | Required |
-| Current state | `PROPOSED / NOT AUTHORIZED` |
+| Current state | `ALIGNED AND LOCALLY VALIDATED` (remote execution still not authorized) |
 
 ### IMPL-2 — Minimal schema migration
 
@@ -144,17 +144,17 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Dependencies | IMPL-1 and IMPL-4 closed; explicit execution authorization |
 | Anticipated files | corrected seed; execution evidence |
 | External resources | InsForge database |
-| Blocking open decisions | OD-022 must be resolved before seed execution |
+| Blocking open decisions | OD-022 APPROVED; remote execution still requires a separate unit |
 | Scope | Apply corrected event/day/product catalog only |
 | Out of scope | Checkout, payments, tickets, landing |
 | Automated tests | Exact 28 products and event/session checks |
 | Manual tests | Catalog spot-check against SPEC-030 |
 | Expected evidence | Execution log; post-apply product count/code uniqueness |
 | Rollback | Controlled delete/reversal only in non-production or approved corrective migration |
-| Entry gate | IMPL-1/4 closed; execution authorization |
+| Entry gate | Seed aligned + local validation PASS; separate remote-execution authorization |
 | Exit gate | `CATALOG_SEEDED` |
-| Separate human authorization | Required |
-| Current state | `PROPOSED / NOT AUTHORIZED` |
+| Separate human authorization | Required for remote apply |
+| Current state | `PROPOSED / NOT AUTHORIZED` (local alignment closed under IMPL-5A) |
 
 ### IMPL-6 — Validate 28 products
 
@@ -361,7 +361,7 @@ MODEL_BLOCKER: 0
 | OD-019 Folio format | IMPLEMENTATION_BLOCKER | IMPL-9 / IMPL-11 | No once public folio exposed | Project Owner | Public folio exposure |
 | OD-020 Three-day mechanics | IMPLEMENTATION_BLOCKER | IMPL-11 | Single-day products can proceed; 3-day needs decision | Project Owner | PUB-3D/FOT-3D final behavior |
 | OD-021 Photographer requirements | IMPLEMENTATION_BLOCKER | IMPL-10 / IMPL-11 | Yes; defer press path | Project Owner | Press path |
-| OD-022 Saturday label / SEED-003 | PRODUCTION_BLOCKER | IMPL-1 execution | No; blocks seed execution wording | Project Owner | IMPL-1 |
+| OD-022 Saturday label / SEED-003 | APPROVED 2026-07-24 | IMPL-5A / IMPL-5 | Resolved; approved label includes `Sábado 10` | Project Owner | Remote seed still needs separate auth |
 | OD-023 Sales opening | PRODUCTION_BLOCKER | IMPL-7 sale-state transitions | Model fields exist; opening remains owner decision | Project Owner | Sales open |
 | OD-024 Low availability threshold | IMPLEMENTATION_BLOCKER | IMPL-9 signal | Yes; disable LOW_AVAILABILITY | Project Owner | Low-stock signal |
 | API-OD-001 Endpoint/transport layout | IMPLEMENTATION_BLOCKER | IMPL-7 | No for public HTTP surface | Engineering | First public API unit |
@@ -441,7 +441,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_5_AUTHORIZATION
+READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
 ```
 
 IMPL-4 closure evidence (local):
@@ -454,7 +454,6 @@ Evidence: docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.m
 Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
 Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
 Migration 0003 blob: d2c3778364cae4cada03c8a7e3d5b6b6f6365dbd
-Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
 ```
 
 InsForge remote schema deployment evidence:
@@ -466,13 +465,23 @@ Deployment slug: enforma
 0001 remote: DEPLOYED AND VALIDATED
 0002 remote: DEPLOYED AND VALIDATED
 0003 remote: DEPLOYED AND VALIDATED
-Migration path: official InsForge migration endpoint (@insforge/cli@0.2.1)
-Canonical migration files: unchanged
-Temporary adapters: BEGIN/COMMIT removal only (deleted after deploy)
 Evidence: docs/implementation/evidence/INSFORGE-SCHEMA-DEPLOYMENT-VALIDATION.md
-Catalog: empty
-Seed: NOT EXECUTED
-IMPL-5: PROPOSED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_5_AUTHORIZATION
+```
+
+IMPL-5A catalog seed alignment evidence:
+
+```text
+OD-022: APPROVED
+Approved at: 2026-07-24
+Approved label:
+Sábado 10 — ½ Hybrid, Dobles y Workout por la mañana; Relay por la tarde.
+Previous seed blob: f8989b2c10bb04fe258b19bf646dd650940c4944
+New seed blob: 530bdde721f636c703cbc13929adda94036b12ee
+New seed SHA-256: 5f115f8cf112638dce4eba72e3d61825853c373e86d5a85cf8d9bbfd62a688ad
+Catalog seed: ALIGNED AND LOCALLY VALIDATED
+Evidence: docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md
+Remote seed execution: NO
+IMPL-5 remote execution: NOT AUTHORIZED
+Gate: READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

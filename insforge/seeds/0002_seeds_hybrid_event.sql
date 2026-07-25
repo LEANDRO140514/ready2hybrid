@@ -26,7 +26,7 @@ VALUES ('HEX-2026', 'Hybrid Experience 2026', 'Mérida, Yucatán',
 
 INSERT INTO event_days (event_code, day_date, label) VALUES
 ('HEX-2026','2026-10-09','Viernes 9 — Dobles (PM)'),
-('HEX-2026','2026-10-10','Sábado — ½ Hybrid, Dobles y Workout por la mañana; Relay por la tarde.'),
+('HEX-2026','2026-10-10','Sábado 10 — ½ Hybrid, Dobles y Workout por la mañana; Relay por la tarde.'),
 ('HEX-2026','2026-10-11','Domingo 11 — Individual (AM)');
 
 -- =====================================================================
@@ -48,11 +48,11 @@ INSERT INTO products
 -- RELAY sábado PM · $3,200 por equipo de 4
 ('HEX-2026','REL-4H','Relay 4 Hombres','COMPITE','competitor',4,320000,20,'2026-10-10','PM',true,true),
 ('HEX-2026','REL-4M','Relay 4 Mujeres','COMPITE','competitor',4,320000,20,'2026-10-10','PM',true,true),
-('HEX-2026','REL-2H2M','Relay Mixto (2H+2M)','COMPITE','competitor',4,320000,20,'2026-10-10','PM',true,true),
+('HEX-2026','REL-2H2M','Relay Mixto 2H+2M','COMPITE','competitor',4,320000,20,'2026-10-10','PM',true,true),
 
 -- INDIVIDUAL domingo AM · $1,400 por persona (mismo precio Open y Pro)
-('HEX-2026','IND-H','Individual Hombre (Open)','COMPITE','competitor',1,140000,60,'2026-10-11','AM',true,true),
-('HEX-2026','IND-M','Individual Mujer (Open)','COMPITE','competitor',1,140000,60,'2026-10-11','AM',true,true),
+('HEX-2026','IND-H','Individual Hombre Open','COMPITE','competitor',1,140000,60,'2026-10-11','AM',true,true),
+('HEX-2026','IND-M','Individual Mujer Open','COMPITE','competitor',1,140000,60,'2026-10-11','AM',true,true),
 ('HEX-2026','IND-PRO-H','Individual Pro Hombre','COMPITE','competitor',1,140000,30,'2026-10-11','AM',true,true),
 ('HEX-2026','IND-PRO-M','Individual Pro Mujer','COMPITE','competitor',1,140000,30,'2026-10-11','AM',true,true);
 
