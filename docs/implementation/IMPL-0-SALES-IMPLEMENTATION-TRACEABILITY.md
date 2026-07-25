@@ -217,19 +217,21 @@ this document does not authorize any unit by itself.
 |---|---|
 | Related requirements | R007, R026-R028, R038, R047, R053, R055 |
 | Dependencies | IMPL-7; webhook authorization |
-| Anticipated files | future webhook/payment functions/tests |
-| External resources | InsForge functions; Mercado Pago sandbox webhook |
-| Blocking open decisions | API-OD-001/002/003/005/006/007 |
-| Scope | Signature-before-receipt, durable verification staging, atomic domain/audit/outbox |
-| Out of scope | Landing, seed, production credentials |
-| Automated tests | Invalid signature, duplicate, out-of-order, mismatch, async retry, ingress rate/size |
-| Manual tests | Sandbox webhook delivery review |
-| Expected evidence | Payment-effect matrix PASS; one logical effect |
-| Rollback | Disable ingress effects; reconcile from durable verification records |
-| Entry gate | IMPL-7; webhook authorization; listed API-OD resolved |
+| Anticipated files | `insforge/functions/mp-webhook/**`; `_shared/mercadopago/**`; `_shared/webhook/**`; `0006_webhook_payment_transaction.sql`; unit tests; evidence |
+| External resources | InsForge functions; Mercado Pago payment query (server-side); webhook secret deferred |
+| Blocking open decisions | Real panel webhook URL/secret deferred to IMPL-12/separate unit; API-OD-002 matrix chosen and documented |
+| Scope | Signature-before-receipt, durable verification staging, atomic domain/audit/outbox alert (no email send) |
+| Out of scope | Landing, seed, tickets/QR, public order state, sandbox E2E, production credentials |
+| Automated tests | Signature fixtures, orchestrate matrix, migration static guards |
+| Manual tests | Remote negative smokes (405/401/503) with zero transactional rows |
+| Expected evidence | `docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md` |
+| Rollback | Delete/disable `mp-webhook`; drop TX-2 RPC; catalog untouched |
+| Entry gate | IMPL-7 closed; separate IMPL-8 authorization |
 | Exit gate | `PAYMENT_EFFECTS_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED / NOT AUTHORIZED` |
+| Remote artifacts | function `mp-webhook`; migration `v6 webhook-payment-transaction` |
+| Technical result | PASS — negative smokes; MP writes = 0; secret configuration deferred |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
 
 ### IMPL-9 — Public order state
 
@@ -333,7 +335,7 @@ row-local and must not be read as a single global unit status.
 | R034-R035 | SPEC-030/031 | IMPL-3, IMPL-5, IMPL-6, IMPL-7 | Capacity units and money invariants | Catalog + checkout money tests | AC003-AC005, AC011 | PARTIAL — IMPL-6 catalog evidence PASS; checkout/runtime pending |
 | R036 | SPEC-030/031 | IMPL-7..11 | State machines | Transition coverage | AC006, AC010, AC012 | NOT_STARTED |
 | R037 | SPEC-031 | IMPL-7 | TX-1 durable-before-provider | Timeout/lost-response tests | AC007, AC015 | PARTIAL — mp-create-checkout + 0005 RPC + negative smoke PASS; sales not open; webhook pending IMPL-8 |
-| R038 | SPEC-001/031 | IMPL-8 | TX-2 signature/verification/effects | Webhook effect matrix | AC008, AC015 | NOT_STARTED |
+| R038 | SPEC-001/031 | IMPL-8 | TX-2 signature/verification/effects | Webhook effect matrix | AC008, AC015 | PARTIAL — mp-webhook + 0006 RPC + negative smokes PASS; panel secret deferred; tickets/public order pending later units |
 | R039 | SPEC-030/031 | IMPL-10 | TX-3 exchange + completion + full ticket set | Invitation lifecycle matrix | AC005, AC009, AC015 | NOT_STARTED |
 | R040 | SPEC-030/031 | IMPL-10, IMPL-11 | TX-4 substitution | Substitution matrix | AC010, AC015 | NOT_STARTED |
 | R041-R042 | SPEC-030/031 | IMPL-3, IMPL-7, IMPL-8 | Last-unit concurrency; late payment review | Concurrency/late-payment tests | AC011-AC012 | NOT_STARTED |
@@ -427,12 +429,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-8 authorization review
-Status: AWAITING SEPARATE HUMAN AUTHORIZATION
+IMPL-8 human closure review
+Status: AWAITING HUMAN CLOSURE
 ```
 
-IMPL-7 is `VALIDATED / CLOSED`. IMPL-8 remains `NOT_STARTED / NOT AUTHORIZED`.
-Do not start IMPL-8, open sales, or connect the landing without separate authorization.
+IMPL-8 technical validation is PASS under authorized webhook scope (panel secret deferred).
+Do not mark IMPL-8 `VALIDATED / CLOSED` until human closure. Do not start IMPL-9.
+Do not open sales or connect the landing.
 
 ## I. IMPL-0 change set
 
@@ -451,7 +454,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_8_AUTHORIZATION
+READY_FOR_IMPL_8_HUMAN_CLOSURE
 ```
 
 IMPL-4 closure evidence (local):
@@ -536,7 +539,20 @@ Transactional rows after smoke: 0
 Mercado Pago preferences created: 0
 Blockers: None
 Evidence: docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md
-IMPL-8: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_8_AUTHORIZATION
+```
+
+IMPL-8 signed webhook evidence:
+
+```text
+IMPL-8: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Function: mp-webhook
+Remote migration: v6 webhook-payment-transaction
+Smokes: 405 / 401 / 503 WEBHOOK_NOT_CONFIGURED
+Transactional rows after smoke: 0
+Mercado Pago writes: 0
+Panel webhook secret/URL: DEFERRED TO IMPL-12 OR SEPARATE AUTHORIZED UNIT
+Evidence: docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md
+IMPL-9: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_8_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
