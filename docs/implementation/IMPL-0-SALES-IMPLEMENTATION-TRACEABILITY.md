@@ -149,12 +149,12 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Out of scope | Checkout, payments, tickets, landing |
 | Automated tests | Exact 28 products and event/session checks |
 | Manual tests | Catalog spot-check against SPEC-030 |
-| Expected evidence | Execution log; post-apply product count/code uniqueness |
+| Expected evidence | `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md` |
 | Rollback | Controlled delete/reversal only in non-production or approved corrective migration |
 | Entry gate | Seed aligned + local validation PASS; separate remote-execution authorization |
 | Exit gate | `CATALOG_SEEDED` |
 | Separate human authorization | Required for remote apply |
-| Current state | `PROPOSED / NOT AUTHORIZED` (local alignment closed under IMPL-5A) |
+| Current state | `VALIDATED` (remote `0004_hybrid-event-catalog` applied; human closure 2026-07-24) |
 
 ### IMPL-6 — Validate 28 products
 
@@ -361,7 +361,7 @@ MODEL_BLOCKER: 0
 | OD-019 Folio format | IMPLEMENTATION_BLOCKER | IMPL-9 / IMPL-11 | No once public folio exposed | Project Owner | Public folio exposure |
 | OD-020 Three-day mechanics | IMPLEMENTATION_BLOCKER | IMPL-11 | Single-day products can proceed; 3-day needs decision | Project Owner | PUB-3D/FOT-3D final behavior |
 | OD-021 Photographer requirements | IMPLEMENTATION_BLOCKER | IMPL-10 / IMPL-11 | Yes; defer press path | Project Owner | Press path |
-| OD-022 Saturday label / SEED-003 | APPROVED 2026-07-24 | IMPL-5A / IMPL-5 | Resolved; approved label includes `Sábado 10` | Project Owner | Remote seed still needs separate auth |
+| OD-022 Saturday label / SEED-003 | APPROVED 2026-07-24 | IMPL-5A / IMPL-5 | Resolved; approved label includes `Sábado 10`; remote seed applied under IMPL-5 | Project Owner | Closed for catalog seed path |
 | OD-023 Sales opening | PRODUCTION_BLOCKER | IMPL-7 sale-state transitions | Model fields exist; opening remains owner decision | Project Owner | Sales open |
 | OD-024 Low availability threshold | IMPLEMENTATION_BLOCKER | IMPL-9 signal | Yes; disable LOW_AVAILABILITY | Project Owner | Low-stock signal |
 | API-OD-001 Endpoint/transport layout | IMPLEMENTATION_BLOCKER | IMPL-7 | No for public HTTP surface | Engineering | First public API unit |
@@ -409,20 +409,12 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-5 — Apply catalog seed
-Status: PROPOSED / NOT AUTHORIZED
+IMPL-6 — Validate 28 products
+Status: NOT AUTHORIZED
 ```
 
-Do not execute IMPL-5 in this unit.
-
-Before IMPL-5 may start, require all of:
-
-1. separate human authorization for seed execution only;
-2. a fresh Git preflight;
-3. confirmation that IMPL-4 remains `VALIDATED` and migration blobs unchanged;
-4. target environment authorization (still not implied by this pack);
-5. no landing changes and no checkout/payment enablement;
-6. an independent commit after review.
+Do not execute IMPL-6 until the Project Owner issues a separate authorization.
+IMPL-5 remote apply is closed as `VALIDATED`.
 
 ## I. IMPL-0 change set
 
@@ -441,7 +433,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
+READY_FOR_IMPL_6_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -480,8 +472,22 @@ New seed blob: 530bdde721f636c703cbc13929adda94036b12ee
 New seed SHA-256: 5f115f8cf112638dce4eba72e3d61825853c373e86d5a85cf8d9bbfd62a688ad
 Catalog seed: ALIGNED AND LOCALLY VALIDATED
 Evidence: docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md
-Remote seed execution: NO
-IMPL-5 remote execution: NOT AUTHORIZED
-Gate: READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
+```
+
+IMPL-5 remote catalog seed execution evidence:
+
+```text
+IMPL-5: VALIDATED
+Remote migration: v4 hybrid-event-catalog
+Seed blob applied: 530bdde721f636c703cbc13929adda94036b12ee
+Seed SHA-256: 5f115f8cf112638dce4eba72e3d61825853c373e86d5a85cf8d9bbfd62a688ad
+Remote catalog: events=1, event_days=3, products=28
+Event status: CONFIGURADO
+Field mismatches vs seed: 0
+Security unchanged: RLS 24 / FORCE 24 / PUBLIC 0 / policies 0
+Remote writes in unit: 1
+Evidence: docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md
+IMPL-6: NOT AUTHORIZED
+Gate: READY_FOR_IMPL_6_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

@@ -20,7 +20,7 @@
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 - InsForge schema 0001-0003: DEPLOYED AND VALIDATED on `ready2hybrid` / `4bg9ufz2.us-east`
 - Catalog seed: ALIGNED AND LOCALLY VALIDATED (OD-022 APPROVED 2026-07-24)
-- InsForge catalog seed remote execution: NOT EXECUTED / NOT AUTHORIZED
+- InsForge catalog seed remote execution: EXECUTED AND VALIDATED (`0004` / IMPL-5)
 - Mercado Pago runtime changes: NONE
 - Landing changes: NONE
 
@@ -60,11 +60,13 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4 `VALIDATED`;
-    InsForge 0001-0003 remote DEPLOYED AND VALIDATED;
-    IMPL-5A seed aligned locally; IMPL-5 remote `PROPOSED / NOT AUTHORIZED`
+  - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4/IMPL-5 `VALIDATED`;
+    InsForge 0001-0004 remote DEPLOYED/APPLIED AND VALIDATED;
+    IMPL-6 `NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
-  - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS; remote seed = NO
+  - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
+- `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
+  - remote `0004_hybrid-event-catalog`; 1/3/28 PASS; IMPL-5 `VALIDATED`
 - `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
   - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado
 - `docs/implementation/evidence/IMPL-2-ISOLATED-APPLY-VALIDATION.md`
@@ -74,7 +76,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md`
   - RLS deny-by-default PASS; A01-A16 PASS; InsForge write = 0
 - `docs/implementation/evidence/INSFORGE-SCHEMA-DEPLOYMENT-VALIDATION.md`
-  - remote 0001/0002/0003 DEPLOYED AND VALIDATED via InsForge CLI; seed NOT EXECUTED
+  - remote 0001/0002/0003 DEPLOYED AND VALIDATED via InsForge CLI
 - `insforge/migrations/0001_minimal_sales_schema.sql`
   - migracion minima IMPL-2 publicada en `ac2be55`
 - `insforge/migrations/0002_sales_constraints_and_indexes.sql`
@@ -196,16 +198,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW`
+`READY_FOR_IMPL_6_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision humana del seed alineado (blob `530bdde7…`) y de la evidencia
-   IMPL-5A;
-2. autorizacion humana separada para commit/push documental+seed, si procede;
-3. autorizacion humana separada posterior para ejecucion remota del seed
-   (IMPL-5), si procede;
-4. no ejecutar el seed remoto hasta esa autorizacion;
+1. revision humana de la evidencia IMPL-5 remota y cierre documental;
+2. autorizacion humana separada para IMPL-6 (validacion de 28 productos), si
+   procede;
+3. no iniciar IMPL-6 sin esa autorizacion;
+4. no realizar nuevas escrituras InsForge salvo unidad explicitamente
+   autorizada;
 5. no iniciar checkout, webhooks, Mercado Pago ni tickets;
 6. no modificar la landing.
 
@@ -226,21 +228,26 @@ IMPL-3 publico constraints/indexes en `b459e80`. ACCESS-DEC-001..008 fueron
 aprobados en `66cf9ff`. IMPL-4 publico RLS deny-by-default en `cbbeecc` y
 cerro la validacion aislada A01-A16 con evidencia en
 `docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md`.
+El esquema remoto 0001-0003 se registro en `ad0a788`. IMPL-5A alineo el seed
+en `e1c1522`. IMPL-5 aplico remotamente `0004_hybrid-event-catalog` y queda
+`VALIDATED` con evidencia en
+`docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`.
 
 ```text
 IMPL-4: VALIDATED
+IMPL-5: VALIDATED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
+InsForge catalog migration 0004: APPLIED AND VALIDATED
 OD-022: APPROVED
-Catalog seed: ALIGNED AND LOCALLY VALIDATED
-Remote seed execution: NO
-Gate: READY_FOR_IMPL_5_SEED_CORRECTION_REVIEW
-IMPL-5 remote: PROPOSED / NOT AUTHORIZED
+Catalog seed: ALIGNED / LOCALLY VALIDATED / REMOTE SEEDED
+Gate: READY_FOR_IMPL_6_AUTHORIZATION
+IMPL-6: NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
-El esquema minimo de ventas ya esta desplegado en InsForge
-(`ready2hybrid` / `4bg9ufz2.us-east`). El seed queda alineado y validado
-localmente bajo IMPL-5A; su ejecucion remota permanece sin autorizacion.
+El esquema minimo de ventas y el catalogo Hybrid Event ya estan en InsForge
+(`ready2hybrid` / `4bg9ufz2.us-east`): 0001-0003 schema + 0004 catalog seed.
+El evento permanece en `CONFIGURADO`. IMPL-6 permanece sin autorizacion.
 Mercado Pago, checkout, webhooks y tickets permanecen fuera de alcance. La
 landing publica existente permanece protegida:
 
