@@ -298,19 +298,24 @@ this document does not authorize any unit by itself.
 |---|---|
 | Related requirements | R008, R020, R029-R030, R046, R053-R054 |
 | Dependencies | IMPL-8/9/10 as applicable |
-| Anticipated files | future entitlement/capability services/tests |
-| External resources | InsForge database/functions |
-| Blocking open decisions | OD-019/020 and API-OD-001/002/003/004/005/007/010 for enabled behavior |
-| Scope | Canonical ticket, credential generation, daily entitlement use, opaque QR, revoke/reissue |
-| Out of scope | Check-in hardware, results, admin panel |
-| Automated tests | J1-J5 counts; one active credential/capability; privacy/rate; buyer access policy |
-| Manual tests | QR opacity and reissue walkthrough |
-| Expected evidence | Ticket/QR matrix PASS |
-| Rollback | Revoke affected credential/capability generation; disable issuance; preserve canonical ticket/unused entitlements |
-| Entry gate | IMPL-8/9/10 as applicable; listed decisions resolved for enabled behavior |
+| Anticipated files | `ticket-credentials/**`; `_shared/tickets/**`; `0008_ticket_issuance_credentials.sql`; unit tests; evidence |
+| External resources | InsForge database/functions; no Mercado Pago; no email |
+| Blocking open decisions | OD-019 commercial folio OPEN (opaque engineering used); OD-020/007/017 fail-closed/deferred; API-OD-010 retrieval deferred |
+| Scope | Canonical ticket, hashed QR generation, single-day entitlements, protected revoke/reissue |
+| Out of scope | Check-in, manifest, email delivery, public QR retrieval, landing UI, IMPL-12 |
+| Automated tests | Token/privacy/reissue/static migration/policy guards |
+| Manual tests | Remote negative smokes 405/403/400/404/401 with zero transactional rows |
+| Expected evidence | `docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md` |
+| Rollback | Disable `ticket-credentials`; revert 0008 RPCs; preserve catalog/event |
+| Entry gate | IMPL-10 closed; separate IMPL-11 authorization |
 | Exit gate | `TICKETS_READY_FOR_E2E` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Remote artifacts | function `ticket-credentials`; migration v8; SQL REPLACE webhook/accept (no edge redeploy) |
+| Technical result | PASS — negative smokes; domain rows = 0; MP = 0 |
+| Human closure | PENDING |
+| Implementation blockers | None for authorized backend scope (multiday/email/refund-auto-revoke remain deferred) |
+| Migration 0008 | APPLIED |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
 
 ### IMPL-12 — Sandbox end-to-end
 
@@ -448,13 +453,14 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-11 — Tickets and QR
-Status: NOT_STARTED / NOT AUTHORIZED
+IMPL-11 human closure review
+Status: AWAITING HUMAN CLOSURE
 ```
 
-IMPL-10 is `VALIDATED / CLOSED`. Do not start IMPL-11 without a separate human authorization.
+IMPL-11 technical validation is PASS under authorized backend ticket/QR scope.
+Do not mark IMPL-11 `VALIDATED / CLOSED` until human closure. Do not start IMPL-12.
 Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
-Reminders remain `DEFERRED / NOT AUTHORIZED`. Tickets and QR remain not implemented.
+Reminders remain `DEFERRED / NOT AUTHORIZED`. Email/public QR retrieval remain deferred.
 
 ## I. IMPL-0 change set
 
@@ -473,7 +479,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_11_AUTHORIZATION
+READY_FOR_IMPL_11_HUMAN_CLOSURE
 ```
 
 IMPL-4 closure evidence (local):
@@ -596,10 +602,19 @@ Checkout redeploy: justified (invitation TTL + roster_invitations)
 Smokes: 405 / 400 / 400 / 404 / 503 WAIVER_CONFIGURATION_REQUIRED
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
-Tickets/QR: NOT IMPLEMENTED / NOT AUTHORIZED
 Reminders: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md
-IMPL-11: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_11_AUTHORIZATION
+IMPL-11: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Function: ticket-credentials
+Migration 0008 / remote v8: APPLIED
+Webhook/team-roster edge redeploy: 0 (SQL-only issuance hooks)
+Smokes: 405 / 403 / 400 / 404 / 401 / 401 / 404
+Transactional rows after smoke: 0
+Mercado Pago reads/writes: 0
+Email/public retrieval: DEFERRED / NOT AUTHORIZED
+Check-in/manifest: NOT IMPLEMENTED
+Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
+IMPL-12: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_11_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

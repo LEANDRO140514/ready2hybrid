@@ -36,9 +36,14 @@
 - Edge function `team-roster`: DEPLOYED
 - InsForge migration 0007 / remote v7: APPLIED (team roster RPCs)
 - TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
-- Tickets and QR: NOT IMPLEMENTED / NOT AUTHORIZED
-- IMPL-11: NOT_STARTED / NOT AUTHORIZED
-- Mercado Pago reads/writes during IMPL-9 validation: 0
+- IMPL-11 tickets and QR credentials: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+- Edge function `ticket-credentials`: DEPLOYED
+- InsForge migration 0008 / remote v8: APPLIED (ticket issuance RPCs)
+- EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
+- PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
+- Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
+- IMPL-12: NOT_STARTED / NOT AUTHORIZED
+- Mercado Pago reads/writes during IMPL-11 validation: 0
 - Landing changes: NONE
 
 ## Autoridad
@@ -78,7 +83,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2..10 `VALIDATED / CLOSED`;
-    IMPL-11 `NOT_STARTED / NOT AUTHORIZED`
+    IMPL-11 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`;
+    IMPL-12 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -96,7 +102,10 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
     human closure APPROVED 2026-07-25; panel config DEFERRED
 - `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md`
   - `team-roster` + 0007; smokes 405/400/404/503; writes = 0; reminders deferred;
-    human closure APPROVED 2026-07-25; tickets/QR not implemented
+    human closure APPROVED 2026-07-25
+- `docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md`
+  - `ticket-credentials` + 0008; smokes 405/403/400/404/401; writes = 0;
+    email/public retrieval deferred; check-in not implemented
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -242,16 +251,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_11_AUTHORIZATION`
+`READY_FOR_IMPL_11_HUMAN_CLOSURE`
 
 Siguiente accion permitida:
 
-1. esperar autorizacion humana separada para IMPL-11;
-2. no iniciar, preparar ni implementar IMPL-11 sin esa autorizacion;
-3. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
-4. no conectar la landing;
-5. no enviar correos ni configurar recordatorios;
-6. no emitir tickets ni QR sin unidad autorizada;
+1. revision humana del resultado tecnico de IMPL-11 y cierre documental final;
+2. no marcar IMPL-11 `VALIDATED / CLOSED` sin esa aprobacion humana;
+3. no iniciar IMPL-12;
+4. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
+5. no conectar la landing;
+6. no enviar correos ni configurar recordatorios;
 7. no configurar URL/secret real del webhook en Mercado Pago sin unidad autorizada.
 
 ## Ultimo cierre
@@ -294,6 +303,10 @@ IMPL-10 implemento `team-roster` + migracion `0007` (v7 remota) con smokes
 405/400/404/503 en `43f633e` y quedo `VALIDATED / CLOSED` el 2026-07-25
 con evidencia en
 `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md`.
+IMPL-11 implemento `ticket-credentials` + migracion `0008` (v8 remota) con
+smokes 405/403/400/404/401 y queda `TECHNICAL_PASS / PENDING HUMAN CLOSURE`
+con evidencia en
+`docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -303,31 +316,36 @@ IMPL-7: VALIDATED / CLOSED
 IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
+IMPL-11: TECHNICAL_PASS / PENDING HUMAN CLOSURE
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
 InsForge webhook TX migration 0006 / v6: APPLIED
 InsForge team roster migration 0007 / v7: APPLIED
+InsForge ticket issuance migration 0008 / v8: APPLIED
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
-tickets and QR: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_11_AUTHORIZATION
-IMPL-11: NOT_STARTED / NOT AUTHORIZED
+EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
+PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
+check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_11_HUMAN_CLOSURE
+IMPL-12: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
 El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
-el webhook firmado, el estado publico read-only y el roster backend ya estan
-en InsForge (`ready2hybrid` / `4bg9ufz2.us-east`). El evento permanece en
-`CONFIGURADO`. No se abrieron ventas. No se crearon preferencias ni pagos
-Mercado Pago durante la validacion. La configuracion del secret/URL en el
-panel de Mercado Pago permanece `DEFERRED / NOT AUTHORIZED`. Recordatorios
-de roster permanecen `DEFERRED / NOT AUTHORIZED`. Tickets y QR permanecen
-`NOT IMPLEMENTED / NOT AUTHORIZED`. Esperar autorizacion humana separada
-para IMPL-11.
+el webhook firmado, el estado publico read-only, el roster backend y la
+emision server-side de tickets/QR hasheados ya estan en InsForge
+(`ready2hybrid` / `4bg9ufz2.us-east`). El evento permanece en `CONFIGURADO`.
+No se abrieron ventas. No se crearon preferencias ni pagos Mercado Pago
+durante la validacion. La configuracion del secret/URL en el panel de
+Mercado Pago permanece `DEFERRED / NOT AUTHORIZED`. Recordatorios, correo y
+recuperacion publica de QR permanecen diferidos. Check-in y manifiesto no
+fueron implementados. Esperar cierre humano de IMPL-11. IMPL-12 permanece
+sin autorizacion.
 La landing publica existente permanece protegida:
 
 ```text
