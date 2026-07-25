@@ -191,19 +191,21 @@ this document does not authorize any unit by itself.
 |---|---|
 | Related requirements | R004-R006, R020, R023-R025, R028, R034-R037, R053 |
 | Dependencies | Schema/access/catalog validated; Mercado Pago sandbox authorization |
-| Anticipated files | future protected functions/services/tests |
-| External resources | InsForge functions; Mercado Pago sandbox only after authorization |
-| Blocking open decisions | OD-001/003-006/010/014-016/023 and API-OD-001/002/003/004/009 resolved or explicitly disabled for launch scope |
-| Scope | TX-1 local durable checkout, hold, order/captain capability mint, preference request |
-| Out of scope | Webhook effects, roster completion, ticket issuance, landing redesign |
-| Automated tests | Idempotency/TTL, snapshot, hold, capability mint, rate/size/concurrency, timeout/lost response/return URL |
-| Manual tests | Sandbox preference creation walkthrough |
-| Expected evidence | Checkout matrix PASS; no uncontrolled payable preference |
-| Rollback | Disable checkout; revoke affected capabilities; reconcile non-payable orders/holds |
-| Entry gate | Schema/access/catalog validated; MP sandbox authorization; listed decisions resolved/disabled |
+| Anticipated files | `insforge/functions/mp-create-checkout/**`; `_shared/checkout/**`; `0005_checkout_start_transaction.sql`; unit tests; evidence |
+| External resources | InsForge functions; Mercado Pago Checkout Pro (server-side preference client) |
+| Blocking open decisions | Remaining open ODs handled fail-closed via required server env (hold TTL, return URLs, waiver, sales_open_at); sales not opened |
+| Scope | TX-1 local durable checkout, hold, order-holder capability mint, preference request |
+| Out of scope | Webhook effects, roster completion, ticket issuance, landing redesign, opening sales |
+| Automated tests | Vitest checkout suite (payload, sales gate, pricing, config, MP mock, compensation, replay) |
+| Manual tests | Remote negative smoke `SALES_NOT_OPEN` with zero transactional rows / zero preferences |
+| Expected evidence | `docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md` |
+| Rollback | Delete/redeploy function; drop RPCs from 0005; catalog untouched |
+| Entry gate | Schema/access/catalog validated; separate IMPL-7 authorization |
 | Exit gate | `CHECKOUT_READY_FOR_WEBHOOK` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED / NOT AUTHORIZED` |
+| Remote artifacts | function `mp-create-checkout`; migration `v5 checkout-start-transaction` |
+| Technical result | PASS — smoke `SALES_NOT_OPEN`; MP preferences created = 0 |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
 
 ### IMPL-8 — Webhook and payment effects
 
@@ -223,7 +225,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-7; webhook authorization; listed API-OD resolved |
 | Exit gate | `PAYMENT_EFFECTS_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `NOT_STARTED / NOT AUTHORIZED` |
 
 ### IMPL-9 — Public order state
 
@@ -326,7 +328,7 @@ row-local and must not be read as a single global unit status.
 | R033 | SPEC-032 | IMPL-3 | Cardinality/forbidden-state constraints | Constraint suite | AC002 | NOT_STARTED |
 | R034-R035 | SPEC-030/031 | IMPL-3, IMPL-5, IMPL-6, IMPL-7 | Capacity units and money invariants | Catalog + checkout money tests | AC003-AC005, AC011 | PARTIAL — IMPL-6 catalog evidence PASS; checkout/runtime pending |
 | R036 | SPEC-030/031 | IMPL-7..11 | State machines | Transition coverage | AC006, AC010, AC012 | NOT_STARTED |
-| R037 | SPEC-031 | IMPL-7 | TX-1 durable-before-provider | Timeout/lost-response tests | AC007, AC015 | NOT_STARTED |
+| R037 | SPEC-031 | IMPL-7 | TX-1 durable-before-provider | Timeout/lost-response tests | AC007, AC015 | PARTIAL — mp-create-checkout + 0005 RPC + negative smoke PASS; sales not open; webhook pending IMPL-8 |
 | R038 | SPEC-001/031 | IMPL-8 | TX-2 signature/verification/effects | Webhook effect matrix | AC008, AC015 | NOT_STARTED |
 | R039 | SPEC-030/031 | IMPL-10 | TX-3 exchange + completion + full ticket set | Invitation lifecycle matrix | AC005, AC009, AC015 | NOT_STARTED |
 | R040 | SPEC-030/031 | IMPL-10, IMPL-11 | TX-4 substitution | Substitution matrix | AC010, AC015 | NOT_STARTED |
@@ -421,12 +423,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-7 — Checkout initiation
-Status: NOT_STARTED / NOT AUTHORIZED
+IMPL-7 human closure review
+Status: AWAITING HUMAN CLOSURE
 ```
 
-IMPL-6 is `VALIDATED / CLOSED`. Do not start IMPL-7 until the Project Owner
-issues a separate authorization. Catalog validation does not authorize commerce.
+IMPL-7 technical validation is PASS under authorized checkout-start scope.
+Do not mark IMPL-7 `VALIDATED / CLOSED` until human closure. Do not start IMPL-8.
+Do not open sales or connect the landing.
 
 ## I. IMPL-0 change set
 
@@ -445,7 +448,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_7_AUTHORIZATION
+READY_FOR_IMPL_7_HUMAN_CLOSURE
 ```
 
 IMPL-4 closure evidence (local):
@@ -515,7 +518,19 @@ Field mismatches vs seed: 0
 Blocks: COMPITE 13 / EXPERIENCE 7 / ASISTE 8
 Journeys: J1 6 / J2 9 / J3 3 / J4 2 / J5 8
 Evidence: docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md
-IMPL-7: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_7_AUTHORIZATION
+```
+
+IMPL-7 checkout start evidence:
+
+```text
+IMPL-7: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Function: mp-create-checkout
+Remote migration: v5 checkout-start-transaction
+Smoke: SALES_NOT_OPEN (event remains CONFIGURADO)
+Transactional rows after smoke: 0
+Mercado Pago preferences created: 0
+Evidence: docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md
+IMPL-8: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_7_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
