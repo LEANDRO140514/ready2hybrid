@@ -285,10 +285,12 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote artifacts | function `team-roster`; migration v7; checkout redeploy for invitation surface |
 | Technical result | PASS — negative smokes; domain rows = 0; MP = 0; tickets = 0 |
-| Human closure | PENDING |
-| Implementation blockers | None for authorized backend scope |
-| Migration 0007 | APPLIED |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical implementation commit | `43f633e` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Implementation blockers | None |
+| Migration | v7 team-roster-invitations |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-11 — Tickets and QR
 
@@ -446,14 +448,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-10 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-11 — Tickets and QR
+Status: NOT_STARTED / NOT AUTHORIZED
 ```
 
-IMPL-10 technical validation is PASS under authorized backend roster/invitation scope.
-Do not mark IMPL-10 `VALIDATED / CLOSED` until human closure. Do not start IMPL-11.
+IMPL-10 is `VALIDATED / CLOSED`. Do not start IMPL-11 without a separate human authorization.
 Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
-Reminders remain `DEFERRED / NOT AUTHORIZED`.
+Reminders remain `DEFERRED / NOT AUTHORIZED`. Tickets and QR remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -472,7 +473,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_10_HUMAN_CLOSURE
+READY_FOR_IMPL_11_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -584,17 +585,21 @@ Smokes: 405 / 400 / 400 / 404
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
 Evidence: docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md
-IMPL-10: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-10: VALIDATED / CLOSED
+Technical implementation commit: 43f633e
+Human closure: APPROVED
+Human closure date: 2026-07-25
+Implementation blockers: None
+Migration: v7 team-roster-invitations
 Function: team-roster
-Migration 0007 / remote v7: APPLIED
 Checkout redeploy: justified (invitation TTL + roster_invitations)
 Smokes: 405 / 400 / 400 / 404 / 503 WAIVER_CONFIGURATION_REQUIRED
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
-Tickets/QR: 0
+Tickets/QR: NOT IMPLEMENTED / NOT AUTHORIZED
 Reminders: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md
 IMPL-11: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_10_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_11_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

@@ -32,10 +32,11 @@
 - Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
 - IMPL-9 public order status: VALIDATED / CLOSED
 - Edge function `get-order-status`: DEPLOYED (read-only)
-- IMPL-10 team roster invitations: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+- IMPL-10 team roster invitations: VALIDATED / CLOSED
 - Edge function `team-roster`: DEPLOYED
 - InsForge migration 0007 / remote v7: APPLIED (team roster RPCs)
 - TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
+- Tickets and QR: NOT IMPLEMENTED / NOT AUTHORIZED
 - IMPL-11: NOT_STARTED / NOT AUTHORIZED
 - Mercado Pago reads/writes during IMPL-9 validation: 0
 - Landing changes: NONE
@@ -76,8 +77,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2..9 `VALIDATED / CLOSED`;
-    IMPL-10 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`;
+  - plan trazable IMPL-1..12; IMPL-2..10 `VALIDATED / CLOSED`;
     IMPL-11 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
@@ -95,7 +95,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - `get-order-status`; SPEC-031 mapping; smokes 405/400/404; writes = 0;
     human closure APPROVED 2026-07-25; panel config DEFERRED
 - `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md`
-  - `team-roster` + 0007; smokes 405/400/404/503; writes = 0; reminders deferred
+  - `team-roster` + 0007; smokes 405/400/404/503; writes = 0; reminders deferred;
+    human closure APPROVED 2026-07-25; tickets/QR not implemented
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -241,16 +242,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_10_HUMAN_CLOSURE`
+`READY_FOR_IMPL_11_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision humana del resultado tecnico de IMPL-10 y cierre documental final;
-2. no marcar IMPL-10 `VALIDATED / CLOSED` sin esa aprobacion humana;
-3. no iniciar IMPL-11;
-4. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
-5. no conectar la landing;
-6. no enviar correos ni configurar recordatorios;
+1. esperar autorizacion humana separada para IMPL-11;
+2. no iniciar, preparar ni implementar IMPL-11 sin esa autorizacion;
+3. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
+4. no conectar la landing;
+5. no enviar correos ni configurar recordatorios;
+6. no emitir tickets ni QR sin unidad autorizada;
 7. no configurar URL/secret real del webhook en Mercado Pago sin unidad autorizada.
 
 ## Ultimo cierre
@@ -290,7 +291,8 @@ IMPL-9 implemento `get-order-status` (read-only, mapping SPEC-031) con smokes
 con evidencia en
 `docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md`.
 IMPL-10 implemento `team-roster` + migracion `0007` (v7 remota) con smokes
-405/400/404/503 y evidencia en
+405/400/404/503 en `43f633e` y quedo `VALIDATED / CLOSED` el 2026-07-25
+con evidencia en
 `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md`.
 
 ```text
@@ -300,28 +302,32 @@ IMPL-6: VALIDATED / CLOSED
 IMPL-7: VALIDATED / CLOSED
 IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
-IMPL-10: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-10: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
 InsForge webhook TX migration 0006 / v6: APPLIED
+InsForge team roster migration 0007 / v7: APPLIED
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_10_HUMAN_CLOSURE
+TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
+tickets and QR: NOT IMPLEMENTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_11_AUTHORIZATION
 IMPL-11: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
 El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
-el webhook firmado y el estado publico read-only ya estan en InsForge
-(`ready2hybrid` / `4bg9ufz2.us-east`). El evento permanece en `CONFIGURADO`.
-No se abrieron ventas. No se crearon preferencias ni pagos Mercado Pago durante
-la validacion. La configuracion del secret/URL en el panel de Mercado Pago
-permanece `DEFERRED / NOT AUTHORIZED`. Recordatorios de roster permanecen
-`DEFERRED / NOT AUTHORIZED`. Esperar cierre humano de IMPL-10. IMPL-11
-permanece sin autorizacion.
+el webhook firmado, el estado publico read-only y el roster backend ya estan
+en InsForge (`ready2hybrid` / `4bg9ufz2.us-east`). El evento permanece en
+`CONFIGURADO`. No se abrieron ventas. No se crearon preferencias ni pagos
+Mercado Pago durante la validacion. La configuracion del secret/URL en el
+panel de Mercado Pago permanece `DEFERRED / NOT AUTHORIZED`. Recordatorios
+de roster permanecen `DEFERRED / NOT AUTHORIZED`. Tickets y QR permanecen
+`NOT IMPLEMENTED / NOT AUTHORIZED`. Esperar autorizacion humana separada
+para IMPL-11.
 La landing publica existente permanece protegida:
 
 ```text

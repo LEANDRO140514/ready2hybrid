@@ -10,8 +10,11 @@ Canonical project: ready2hybrid
 Host: 4bg9ufz2.us-east
 Deployment slug: enforma
 Technical result: TECHNICAL PASS
-Human closure: PENDING
-Gate: READY_FOR_IMPL_10_HUMAN_CLOSURE
+Human closure: APPROVED 2026-07-25
+Final implementation status: VALIDATED / CLOSED
+TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
+Mercado Pago panel configuration: DEFERRED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_11_AUTHORIZATION
 ```
 
 ## 1. Baseline Git
@@ -168,5 +171,53 @@ Rollback: disable `team-roster`; revert RPCs from 0007; redeploy prior checkout 
 ```text
 READY_FOR_IMPL_10_HUMAN_CLOSURE
 IMPL-10 = TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-11 = NOT_STARTED / NOT AUTHORIZED
+```
+
+Superseded by human closure below.
+
+## 36. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical implementation commit:
+43f633e
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final implementation status:
+VALIDATED / CLOSED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in this file and commit `43f633e`.
+- Local and remote tests were not repeated during this closure unit.
+- Deployed functions were not invoked during this closure unit.
+- InsForge was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Mercado Pago was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Technical results, counts, and conclusions were not altered.
+- No remote teams or participants were created during this closure unit.
+- No invitation emails or roster reminders were sent.
+- Tickets and QR were not issued.
+- IMPL-11 remains without authorization.
+- Event remains `CONFIGURADO`; sales remain closed.
+- `TEAM_ROSTER_REMINDERS` remains `DEFERRED / NOT AUTHORIZED`.
+- Mercado Pago webhook URL/secret remains `DEFERRED / NOT AUTHORIZED`.
+- OD-005, OD-008, OD-011, OD-017, and OD-021 retain their documented real status (not declared resolved).
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_11_AUTHORIZATION
+IMPL-10 = VALIDATED / CLOSED
+TEAM_ROSTER_REMINDERS = DEFERRED / NOT AUTHORIZED
+tickets and QR = NOT IMPLEMENTED / NOT AUTHORIZED
+Mercado Pago panel configuration = DEFERRED / NOT AUTHORIZED
 IMPL-11 = NOT_STARTED / NOT AUTHORIZED
 ```
