@@ -10,8 +10,10 @@ Canonical project: ready2hybrid
 Host: 4bg9ufz2.us-east
 Deployment slug: enforma
 Technical result: TECHNICAL PASS
-Human closure: PENDING
-Gate: READY_FOR_IMPL_9_HUMAN_CLOSURE
+Human closure: APPROVED 2026-07-25
+Final implementation status: VALIDATED / CLOSED
+Mercado Pago panel configuration: DEFERRED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_10_AUTHORIZATION
 ```
 
 ## 1. Baseline Git
@@ -193,5 +195,49 @@ Delete/disable `get-order-status`. No migration to reverse. Confirm no domain ro
 ```text
 READY_FOR_IMPL_9_HUMAN_CLOSURE
 IMPL-9 = TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-10 = NOT_STARTED / NOT AUTHORIZED
+```
+
+Superseded by human closure below.
+
+## 20. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical implementation commit:
+d6df04c
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final implementation status:
+VALIDATED / CLOSED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in this file and commit `d6df04c`.
+- Local and remote tests were not repeated during this closure unit.
+- Deployed `get-order-status` was not invoked during this closure unit.
+- InsForge was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Mercado Pago was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- No domain writes occurred during this closure unit.
+- Technical results, counts, and conclusions were not altered.
+- Landing was not connected; frontend polling was not implemented.
+- Tickets and QR were not issued.
+- IMPL-10 remains without authorization.
+- Event remains `CONFIGURADO`; sales remain closed.
+- Mercado Pago webhook URL/secret remains `DEFERRED / NOT AUTHORIZED`.
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_10_AUTHORIZATION
+IMPL-9 = VALIDATED / CLOSED
+Mercado Pago panel configuration = DEFERRED / NOT AUTHORIZED
 IMPL-10 = NOT_STARTED / NOT AUTHORIZED
 ```

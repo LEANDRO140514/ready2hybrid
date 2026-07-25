@@ -258,7 +258,12 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote artifacts | function `get-order-status` |
 | Technical result | PASS — negative smokes; domain writes = 0; MP reads/writes = 0 |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical implementation commit | `d6df04c` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Implementation blockers | None |
+| Migration 0007 | NOT REQUIRED |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-10 — Teams and invitations
 
@@ -436,12 +441,11 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-9 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-10 — Teams and invitations
+Status: NOT_STARTED / NOT AUTHORIZED
 ```
 
-IMPL-9 technical validation is PASS under authorized read-only public status scope.
-Do not mark IMPL-9 `VALIDATED / CLOSED` until human closure. Do not start IMPL-10.
+IMPL-9 is `VALIDATED / CLOSED`. Do not start IMPL-10 without a separate human authorization.
 Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
 
 ## I. IMPL-0 change set
@@ -461,7 +465,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_9_HUMAN_CLOSURE
+READY_FOR_IMPL_10_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -562,14 +566,18 @@ Mercado Pago writes: 0
 Implementation blockers: None
 Panel webhook secret/URL: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md
-IMPL-9: TECHNICAL_PASS / PENDING HUMAN CLOSURE
-Function: get-order-status
+IMPL-9: VALIDATED / CLOSED
+Technical implementation commit: d6df04c
+Human closure: APPROVED
+Human closure date: 2026-07-25
+Implementation blockers: None
 Migration 0007: NOT REQUIRED
+Function: get-order-status
 Smokes: 405 / 400 / 400 / 404
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
 Evidence: docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md
 IMPL-10: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_9_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_10_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
