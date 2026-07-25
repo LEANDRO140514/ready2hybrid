@@ -101,6 +101,10 @@ function createPorts() {
           buyer_public_ref: input.buyerPublicRef,
           participant_public_ref: input.participantPublicRef,
           commercial_snapshot: input.commercialSnapshot,
+          invitation_ttl_seconds: input.invitationTtlSeconds,
+          waiver_document_type: input.waiverDocumentType,
+          waiver_document_version: input.waiverDocumentVersion,
+          waiver_accepted: input.waiverAccepted,
         },
       })
       if (error) throw new CheckoutError('INTERNAL_ERROR')
@@ -117,8 +121,14 @@ function createPorts() {
           expiresAt: '',
           replay: true,
           priorResponse: row.prior_response as never,
+          invitationTokens: [],
         }
       }
+      const tokens = Array.isArray(row.invitation_tokens)
+        ? (row.invitation_tokens as Array<{ token?: string }>)
+            .filter((t) => typeof t?.token === 'string')
+            .map((t) => ({ token: String(t.token) }))
+        : []
       return {
         orderId: String(row.order_id),
         trackingRef: String(row.tracking_ref),
@@ -127,6 +137,7 @@ function createPorts() {
         expiresAt: String(row.expires_at),
         replay: false,
         priorResponse: null,
+        invitationTokens: tokens,
       }
     },
     async attachPreference(input) {
@@ -135,6 +146,7 @@ function createPorts() {
           order_id: input.orderId,
           preference_id: input.preferenceId,
           init_point: input.initPoint,
+          invitation_tokens: input.invitationTokens,
         },
       })
       if (error || !(data as { ok?: boolean })?.ok) {

@@ -15,6 +15,7 @@
     "bundle:checkout": "node scripts/bundle-mp-create-checkout.mjs",
     "bundle:webhook": "node scripts/bundle-mp-webhook.mjs",
     "bundle:order-status": "node scripts/bundle-get-order-status.mjs",
+    "bundle:team-roster": "node scripts/bundle-team-roster.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

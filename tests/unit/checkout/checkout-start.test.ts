@@ -84,6 +84,7 @@ function memoryRepo(seed?: Partial<CheckoutTxResult>): CheckoutRepository {
       expiresAt: '2026-07-25T12:00:00.000Z',
       replay: false,
       priorResponse: null,
+      invitationTokens: [],
       ...seed,
     } satisfies CheckoutTxResult,
   }

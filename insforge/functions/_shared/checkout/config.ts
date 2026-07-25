@@ -12,6 +12,8 @@ export type CheckoutRuntimeConfig = {
   mpSiteId: string
   waiverRequiredDocumentType: string | null
   waiverRequiredVersion: string | null
+  /** OD-011 fail-closed TTL for J2/J3 invitation minting (seconds). */
+  invitationTtlSeconds: number | null
 }
 
 type EnvReader = (key: string) => string | undefined
@@ -60,5 +62,14 @@ export function loadCheckoutRuntimeConfig(env: EnvReader): CheckoutRuntimeConfig
     mpSiteId: env('MERCADOPAGO_SITE_ID')?.trim() || 'MLM',
     waiverRequiredDocumentType: env('CHECKOUT_WAIVER_DOCUMENT_TYPE')?.trim() || null,
     waiverRequiredVersion: env('CHECKOUT_WAIVER_VERSION')?.trim() || null,
+    invitationTtlSeconds: (() => {
+      const raw = env('TEAM_INVITATION_TTL_SECONDS')?.trim()
+      if (!raw) return null
+      const n = Number(raw)
+      if (!Number.isInteger(n) || n <= 0) {
+        throw new CheckoutError('CONFIGURATION_ERROR', 'TEAM_INVITATION_TTL_SECONDS invalid')
+      }
+      return n
+    })(),
   }
 }

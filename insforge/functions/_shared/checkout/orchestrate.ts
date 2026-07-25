@@ -31,6 +31,10 @@ export type CheckoutTxInput = {
   buyerPublicRef: string | null
   participantPublicRef: string | null
   commercialSnapshot: Record<string, unknown>
+  invitationTtlSeconds: number | null
+  waiverDocumentType: string | null
+  waiverDocumentVersion: string | null
+  waiverAccepted: boolean
 }
 
 export type CheckoutTxResult = {
@@ -41,6 +45,7 @@ export type CheckoutTxResult = {
   expiresAt: string
   replay: boolean
   priorResponse: CheckoutSuccessResponse | null
+  invitationTokens: Array<{ token: string }>
 }
 
 export type CheckoutRepository = {
@@ -49,6 +54,7 @@ export type CheckoutRepository = {
     orderId: string
     preferenceId: string
     initPoint: string
+    invitationTokens: Array<{ token: string }>
   }) => Promise<void>
   compensatePreferenceFailure: (input: {
     orderId: string
@@ -61,6 +67,7 @@ export type CheckoutSuccessResponse = {
   checkout_url: string
   public_order_reference: string
   expires_at: string
+  roster_invitations?: Array<{ token: string }>
 }
 
 export type OrchestrateDeps = {
@@ -93,6 +100,9 @@ export async function orchestrateCheckoutStart(
 
     const config = loadCheckoutRuntimeConfig(deps.env)
     assertWaiverConfig(config, journey, req.waiver)
+    if ((journey === 'J2' || journey === 'J3') && !config.invitationTtlSeconds) {
+      throw new CheckoutError('CONFIGURATION_ERROR', 'TEAM_INVITATION_TTL_SECONDS missing')
+    }
 
     const price = buildPriceSnapshot(found.product, journey, req.quantity)
     const normalized = {
@@ -123,6 +133,10 @@ export async function orchestrateCheckoutStart(
       correlationId,
       buyerPublicRef: req.buyer?.public_ref ?? null,
       participantPublicRef: req.participant?.public_ref ?? null,
+      invitationTtlSeconds: config.invitationTtlSeconds,
+      waiverDocumentType: req.waiver?.document_type ?? null,
+      waiverDocumentVersion: req.waiver?.version ?? null,
+      waiverAccepted: Boolean(req.waiver?.accepted),
       commercialSnapshot: {
         product_code: found.product.code,
         product_name: found.product.name,
@@ -165,13 +179,18 @@ export async function orchestrateCheckoutStart(
         orderId: tx.orderId,
         preferenceId: preference.preferenceId,
         initPoint: preference.initPoint,
+        invitationTokens: tx.invitationTokens,
       })
 
-      return publicSuccess({
+      const body: CheckoutSuccessResponse = {
         checkout_url: preference.initPoint,
         public_order_reference: tx.trackingRef,
         expires_at: tx.expiresAt,
-      })
+      }
+      if (tx.invitationTokens.length > 0) {
+        body.roster_invitations = tx.invitationTokens
+      }
+      return publicSuccess(body)
     } catch (error) {
       await deps.repo.compensatePreferenceFailure({
         orderId: tx.orderId,

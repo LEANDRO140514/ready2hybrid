@@ -269,21 +269,26 @@ this document does not authorize any unit by itself.
 
 | Field | Value |
 |---|---|
-| Related requirements | R017-R022, R039-R040, R043-R045, R053-R054 |
-| Dependencies | Catalog/payment foundations; email provider decision when delivery enabled |
-| Anticipated files | future roster/capability services/tests |
-| External resources | InsForge database/functions; email provider after decision |
-| Blocking open decisions | OD-003-006/008/009/011/017/021 and API-OD-001/002/003/004/005/007/008, or optional path disabled |
-| Scope | Fixed slots, captain/invitee registrations, code-to-capability exchange, complete 2/4 ticket-set issuance |
-| Out of scope | Landing UI polish, production email without provider decision |
-| Automated tests | Exchange/replay, rate/enumeration, waivers, substitution history, ticket-set issuance |
-| Manual tests | Doubles and Relay invitation walkthrough |
-| Expected evidence | Roster lifecycle matrix PASS |
-| Rollback | Disable invites/substitutions; revoke affected generations |
-| Entry gate | Listed decisions resolved or path disabled |
+| Related requirements | R017-R022, R039, R043-R045, R053 |
+| Dependencies | IMPL-7/8/9 closed |
+| Anticipated files | `insforge/functions/team-roster/**`; `_shared/teams/**`; `0007_team_roster_invitations.sql`; unit tests; evidence |
+| External resources | InsForge functions/DB; no Mercado Pago; no email |
+| Blocking open decisions | OD-011/005 fail-closed via env; OD-008/017/021 deferred/disabled; API-OD-008 resend out of scope |
+| Scope | J2/J3 team shell, opaque invitations, individual waiver accept, eligibility without tickets |
+| Out of scope | Landing UI, email/reminders, substitutions, tickets/QR, IMPL-11 |
+| Automated tests | Token/privacy/waiver/idempotency/static migration guards |
+| Manual tests | Remote negative smokes 405/400/404/503 with zero transactional rows |
+| Expected evidence | `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md` |
+| Rollback | Disable `team-roster`; revert 0007 RPCs; redeploy prior checkout if needed |
+| Entry gate | IMPL-9 closed; separate IMPL-10 authorization |
 | Exit gate | `ROSTER_READY_FOR_TICKETS` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Remote artifacts | function `team-roster`; migration v7; checkout redeploy for invitation surface |
+| Technical result | PASS — negative smokes; domain rows = 0; MP = 0; tickets = 0 |
+| Human closure | PENDING |
+| Implementation blockers | None for authorized backend scope |
+| Migration 0007 | APPLIED |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
 
 ### IMPL-11 — Tickets and QR
 
@@ -441,12 +446,14 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-10 — Teams and invitations
-Status: NOT_STARTED / NOT AUTHORIZED
+IMPL-10 human closure review
+Status: AWAITING HUMAN CLOSURE
 ```
 
-IMPL-9 is `VALIDATED / CLOSED`. Do not start IMPL-10 without a separate human authorization.
+IMPL-10 technical validation is PASS under authorized backend roster/invitation scope.
+Do not mark IMPL-10 `VALIDATED / CLOSED` until human closure. Do not start IMPL-11.
 Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
+Reminders remain `DEFERRED / NOT AUTHORIZED`.
 
 ## I. IMPL-0 change set
 
@@ -465,7 +472,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_10_AUTHORIZATION
+READY_FOR_IMPL_10_HUMAN_CLOSURE
 ```
 
 IMPL-4 closure evidence (local):
@@ -577,7 +584,17 @@ Smokes: 405 / 400 / 400 / 404
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
 Evidence: docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md
-IMPL-10: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_10_AUTHORIZATION
+IMPL-10: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Function: team-roster
+Migration 0007 / remote v7: APPLIED
+Checkout redeploy: justified (invitation TTL + roster_invitations)
+Smokes: 405 / 400 / 400 / 404 / 503 WAIVER_CONFIGURATION_REQUIRED
+Transactional rows after smoke: 0
+Mercado Pago reads/writes: 0
+Tickets/QR: 0
+Reminders: DEFERRED / NOT AUTHORIZED
+Evidence: docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md
+IMPL-11: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_10_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

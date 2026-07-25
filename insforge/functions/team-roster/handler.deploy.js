@@ -4,272 +4,90 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// insforge/functions/mp-create-checkout/index.ts
+// insforge/functions/team-roster/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 
-// insforge/functions/_shared/checkout/errors.ts
-var MESSAGES = {
-  INVALID_REQUEST: { message: "Invalid checkout request.", retry: "NO", status: 400 },
-  PRODUCT_NOT_FOUND: { message: "Product was not found.", retry: "NO", status: 404 },
-  PRODUCT_NOT_AVAILABLE: { message: "Product is not available.", retry: "AFTER_STATE_CHANGE", status: 409 },
-  SALES_NOT_OPEN: { message: "Sales have not opened.", retry: "AFTER_STATE_CHANGE", status: 409 },
-  SALES_CLOSED: { message: "Sales are closed.", retry: "NO", status: 409 },
-  SOLD_OUT: { message: "Product is sold out.", retry: "AFTER_STATE_CHANGE", status: 409 },
-  PRICE_CHANGED: { message: "Product price changed.", retry: "AFTER_STATE_CHANGE", status: 409 },
-  WAIVER_REQUIRED: { message: "Waiver acceptance is required.", retry: "NO", status: 409 },
-  CONFIGURATION_ERROR: { message: "Checkout is not configured.", retry: "NO", status: 503 },
-  CHECKOUT_CREATION_FAILED: { message: "Checkout could not be created.", retry: "OPTIONAL", status: 502 },
-  CONFLICT: { message: "Request conflicts with an existing operation.", retry: "AFTER_STATE_CHANGE", status: 409 },
-  RATE_LIMITED: { message: "Too many requests.", retry: "OPTIONAL", status: 429 },
-  INTERNAL_ERROR: { message: "Unexpected checkout error.", retry: "OPTIONAL", status: 500 }
+// insforge/functions/_shared/teams/errors.ts
+var STATUS = {
+  INVALID_REQUEST: 400,
+  INVALID_TOKEN: 400,
+  INVITATION_NOT_FOUND: 404,
+  INVITATION_INACTIVE: 409,
+  PAYMENT_REQUIRED: 409,
+  WAIVER_REQUIRED: 400,
+  WAIVER_CONFIGURATION_REQUIRED: 503,
+  ROSTER_FULL: 409,
+  DUPLICATE_PARTICIPANT: 409,
+  CONFLICT: 409,
+  METHOD_NOT_ALLOWED: 405,
+  CONFIGURATION_ERROR: 503,
+  SERVICE_UNAVAILABLE: 503,
+  INTERNAL_ERROR: 500
 };
-var CheckoutError = class extends Error {
+var TeamRosterError = class extends Error {
   code;
   status;
-  retry;
-  constructor(code, detail) {
-    const meta = MESSAGES[code];
-    super(detail ?? meta.message);
+  constructor(code, message) {
+    super(message ?? code);
+    this.name = "TeamRosterError";
     this.code = code;
-    this.status = meta.status;
-    this.retry = meta.retry;
+    this.status = STATUS[code];
   }
   toPublicBody() {
-    return {
-      error: {
-        code: this.code,
-        message: MESSAGES[this.code].message,
-        retry: this.retry
-      }
-    };
+    return { error: this.code };
   }
 };
-function isCheckoutError(error40) {
-  return error40 instanceof CheckoutError;
-}
-
-// insforge/functions/_shared/checkout/mp-client.ts
-function createHttpMercadoPagoClient(fetchImpl = fetch) {
-  return {
-    async createCheckoutProPreference(input) {
-      const body = {
-        external_reference: input.orderId,
-        notification_url: input.notificationUrl,
-        back_urls: input.backUrls,
-        auto_return: "approved",
-        items: [
-          {
-            id: input.productCode,
-            title: input.productName,
-            quantity: input.price.quantity,
-            currency_id: "MXN",
-            unit_price: input.price.unit_price_cents / 100
-          }
-        ],
-        metadata: {
-          product_code: input.productCode,
-          journey: input.price.journey
-        },
-        ...input.expiresAt ? {
-          expiration_date_to: input.expiresAt
-        } : {}
-      };
-      const response = await fetchImpl("https://api.mercadopago.com/checkout/preferences", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${input.accessToken}`,
-          "Content-Type": "application/json",
-          "X-Idempotency-Key": input.orderId
-        },
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) {
-        throw new CheckoutError("CHECKOUT_CREATION_FAILED");
-      }
-      const json2 = await response.json();
-      if (!json2.id || !json2.init_point) {
-        throw new CheckoutError("CHECKOUT_CREATION_FAILED");
-      }
-      return {
-        preferenceId: json2.id,
-        initPoint: json2.init_point,
-        sandboxInitPoint: json2.sandbox_init_point ?? null
-      };
-    }
-  };
-}
-
-// insforge/functions/_shared/checkout/config.ts
-function requirePositiveInt(env2, key) {
-  const raw = env2(key);
-  if (!raw) throw new CheckoutError("CONFIGURATION_ERROR", `${key} missing`);
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) {
-    throw new CheckoutError("CONFIGURATION_ERROR", `${key} invalid`);
+function mapRpcError(code) {
+  switch (code) {
+    case "INVALID_REQUEST":
+    case "INVALID_TOKEN":
+    case "INVITATION_NOT_FOUND":
+    case "INVITATION_INACTIVE":
+    case "PAYMENT_REQUIRED":
+    case "WAIVER_REQUIRED":
+    case "WAIVER_CONFIGURATION_REQUIRED":
+    case "ROSTER_FULL":
+    case "DUPLICATE_PARTICIPANT":
+    case "CONFLICT":
+    case "CONFIGURATION_ERROR":
+      return new TeamRosterError(code);
+    default:
+      return new TeamRosterError("INTERNAL_ERROR");
   }
+}
+
+// insforge/functions/_shared/teams/config.ts
+function requirePositiveInt(env2, key) {
+  const raw = env2(key)?.trim();
+  if (!raw) throw new TeamRosterError("CONFIGURATION_ERROR");
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) throw new TeamRosterError("CONFIGURATION_ERROR");
   return n;
 }
-function requireUrl(env2, key) {
-  const raw = env2(key);
-  if (!raw) throw new CheckoutError("CONFIGURATION_ERROR", `${key} missing`);
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== "https:" && u.protocol !== "http:") {
-      throw new Error("bad protocol");
-    }
-    return raw;
-  } catch {
-    throw new CheckoutError("CONFIGURATION_ERROR", `${key} invalid`);
-  }
-}
-function loadCheckoutRuntimeConfig(env2) {
-  const token = env2("MERCADOPAGO_ACCESS_TOKEN");
-  if (!token) throw new CheckoutError("CONFIGURATION_ERROR", "MERCADOPAGO_ACCESS_TOKEN missing");
+function loadTeamRosterRuntimeConfig(env2) {
   return {
-    holdDurationSeconds: requirePositiveInt(env2, "CHECKOUT_HOLD_DURATION_SECONDS"),
-    idempotencyTtlSeconds: requirePositiveInt(env2, "CHECKOUT_IDEMPOTENCY_TTL_SECONDS"),
-    backUrlSuccess: requireUrl(env2, "CHECKOUT_BACK_URL_SUCCESS"),
-    backUrlFailure: requireUrl(env2, "CHECKOUT_BACK_URL_FAILURE"),
-    backUrlPending: requireUrl(env2, "CHECKOUT_BACK_URL_PENDING"),
-    notificationUrl: requireUrl(env2, "CHECKOUT_NOTIFICATION_URL"),
-    corsOrigin: env2("CHECKOUT_CORS_ORIGIN")?.trim() || null,
-    mpAccessToken: token,
-    mpSiteId: env2("MERCADOPAGO_SITE_ID")?.trim() || "MLM",
-    waiverRequiredDocumentType: env2("CHECKOUT_WAIVER_DOCUMENT_TYPE")?.trim() || null,
-    waiverRequiredVersion: env2("CHECKOUT_WAIVER_VERSION")?.trim() || null,
-    invitationTtlSeconds: (() => {
-      const raw = env2("TEAM_INVITATION_TTL_SECONDS")?.trim();
-      if (!raw) return null;
-      const n = Number(raw);
-      if (!Number.isInteger(n) || n <= 0) {
-        throw new CheckoutError("CONFIGURATION_ERROR", "TEAM_INVITATION_TTL_SECONDS invalid");
+    corsOrigin: env2("TEAM_ROSTER_CORS_ORIGIN")?.trim() || env2("CHECKOUT_CORS_ORIGIN")?.trim() || null,
+    waiverRequiredDocumentType: env2("CHECKOUT_WAIVER_DOCUMENT_TYPE")?.trim() || env2("TEAM_WAIVER_DOCUMENT_TYPE")?.trim() || null,
+    waiverRequiredVersion: env2("CHECKOUT_WAIVER_VERSION")?.trim() || env2("TEAM_WAIVER_VERSION")?.trim() || null,
+    idempotencyTtlSeconds: (() => {
+      try {
+        return requirePositiveInt(env2, "TEAM_ROSTER_IDEMPOTENCY_TTL_SECONDS");
+      } catch {
+        try {
+          return requirePositiveInt(env2, "CHECKOUT_IDEMPOTENCY_TTL_SECONDS");
+        } catch {
+          return 86400;
+        }
       }
-      return n;
     })()
   };
 }
 
-// insforge/functions/_shared/checkout/idempotency.ts
-var CHECKOUT_IDEMPOTENCY_SCOPE = "OP-PUB-04";
-async function sha256Hex(input) {
-  const data = new TextEncoder().encode(input);
+// insforge/functions/_shared/teams/hash.ts
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-async function hashIdempotencyKey(key) {
-  return sha256Hex(`idempotency:${CHECKOUT_IDEMPOTENCY_SCOPE}:${key}`);
-}
-async function fingerprintRequest(normalized) {
-  return sha256Hex(JSON.stringify(normalized));
-}
-
-// insforge/functions/_shared/checkout/journeys.ts
-var JOURNEY_BY_CODE = {
-  "DOB-VIE-MM": "J2",
-  "DOB-VIE-HH": "J2",
-  "DOB-VIE-MH": "J2",
-  "DOB-SAB-MM": "J2",
-  "DOB-SAB-HH": "J2",
-  "DOB-SAB-MH": "J2",
-  "REL-4H": "J3",
-  "REL-4M": "J3",
-  "REL-2H2M": "J3",
-  "IND-H": "J1",
-  "IND-M": "J1",
-  "IND-PRO-H": "J1",
-  "IND-PRO-M": "J1",
-  "HALF-IND-M": "J1",
-  "HALF-IND-H": "J1",
-  "HALF-DOB-MM": "J2",
-  "HALF-DOB-HH": "J2",
-  "HALF-DOB-MH": "J2",
-  "WOD-M": "J4",
-  "WOD-H": "J4",
-  "PUB-VIE": "J5",
-  "PUB-SAB": "J5",
-  "PUB-DOM": "J5",
-  "PUB-3D": "J5",
-  "FOT-VIE": "J5",
-  "FOT-SAB": "J5",
-  "FOT-DOM": "J5",
-  "FOT-3D": "J5"
-};
-function journeyForProductCode(code) {
-  return JOURNEY_BY_CODE[code] ?? null;
-}
-function economicUnitForJourney(journey, teamSize) {
-  if (journey === "J3" || teamSize >= 4) return "team";
-  if (journey === "J2" || teamSize === 2) return "pair";
-  return "person";
-}
-function capacityUnitForJourney(journey, teamSize) {
-  return economicUnitForJourney(journey, teamSize) === "person" ? "persons" : "teams";
-}
-
-// insforge/functions/_shared/checkout/pricing.ts
-function buildPriceSnapshot(product, journey, quantity) {
-  const unit = product.price_cents;
-  const itemTotal = unit * quantity;
-  return {
-    currency: "MXN",
-    unit_price_cents: unit,
-    quantity,
-    item_total_cents: itemTotal,
-    subtotal_cents: itemTotal,
-    total_cents: itemTotal,
-    journey,
-    economic_unit: economicUnitForJourney(journey, product.team_size),
-    capacity_unit: capacityUnitForJourney(journey, product.team_size),
-    has_chip: product.has_chip,
-    has_insurance: product.has_insurance,
-    chip_extra_cents: 0,
-    insurance_extra_cents: 0
-  };
-}
-
-// insforge/functions/_shared/checkout/sales.ts
-var CLOSED_PRODUCT_STATES = /* @__PURE__ */ new Set([
-  "SOLD_OUT",
-  "SALES_CLOSED",
-  "CANCELLED",
-  "INACTIVE",
-  "HIDDEN"
-]);
-function assertSalesOpen(event, now = /* @__PURE__ */ new Date()) {
-  if (event.status === "CONFIGURADO") {
-    throw new CheckoutError("SALES_NOT_OPEN");
-  }
-  if (!event.sales_open_at) {
-    throw new CheckoutError("SALES_NOT_OPEN");
-  }
-  const openAt = new Date(event.sales_open_at);
-  if (Number.isNaN(openAt.getTime()) || now < openAt) {
-    throw new CheckoutError("SALES_NOT_OPEN");
-  }
-  if (event.sales_close_at) {
-    const closeAt = new Date(event.sales_close_at);
-    if (!Number.isNaN(closeAt.getTime()) && now > closeAt) {
-      throw new CheckoutError("SALES_CLOSED");
-    }
-  }
-  const openStatuses = /* @__PURE__ */ new Set(["EN_VENTA", "AVAILABLE", "OPEN"]);
-  if (!openStatuses.has(event.status)) {
-    throw new CheckoutError("SALES_NOT_OPEN");
-  }
-}
-function assertProductSellable(product) {
-  if (product.sale_state && CLOSED_PRODUCT_STATES.has(product.sale_state)) {
-    throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
-  }
-  if (product.visibility === "HIDDEN") {
-    throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
-  }
-  if (product.currency !== "MXN") {
-    throw new CheckoutError("CONFIGURATION_ERROR");
-  }
-  if (!Number.isInteger(product.price_cents) || product.price_cents < 0) {
-    throw new CheckoutError("CONFIGURATION_ERROR");
-  }
 }
 
 // node_modules/zod/v4/classic/external.js
@@ -11415,365 +11233,221 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 
-// insforge/functions/_shared/checkout/validate.ts
-var FORBIDDEN_CLIENT_MONEY_KEYS = [
-  "price",
-  "price_cents",
-  "amount",
-  "total",
-  "currency",
-  "insurance_fee",
-  "chip_fee",
-  "unit_price_cents",
-  "item_total_cents",
-  "subtotal_cents",
-  "total_cents"
-];
-var checkoutRequestSchema = external_exports.object({
-  product_code: external_exports.string().min(1).max(64),
-  quantity: external_exports.number().int().positive().optional(),
+// insforge/functions/_shared/teams/validate.ts
+var INVITATION_TOKEN_PATTERN = /^inv_[0-9a-f]{32}$/;
+function parseInvitationToken(raw) {
+  if (raw == null || raw === "") {
+    throw new TeamRosterError("INVALID_TOKEN");
+  }
+  const token = raw.trim();
+  if (!INVITATION_TOKEN_PATTERN.test(token)) {
+    throw new TeamRosterError("INVALID_TOKEN");
+  }
+  return token;
+}
+var acceptInvitationSchema = external_exports.object({
+  token: external_exports.string().min(1),
   idempotency_key: external_exports.string().min(8).max(128),
-  buyer: external_exports.object({
-    public_ref: external_exports.string().min(1).max(128).optional()
-  }).strict().optional(),
   participant: external_exports.object({
     public_ref: external_exports.string().min(1).max(128).optional()
   }).strict().optional(),
   waiver: external_exports.object({
-    document_type: external_exports.string().min(1).max(64).optional(),
-    version: external_exports.string().min(1).max(64).optional(),
-    accepted: external_exports.boolean().optional()
-  }).strict().optional(),
-  correlation_id: external_exports.string().min(1).max(128).optional()
+    document_type: external_exports.string().min(1).max(64),
+    version: external_exports.string().min(1).max(64),
+    accepted: external_exports.literal(true)
+  }).strict()
 }).strict();
-function assertNoClientMoneyAuthority(raw) {
+var FORBIDDEN_CLIENT_KEYS = [
+  "price",
+  "price_cents",
+  "amount",
+  "team_size",
+  "order_id",
+  "team_id",
+  "participant_id",
+  "registration_id",
+  "status",
+  "roster_state"
+];
+function assertNoClientAuthority(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new CheckoutError("INVALID_REQUEST");
+    throw new TeamRosterError("INVALID_REQUEST");
   }
   const obj = raw;
-  for (const key of FORBIDDEN_CLIENT_MONEY_KEYS) {
+  for (const key of FORBIDDEN_CLIENT_KEYS) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      throw new CheckoutError("INVALID_REQUEST", `Client must not supply ${key}`);
+      throw new TeamRosterError("INVALID_REQUEST");
     }
   }
 }
-function parseCheckoutRequest(raw) {
-  assertNoClientMoneyAuthority(raw);
-  const parsed = checkoutRequestSchema.safeParse(raw);
+function parseAcceptInvitationRequest(raw) {
+  assertNoClientAuthority(raw);
+  const parsed = acceptInvitationSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new CheckoutError("INVALID_REQUEST");
+    throw new TeamRosterError("INVALID_REQUEST");
   }
-  const quantity = parsed.data.quantity ?? 1;
-  if (quantity !== 1) {
-    throw new CheckoutError("INVALID_REQUEST", "Only quantity=1 is accepted");
-  }
-  if (!journeyForProductCode(parsed.data.product_code)) {
-    throw new CheckoutError("PRODUCT_NOT_FOUND");
-  }
-  return { ...parsed.data, quantity };
+  parseInvitationToken(parsed.data.token);
+  return parsed.data;
 }
 
-// insforge/functions/_shared/checkout/orchestrate.ts
-function publicSuccess(body) {
-  return { status: 200, body };
+// insforge/functions/_shared/teams/orchestrate.ts
+async function fingerprintAccept(body) {
+  return sha256Hex(JSON.stringify(body));
 }
-async function orchestrateCheckoutStart(rawBody, deps) {
-  try {
-    const req = parseCheckoutRequest(rawBody);
-    const journey = journeyForProductCode(req.product_code);
-    if (!journey) throw new CheckoutError("PRODUCT_NOT_FOUND");
-    const found = await deps.catalog.getProductWithEvent(req.product_code);
-    if (!found) throw new CheckoutError("PRODUCT_NOT_FOUND");
-    assertSalesOpen(found.event, deps.now?.() ?? /* @__PURE__ */ new Date());
-    assertProductSellable(found.product);
-    const config2 = loadCheckoutRuntimeConfig(deps.env);
-    assertWaiverConfig(config2, journey, req.waiver);
-    if ((journey === "J2" || journey === "J3") && !config2.invitationTtlSeconds) {
-      throw new CheckoutError("CONFIGURATION_ERROR", "TEAM_INVITATION_TTL_SECONDS missing");
-    }
-    const price = buildPriceSnapshot(found.product, journey, req.quantity);
-    const normalized = {
-      product_code: req.product_code,
-      quantity: req.quantity,
-      buyer: req.buyer ?? null,
-      participant: req.participant ?? null,
-      waiver: req.waiver ?? null
-    };
-    const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key);
-    const requestFingerprint = await fingerprintRequest(normalized);
-    const correlationId = req.correlation_id ?? deps.randomId?.() ?? crypto.randomUUID();
-    const tx = await deps.repo.startCheckoutTx({
-      productCode: found.product.code,
-      quantity: req.quantity,
-      journey,
-      unitPriceCents: price.unit_price_cents,
-      itemTotalCents: price.item_total_cents,
-      totalCents: price.total_cents,
-      currency: "MXN",
-      capacityUnit: price.capacity_unit,
-      capacityUnits: 1,
-      holdDurationSeconds: config2.holdDurationSeconds,
-      idempotencyKeyHash,
-      requestFingerprint,
-      idempotencyTtlSeconds: config2.idempotencyTtlSeconds,
-      correlationId,
-      buyerPublicRef: req.buyer?.public_ref ?? null,
-      participantPublicRef: req.participant?.public_ref ?? null,
-      invitationTtlSeconds: config2.invitationTtlSeconds,
-      waiverDocumentType: req.waiver?.document_type ?? null,
-      waiverDocumentVersion: req.waiver?.version ?? null,
-      waiverAccepted: Boolean(req.waiver?.accepted),
-      commercialSnapshot: {
-        product_code: found.product.code,
-        product_name: found.product.name,
-        block: found.product.block,
-        kind: found.product.kind,
-        team_size: found.product.team_size,
-        has_chip: found.product.has_chip,
-        has_insurance: found.product.has_insurance,
-        economic_unit: price.economic_unit,
-        capacity_unit: price.capacity_unit,
-        chip_extra_cents: 0,
-        insurance_extra_cents: 0,
-        unit_price_cents: price.unit_price_cents,
-        currency: "MXN"
-      }
+async function orchestrateTeamRoster(req, deps) {
+  if (req.method !== "GET" && req.method !== "POST") {
+    throw new TeamRosterError("METHOD_NOT_ALLOWED");
+  }
+  const config2 = loadTeamRosterRuntimeConfig(deps.env);
+  if (req.method === "GET") {
+    const url2 = new URL(req.url);
+    const token2 = parseInvitationToken(url2.searchParams.get("token"));
+    const tokenHash2 = await sha256Hex(token2);
+    const result2 = await deps.repo.getByTokenHash({
+      tokenHash: tokenHash2,
+      waiverDocumentType: config2.waiverRequiredDocumentType,
+      waiverDocumentVersion: config2.waiverRequiredVersion
     });
-    if (tx.replay && tx.priorResponse) {
-      return publicSuccess(tx.priorResponse);
-    }
-    try {
-      const preference = await deps.mp.createCheckoutProPreference({
-        accessToken: config2.mpAccessToken,
-        siteId: config2.mpSiteId,
-        orderId: tx.orderId,
-        productCode: found.product.code,
-        productName: found.product.name,
-        price,
-        backUrls: {
-          success: config2.backUrlSuccess,
-          failure: config2.backUrlFailure,
-          pending: config2.backUrlPending
-        },
-        notificationUrl: config2.notificationUrl,
-        expiresAt: tx.expiresAt
-      });
-      await deps.repo.attachPreference({
-        orderId: tx.orderId,
-        preferenceId: preference.preferenceId,
-        initPoint: preference.initPoint,
-        invitationTokens: tx.invitationTokens
-      });
-      const body = {
-        checkout_url: preference.initPoint,
-        public_order_reference: tx.trackingRef,
-        expires_at: tx.expiresAt
-      };
-      if (tx.invitationTokens.length > 0) {
-        body.roster_invitations = tx.invitationTokens;
-      }
-      return publicSuccess(body);
-    } catch (error40) {
-      await deps.repo.compensatePreferenceFailure({
-        orderId: tx.orderId,
-        holdId: tx.holdId,
-        reason: "PREFERENCE_FAILED"
-      });
-      if (isCheckoutError(error40)) throw error40;
-      throw new CheckoutError("CHECKOUT_CREATION_FAILED");
-    }
-  } catch (error40) {
-    if (isCheckoutError(error40)) {
-      return { status: error40.status, body: error40.toPublicBody() };
-    }
-    return {
-      status: 500,
-      body: new CheckoutError("INTERNAL_ERROR").toPublicBody()
-    };
+    if (!result2.ok) throw mapRpcError(result2.error_code);
+    return { status: 200, body: result2.projection };
   }
-}
-function assertWaiverConfig(config2, journey, waiver) {
-  const competitive = journey === "J1" || journey === "J2" || journey === "J3";
-  if (!competitive) return;
   if (!config2.waiverRequiredDocumentType || !config2.waiverRequiredVersion) {
-    throw new CheckoutError("CONFIGURATION_ERROR", "Waiver configuration missing");
-  }
-  if (!waiver?.accepted) {
-    throw new CheckoutError("WAIVER_REQUIRED");
-  }
-  if (waiver.document_type !== config2.waiverRequiredDocumentType || waiver.version !== config2.waiverRequiredVersion) {
-    throw new CheckoutError("WAIVER_REQUIRED");
-  }
-}
-
-// insforge/functions/mp-create-checkout/index.ts
-function env(key) {
-  return Deno.env.get(key) ?? void 0;
-}
-function corsHeaders() {
-  const origin = env("CHECKOUT_CORS_ORIGIN")?.trim();
-  const headers = {
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Idempotency-Key",
-    "Content-Type": "application/json"
-  };
-  if (origin) {
-    headers["Access-Control-Allow-Origin"] = origin;
-    headers["Vary"] = "Origin";
-  }
-  return headers;
-}
-function jsonResponse(status, body) {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders() });
-}
-function createPorts() {
-  const baseUrl = env("INSFORGE_BASE_URL");
-  const apiKey = env("API_KEY");
-  if (!baseUrl || !apiKey) {
-    throw new CheckoutError("CONFIGURATION_ERROR", "InsForge admin credentials missing");
-  }
-  const admin = createAdminClient({ baseUrl, apiKey });
-  const catalog = {
-    async getProductWithEvent(productCode) {
-      const { data: products, error: error40 } = await admin.database.from("products").select("*").eq("code", productCode).limit(1);
-      if (error40 || !products?.length) return null;
-      const product = products[0];
-      const { data: events, error: eventError } = await admin.database.from("events").select("*").eq("code", product.event_code).limit(1);
-      if (eventError || !events?.length) return null;
-      const event = events[0];
-      return {
-        product: {
-          id: String(product.id),
-          code: String(product.code),
-          name: String(product.name),
-          block: String(product.block),
-          kind: String(product.kind),
-          sale_state: product.sale_state ?? null,
-          visibility: product.visibility ?? null,
-          cupo: Number(product.cupo),
-          price_cents: Number(product.price_cents),
-          currency: String(product.currency),
-          team_size: Number(product.team_size),
-          event_code: String(product.event_code),
-          has_chip: Boolean(product.has_chip),
-          has_insurance: Boolean(product.has_insurance)
-        },
-        event: {
-          code: String(event.code),
-          status: String(event.status),
-          sales_open_at: event.sales_open_at ?? null,
-          sales_close_at: event.sales_close_at ?? null
-        }
-      };
-    }
-  };
-  const repo = {
-    async startCheckoutTx(input) {
-      const { data, error: error40 } = await admin.database.rpc("checkout_start_tx", {
-        p: {
-          product_code: input.productCode,
-          quantity: input.quantity,
-          journey: input.journey,
-          unit_price_cents: input.unitPriceCents,
-          item_total_cents: input.itemTotalCents,
-          total_cents: input.totalCents,
-          capacity_unit: input.capacityUnit,
-          capacity_units: input.capacityUnits,
-          hold_duration_seconds: input.holdDurationSeconds,
-          idempotency_key_hash: input.idempotencyKeyHash,
-          request_fingerprint: input.requestFingerprint,
-          idempotency_ttl_seconds: input.idempotencyTtlSeconds,
-          correlation_id: input.correlationId,
-          buyer_public_ref: input.buyerPublicRef,
-          participant_public_ref: input.participantPublicRef,
-          commercial_snapshot: input.commercialSnapshot,
-          invitation_ttl_seconds: input.invitationTtlSeconds,
-          waiver_document_type: input.waiverDocumentType,
-          waiver_document_version: input.waiverDocumentVersion,
-          waiver_accepted: input.waiverAccepted
-        }
-      });
-      if (error40) throw new CheckoutError("INTERNAL_ERROR");
-      const row = data;
-      if (!row?.ok) {
-        throw new CheckoutError(row?.error_code || "INTERNAL_ERROR");
-      }
-      if (row.replay) {
-        return {
-          orderId: "",
-          trackingRef: "",
-          orderItemId: "",
-          holdId: "",
-          expiresAt: "",
-          replay: true,
-          priorResponse: row.prior_response,
-          invitationTokens: []
-        };
-      }
-      const tokens = Array.isArray(row.invitation_tokens) ? row.invitation_tokens.filter((t) => typeof t?.token === "string").map((t) => ({ token: String(t.token) })) : [];
-      return {
-        orderId: String(row.order_id),
-        trackingRef: String(row.tracking_ref),
-        orderItemId: String(row.order_item_id),
-        holdId: String(row.hold_id),
-        expiresAt: String(row.expires_at),
-        replay: false,
-        priorResponse: null,
-        invitationTokens: tokens
-      };
-    },
-    async attachPreference(input) {
-      const { data, error: error40 } = await admin.database.rpc("checkout_attach_preference", {
-        p: {
-          order_id: input.orderId,
-          preference_id: input.preferenceId,
-          init_point: input.initPoint,
-          invitation_tokens: input.invitationTokens
-        }
-      });
-      if (error40 || !data?.ok) {
-        throw new CheckoutError("CHECKOUT_CREATION_FAILED");
-      }
-    },
-    async compensatePreferenceFailure(input) {
-      await admin.database.rpc("checkout_compensate_preference", {
-        p: {
-          order_id: input.orderId,
-          hold_id: input.holdId,
-          reason: input.reason
-        }
-      });
-    }
-  };
-  return { catalog, repo };
-}
-async function handler(req) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders() });
-  }
-  if (req.method !== "POST") {
-    return jsonResponse(405, new CheckoutError("INVALID_REQUEST").toPublicBody());
+    throw new TeamRosterError("WAIVER_CONFIGURATION_REQUIRED");
   }
   let raw;
   try {
     raw = await req.json();
   } catch {
-    return jsonResponse(400, new CheckoutError("INVALID_REQUEST").toPublicBody());
+    throw new TeamRosterError("INVALID_REQUEST");
+  }
+  const parsed = parseAcceptInvitationRequest(raw);
+  if (parsed.waiver.document_type !== config2.waiverRequiredDocumentType || parsed.waiver.version !== config2.waiverRequiredVersion) {
+    throw new TeamRosterError("WAIVER_REQUIRED");
+  }
+  const token = parseInvitationToken(parsed.token);
+  const tokenHash = await sha256Hex(token);
+  const idempotencyKeyHash = await sha256Hex(parsed.idempotency_key);
+  const requestFingerprint = await fingerprintAccept({
+    token,
+    participant: parsed.participant ?? null,
+    waiver: parsed.waiver
+  });
+  const result = await deps.repo.acceptInvitation({
+    tokenHash,
+    idempotencyKeyHash,
+    requestFingerprint,
+    idempotencyTtlSeconds: config2.idempotencyTtlSeconds,
+    participantPublicRef: parsed.participant?.public_ref ?? null,
+    waiverDocumentType: config2.waiverRequiredDocumentType,
+    waiverDocumentVersion: config2.waiverRequiredVersion,
+    waiverAccepted: true
+  });
+  if (!result.ok) throw mapRpcError(result.error_code);
+  return { status: 200, body: result.response };
+}
+
+// insforge/functions/team-roster/index.ts
+function env(key) {
+  return Deno.env.get(key) ?? void 0;
+}
+function baseHeaders() {
+  const config2 = loadTeamRosterRuntimeConfig(env);
+  const headers = {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Idempotency-Key"
+  };
+  if (config2.corsOrigin) {
+    headers["Access-Control-Allow-Origin"] = config2.corsOrigin;
+    headers["Vary"] = "Origin";
+  }
+  return headers;
+}
+function jsonResponse(status, body) {
+  return new Response(JSON.stringify(body), { status, headers: baseHeaders() });
+}
+function createLazyRepo() {
+  let client = null;
+  function getClient() {
+    if (client) return client;
+    const baseUrl = env("INSFORGE_BASE_URL");
+    const apiKey = env("API_KEY");
+    if (!baseUrl || !apiKey) {
+      throw new TeamRosterError("CONFIGURATION_ERROR");
+    }
+    client = createAdminClient({ baseUrl, apiKey });
+    return client;
+  }
+  return {
+    async getByTokenHash(input) {
+      const admin = getClient();
+      const { data, error: error40 } = await admin.database.rpc("team_roster_get_tx", {
+        p: {
+          token_hash: input.tokenHash,
+          waiver_document_type: input.waiverDocumentType,
+          waiver_document_version: input.waiverDocumentVersion
+        }
+      });
+      if (error40) throw new TeamRosterError("SERVICE_UNAVAILABLE");
+      const row = data;
+      if (!row?.ok) {
+        return { ok: false, error_code: String(row?.error_code ?? "INTERNAL_ERROR") };
+      }
+      return {
+        ok: true,
+        projection: row.projection
+      };
+    },
+    async acceptInvitation(input) {
+      const admin = getClient();
+      const { data, error: error40 } = await admin.database.rpc("team_roster_accept_tx", {
+        p: {
+          token_hash: input.tokenHash,
+          idempotency_key_hash: input.idempotencyKeyHash,
+          request_fingerprint: input.requestFingerprint,
+          idempotency_ttl_seconds: input.idempotencyTtlSeconds,
+          participant_public_ref: input.participantPublicRef,
+          waiver_document_type: input.waiverDocumentType,
+          waiver_document_version: input.waiverDocumentVersion,
+          waiver_accepted: input.waiverAccepted
+        }
+      });
+      if (error40) throw new TeamRosterError("SERVICE_UNAVAILABLE");
+      const row = data;
+      if (!row?.ok) {
+        return { ok: false, error_code: String(row?.error_code ?? "INTERNAL_ERROR") };
+      }
+      if (row.replay) {
+        return {
+          ok: true,
+          replay: true,
+          response: row.prior_response ?? {}
+        };
+      }
+      return {
+        ok: true,
+        replay: false,
+        response: row.response ?? {}
+      };
+    }
+  };
+}
+async function handler(req) {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: baseHeaders() });
   }
   try {
-    const { catalog, repo } = createPorts();
-    const result = await orchestrateCheckoutStart(raw, {
+    const result = await orchestrateTeamRoster(req, {
       env,
-      catalog,
-      repo,
-      mp: createHttpMercadoPagoClient()
+      repo: createLazyRepo()
     });
     return jsonResponse(result.status, result.body);
   } catch (error40) {
-    if (error40 instanceof CheckoutError) {
+    if (error40 instanceof TeamRosterError) {
       return jsonResponse(error40.status, error40.toPublicBody());
     }
-    return jsonResponse(500, new CheckoutError("INTERNAL_ERROR").toPublicBody());
+    return jsonResponse(500, new TeamRosterError("INTERNAL_ERROR").toPublicBody());
   }
 }
 export {
