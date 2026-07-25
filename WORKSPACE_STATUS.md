@@ -18,7 +18,8 @@
 - SALE-2: CLOSED - SPEC-031 v0.1.0 aprobada por el propietario
 - SALE-3: CLOSED - contrato documental; SPEC-032 v0.1.0 APPROVED
 - F0-E: NOT STARTED - sin autorizacion de implementacion
-- InsForge runtime changes: NONE
+- InsForge schema 0001-0003: DEPLOYED AND VALIDATED on `ready2hybrid` / `4bg9ufz2.us-east`
+- InsForge catalog seed: NOT EXECUTED
 - Mercado Pago runtime changes: NONE
 - Landing changes: NONE
 
@@ -59,6 +60,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2/IMPL-3/IMPL-4 `VALIDATED`;
+    InsForge 0001-0003 remote DEPLOYED AND VALIDATED;
     IMPL-5 `PROPOSED / NOT AUTHORIZED`
 - `docs/implementation/IMPL-4-ACCESS-DECISION-PACK.md`
   - ACCESS-DEC-001..008 APPROVED (2026-07-24); deny-by-default autorizado
@@ -68,6 +70,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - constraints/indexes aislados PASS; N01-N30 PASS; RLS = 0
 - `docs/implementation/evidence/IMPL-4-RLS-AND-ACCESS-LIMITS-VALIDATION.md`
   - RLS deny-by-default PASS; A01-A16 PASS; InsForge write = 0
+- `docs/implementation/evidence/INSFORGE-SCHEMA-DEPLOYMENT-VALIDATION.md`
+  - remote 0001/0002/0003 DEPLOYED AND VALIDATED via InsForge CLI; seed NOT EXECUTED
 - `insforge/migrations/0001_minimal_sales_schema.sql`
   - migracion minima IMPL-2 publicada en `ac2be55`
 - `insforge/migrations/0002_sales_constraints_and_indexes.sql`
@@ -189,13 +193,13 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`ACCESS_READY_FOR_SEED`
+`READY_FOR_IMPL_5_AUTHORIZATION`
 
 Siguiente accion permitida:
 
 1. autorizacion humana separada para IMPL-5 (aplicar seed de catalogo), si
    procede;
-2. no ejecutar el seed ni desplegar en InsForge hasta esa autorizacion;
+2. no ejecutar el seed hasta esa autorizacion;
 3. no iniciar checkout, webhooks, Mercado Pago ni tickets;
 4. no modificar la landing;
 5. no modificar seed/SQL/InsForge/Mercado Pago sin unidad autorizada.
@@ -220,14 +224,19 @@ cerro la validacion aislada A01-A16 con evidencia en
 
 ```text
 IMPL-4: VALIDATED
-RLS deny-by-default: PASS
-Gate: ACCESS_READY_FOR_SEED
+InsForge schema 0001: DEPLOYED AND VALIDATED
+InsForge constraints 0002: DEPLOYED AND VALIDATED
+InsForge access 0003: DEPLOYED AND VALIDATED
+Catalog seed: NOT EXECUTED
+Gate: READY_FOR_IMPL_5_AUTHORIZATION
 IMPL-5: PROPOSED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
-Landing, InsForge runtime, Mercado Pago y ejecucion del seed permanecen fuera
-de alcance. La landing publica existente permanece protegida:
+El esquema minimo de ventas ya esta desplegado en InsForge
+(`ready2hybrid` / `4bg9ufz2.us-east`). Mercado Pago, checkout, webhooks,
+tickets y la ejecucion del seed permanecen fuera de alcance. La landing
+publica existente permanece protegida:
 
 ```text
 LANDING_READY_FOR_READY2HYBRID_MATCH

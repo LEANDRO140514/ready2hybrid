@@ -441,10 +441,10 @@ instruction.
 ## J. Gate
 
 ```text
-ACCESS_READY_FOR_SEED
+READY_FOR_IMPL_5_AUTHORIZATION
 ```
 
-IMPL-4 closure evidence:
+IMPL-4 closure evidence (local):
 
 ```text
 IMPL-4: VALIDATED
@@ -455,8 +455,24 @@ Migration 0001 blob: 99b1964b65b9590ec2f3a909e200d09457559ec5
 Migration 0002 blob: 24622ab0787c4952799cde2bd93784627b39ef53
 Migration 0003 blob: d2c3778364cae4cada03c8a7e3d5b6b6f6365dbd
 Seed blob preserved: f8989b2c10bb04fe258b19bf646dd650940c4944
-InsForge deployment: NO
-Seed executed: NO
+```
+
+InsForge remote schema deployment evidence:
+
+```text
+Canonical InsForge project: ready2hybrid
+Host: 4bg9ufz2.us-east
+Deployment slug: enforma
+0001 remote: DEPLOYED AND VALIDATED
+0002 remote: DEPLOYED AND VALIDATED
+0003 remote: DEPLOYED AND VALIDATED
+Migration path: official InsForge migration endpoint (@insforge/cli@0.2.1)
+Canonical migration files: unchanged
+Temporary adapters: BEGIN/COMMIT removal only (deleted after deploy)
+Evidence: docs/implementation/evidence/INSFORGE-SCHEMA-DEPLOYMENT-VALIDATION.md
+Catalog: empty
+Seed: NOT EXECUTED
 IMPL-5: PROPOSED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_5_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
