@@ -202,14 +202,12 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 Siguiente accion permitida:
 
-1. revision humana de la evidencia IMPL-5 remota y cierre documental;
-2. autorizacion humana separada para IMPL-6 (validacion de 28 productos), si
-   procede;
-3. no iniciar IMPL-6 sin esa autorizacion;
-4. no realizar nuevas escrituras InsForge salvo unidad explicitamente
+1. esperar autorizacion humana separada para IMPL-6;
+2. no iniciar IMPL-6 sin esa autorizacion;
+3. no realizar nuevas escrituras en InsForge salvo una unidad explicitamente
    autorizada;
-5. no iniciar checkout, webhooks, Mercado Pago ni tickets;
-6. no modificar la landing.
+4. no iniciar checkout, webhooks, Mercado Pago ni tickets;
+5. no modificar la landing.
 
 ## Ultimo cierre
 

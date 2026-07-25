@@ -53,8 +53,9 @@ documentary evidence already recorded in SPEC-032.
 
 ## D. Controlled units
 
-Source: SPEC-032 Appendix H. Every unit requires a separate human authorization
-before execution. Current implementation state for all units: `NOT_STARTED`.
+Source: SPEC-032 Appendix H. Every implementation unit requires separate human
+authorization. Current states are recorded independently in each unit below;
+this document does not authorize any unit by itself.
 
 ### IMPL-1 — Correct and version the Hybrid Event seed
 
@@ -74,7 +75,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | `READY_FOR_SEED_CORRECTION` + separate human authorization |
 | Exit gate | `SEED_CORRECTED_READY_FOR_SCHEMA` |
 | Separate human authorization | Required |
-| Current state | `ALIGNED AND LOCALLY VALIDATED` (remote execution still not authorized) |
+| Current state | `VALIDATED / CLOSED` — seed aligned and locally validated; later applied remotely under the separately authorized IMPL-5 unit. |
 
 ### IMPL-2 — Minimal schema migration
 
@@ -144,7 +145,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Dependencies | IMPL-1 and IMPL-4 closed; explicit execution authorization |
 | Anticipated files | corrected seed; execution evidence |
 | External resources | InsForge database |
-| Blocking open decisions | OD-022 APPROVED; remote execution still requires a separate unit |
+| Blocking open decisions | None. OD-022 was approved and the remote catalog application was completed under the separately authorized IMPL-5 execution unit. |
 | Scope | Apply corrected event/day/product catalog only |
 | Out of scope | Checkout, payments, tickets, landing |
 | Automated tests | Exact 28 products and event/session checks |
@@ -154,7 +155,10 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | Seed aligned + local validation PASS; separate remote-execution authorization |
 | Exit gate | `CATALOG_SEEDED` |
 | Separate human authorization | Required for remote apply |
-| Current state | `VALIDATED` (remote `0004_hybrid-event-catalog` applied; human closure 2026-07-24) |
+| Remote migration | `v4 hybrid-event-catalog` |
+| Human closure | APPROVED 2026-07-24 |
+| Canonical repository migration file 0004 | NONE — deployment used a temporary byte-equivalent external adapter. |
+| Current state | `VALIDATED` |
 
 ### IMPL-6 — Validate 28 products
 
@@ -174,7 +178,7 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 | Entry gate | IMPL-5 |
 | Exit gate | `CATALOG_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `NOT_STARTED / NOT AUTHORIZED` |
 
 ### IMPL-7 — Checkout initiation
 
@@ -298,7 +302,10 @@ before execution. Current implementation state for all units: `NOT_STARTED`.
 
 ## E. Traceability matrix
 
-All current implementation states are `NOT_STARTED`.
+Every implementation unit requires separate human authorization.
+Current states are recorded independently in each unit above; this document
+does not authorize any unit by itself. Requirement-row states below remain
+row-local and must not be read as a single global unit status.
 
 | Requirement | Source authority | Implementation unit | Anticipated artifact | Validation | Evidence | Current state |
 |---|---|---|---|---|---|---|
