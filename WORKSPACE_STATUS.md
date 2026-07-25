@@ -23,7 +23,7 @@
 - InsForge catalog seed remote execution: EXECUTED AND VALIDATED (`0004` / IMPL-5)
 - Catalog remote validation IMPL-6: VALIDATED / CLOSED
 - Catalog: 1 event / 3 event days / 28 products
-- IMPL-7 checkout start: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+- IMPL-7 checkout start: VALIDATED / CLOSED
 - Edge function `mp-create-checkout`: DEPLOYED (sales remain closed)
 - InsForge migration 0005 / remote v5: APPLIED (TX RPC only)
 - IMPL-8: NOT_STARTED / NOT AUTHORIZED
@@ -66,8 +66,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2..6 `VALIDATED`;
-    IMPL-7 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`;
+  - plan trazable IMPL-1..12; IMPL-2..7 `VALIDATED / CLOSED`;
     IMPL-8 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
@@ -76,7 +75,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md`
   - read-only 28-product compare PASS; human closure APPROVED 2026-07-25
 - `docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md`
-  - `mp-create-checkout` + 0005; smoke `SALES_NOT_OPEN`; preferences = 0
+  - `mp-create-checkout` + 0005; smoke `SALES_NOT_OPEN`; preferences = 0;
+    human closure APPROVED 2026-07-25
 - `insforge/functions/mp-create-checkout/`
   - checkout start edge function (bundled deployable)
 - `insforge/migrations/0005_checkout_start_transaction.sql`
@@ -212,17 +212,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_7_HUMAN_CLOSURE`
+`READY_FOR_IMPL_8_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision humana del resultado tecnico de IMPL-7 y cierre documental final;
-2. no marcar IMPL-7 `VALIDATED / CLOSED` sin esa aprobacion humana;
-3. no iniciar IMPL-8;
-4. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
-5. no conectar la landing;
-6. no crear preferencias reales/sandbox de validacion;
-7. no modificar la landing.
+1. esperar autorizacion humana separada para IMPL-8;
+2. no iniciar ni preparar IMPL-8 sin esa autorizacion;
+3. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
+4. no conectar la landing;
+5. no crear preferencias reales/sandbox de validacion;
+6. no modificar la landing.
 
 ## Ultimo cierre
 
@@ -249,21 +248,22 @@ IMPL-6 valido read-only los 28 productos en `78d3464` y quedo
 `VALIDATED / CLOSED` el 2026-07-25 con evidencia en
 `docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.md`.
 IMPL-7 implemento `mp-create-checkout` + migracion `0005` (v5 remota) con
-smoke negativo `SALES_NOT_OPEN` y evidencia en
+smoke negativo `SALES_NOT_OPEN` en `3f13c16` y quedo `VALIDATED / CLOSED`
+el 2026-07-25 con evidencia en
 `docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md`.
 
 ```text
 IMPL-4: VALIDATED
 IMPL-5: VALIDATED / CLOSED
 IMPL-6: VALIDATED / CLOSED
-IMPL-7: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-7: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
-Gate: READY_FOR_IMPL_7_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_8_AUTHORIZATION
 IMPL-8: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

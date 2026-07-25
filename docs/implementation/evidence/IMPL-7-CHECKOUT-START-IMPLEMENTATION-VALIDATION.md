@@ -9,9 +9,10 @@ CLI: @insforge/cli@0.2.1
 Canonical project: ready2hybrid
 Host: 4bg9ufz2.us-east
 Deployment slug: enforma
-Result: TECHNICAL PASS
-Human closure: PENDING
-Gate: READY_FOR_IMPL_7_HUMAN_CLOSURE
+Technical result: TECHNICAL PASS
+Human closure: APPROVED 2026-07-25
+Final status: VALIDATED / CLOSED
+Gate: READY_FOR_IMPL_8_AUTHORIZATION
 ```
 
 ## 1. Baseline Git
@@ -204,10 +205,49 @@ Landing, Mercado Pago account config, storage `landings-images`, migrations 0001
 - No landing integration.
 - No webhook / IMPL-8.
 
-## 18. Recommended gate
+## 18. Recommended gate (technical unit)
 
 ```text
 READY_FOR_IMPL_7_HUMAN_CLOSURE
 IMPL-7 = TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-8 = NOT_STARTED / NOT AUTHORIZED
+```
+
+Superseded by human closure below.
+
+## 19. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical implementation commit:
+3f13c16
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final status:
+VALIDATED / CLOSED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in this file and commit `3f13c16`.
+- Local and remote tests were not repeated during this closure unit.
+- InsForge was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Mercado Pago was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Technical results, counts, and conclusions were not altered.
+- Approval of IMPL-7 does not authorize IMPL-8.
+- Event remains `CONFIGURADO`.
+- Sales remain closed.
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_8_AUTHORIZATION
+IMPL-7 = VALIDATED / CLOSED
 IMPL-8 = NOT_STARTED / NOT AUTHORIZED
 ```

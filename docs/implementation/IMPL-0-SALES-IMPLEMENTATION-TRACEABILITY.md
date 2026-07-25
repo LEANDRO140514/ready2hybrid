@@ -205,7 +205,11 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote artifacts | function `mp-create-checkout`; migration `v5 checkout-start-transaction` |
 | Technical result | PASS — smoke `SALES_NOT_OPEN`; MP preferences created = 0 |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical implementation commit | `3f13c16` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Blockers | None |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-8 — Webhook and payment effects
 
@@ -423,13 +427,12 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-7 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-8 authorization review
+Status: AWAITING SEPARATE HUMAN AUTHORIZATION
 ```
 
-IMPL-7 technical validation is PASS under authorized checkout-start scope.
-Do not mark IMPL-7 `VALIDATED / CLOSED` until human closure. Do not start IMPL-8.
-Do not open sales or connect the landing.
+IMPL-7 is `VALIDATED / CLOSED`. IMPL-8 remains `NOT_STARTED / NOT AUTHORIZED`.
+Do not start IMPL-8, open sales, or connect the landing without separate authorization.
 
 ## I. IMPL-0 change set
 
@@ -448,7 +451,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_7_HUMAN_CLOSURE
+READY_FOR_IMPL_8_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -523,14 +526,17 @@ Evidence: docs/implementation/evidence/IMPL-6-28-PRODUCTS-READ-ONLY-VALIDATION.m
 IMPL-7 checkout start evidence:
 
 ```text
-IMPL-7: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-7: VALIDATED / CLOSED
+Technical implementation commit: 3f13c16
+Human closure: APPROVED 2026-07-25
 Function: mp-create-checkout
 Remote migration: v5 checkout-start-transaction
 Smoke: SALES_NOT_OPEN (event remains CONFIGURADO)
 Transactional rows after smoke: 0
 Mercado Pago preferences created: 0
+Blockers: None
 Evidence: docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALIDATION.md
 IMPL-8: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_7_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_8_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
