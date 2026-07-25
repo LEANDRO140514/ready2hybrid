@@ -10,8 +10,10 @@ Canonical project: ready2hybrid
 Host: 4bg9ufz2.us-east
 Deployment slug: enforma
 Technical result: TECHNICAL PASS / CONFIGURATION_DEFERRED
-Human closure: PENDING
-Gate: READY_FOR_IMPL_8_HUMAN_CLOSURE
+Human closure: APPROVED 2026-07-25
+Final implementation status: VALIDATED / CLOSED
+Mercado Pago panel configuration: DEFERRED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_9_AUTHORIZATION
 ```
 
 ## 1. Baseline Git
@@ -226,7 +228,13 @@ Landing, catalog, event status, prices/cupos, seed, migrations 0001–0005 conte
 
 ## 21. Limitations / deferred configuration
 
-- Real Mercado Pago webhook URL + secret configuration: **DEFERRED TO IMPL-12 OR SEPARATE AUTHORIZED UNIT**.
+```text
+Mercado Pago webhook URL = NOT CONFIGURED
+MERCADOPAGO_WEBHOOK_SECRET real = NOT CONFIGURED
+Panel webhook activation = DEFERRED
+Destination = IMPL-12 or a separately authorized manual unit
+```
+
 - Successful remote signed notification path not exercised (would require secret + real/sandbox payment).
 - No public order status endpoint (IMPL-9).
 
@@ -238,10 +246,55 @@ Landing, catalog, event status, prices/cupos, seed, migrations 0001–0005 conte
 4. Confirm `mp-create-checkout` unchanged.
 5. Confirm no Mercado Pago panel changes by this unit.
 
-## 23. Recommended gate
+## 23. Recommended gate (technical unit)
 
 ```text
 READY_FOR_IMPL_8_HUMAN_CLOSURE
 IMPL-8 = TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-9 = NOT_STARTED / NOT AUTHORIZED
+```
+
+Superseded by human closure below.
+
+## 24. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical implementation commit:
+2379a90
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final implementation status:
+VALIDATED / CLOSED
+
+Mercado Pago panel configuration:
+DEFERRED / NOT AUTHORIZED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in this file and commit `2379a90`.
+- Local and remote tests were not repeated during this closure unit.
+- InsForge was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Mercado Pago was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Webhook URL and real webhook secret were not configured.
+- No real notification was processed.
+- No preference or payment was created.
+- Technical results, counts, and conclusions were not altered.
+- IMPL-9 remains without authorization.
+- Event remains `CONFIGURADO`; sales remain closed.
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_9_AUTHORIZATION
+IMPL-8 = VALIDATED / CLOSED
+Mercado Pago panel configuration = DEFERRED / NOT AUTHORIZED
 IMPL-9 = NOT_STARTED / NOT AUTHORIZED
 ```

@@ -231,7 +231,12 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote artifacts | function `mp-webhook`; migration `v6 webhook-payment-transaction` |
 | Technical result | PASS — negative smokes; MP writes = 0; secret configuration deferred |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical implementation commit | `2379a90` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Implementation blockers | None |
+| Panel configuration | `DEFERRED / NOT AUTHORIZED` |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-9 — Public order state
 
@@ -251,7 +256,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-8; listed decisions resolved where features enabled |
 | Exit gate | `ORDER_STATE_READY` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `NOT_STARTED / NOT AUTHORIZED` |
 
 ### IMPL-10 — Teams and invitations
 
@@ -429,13 +434,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-8 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-9 authorization review
+Status: AWAITING SEPARATE HUMAN AUTHORIZATION
 ```
 
-IMPL-8 technical validation is PASS under authorized webhook scope (panel secret deferred).
-Do not mark IMPL-8 `VALIDATED / CLOSED` until human closure. Do not start IMPL-9.
-Do not open sales or connect the landing.
+IMPL-8 is `VALIDATED / CLOSED`. Mercado Pago panel webhook URL/secret remains
+`DEFERRED / NOT AUTHORIZED`. IMPL-9 remains `NOT_STARTED / NOT AUTHORIZED`.
+Do not start IMPL-9, open sales, or connect the landing without separate authorization.
 
 ## I. IMPL-0 change set
 
@@ -454,7 +459,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_8_HUMAN_CLOSURE
+READY_FOR_IMPL_9_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -544,15 +549,18 @@ Evidence: docs/implementation/evidence/IMPL-7-CHECKOUT-START-IMPLEMENTATION-VALI
 IMPL-8 signed webhook evidence:
 
 ```text
-IMPL-8: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-8: VALIDATED / CLOSED
+Technical implementation commit: 2379a90
+Human closure: APPROVED 2026-07-25
 Function: mp-webhook
 Remote migration: v6 webhook-payment-transaction
 Smokes: 405 / 401 / 503 WEBHOOK_NOT_CONFIGURED
 Transactional rows after smoke: 0
 Mercado Pago writes: 0
-Panel webhook secret/URL: DEFERRED TO IMPL-12 OR SEPARATE AUTHORIZED UNIT
+Implementation blockers: None
+Panel webhook secret/URL: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md
 IMPL-9: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_8_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_9_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
