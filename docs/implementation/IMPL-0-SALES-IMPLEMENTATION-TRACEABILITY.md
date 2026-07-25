@@ -244,19 +244,21 @@ this document does not authorize any unit by itself.
 |---|---|
 | Related requirements | R020, R023-R028, R036, R044-R045, R053 |
 | Dependencies | IMPL-8 |
-| Anticipated files | future order-state service/tests |
-| External resources | InsForge database/functions |
-| Blocking open decisions | API-OD-001/002/003/004/005/007/010; OD-018/019 where public support/folio enabled |
-| Scope | Opaque order capability reads, public projections, no-store/privacy |
-| Out of scope | Admin panel, check-in, landing redesign |
-| Automated tests | Auth, projections, polling/enumeration/rate, privacy |
-| Manual tests | Buyer capability walkthrough |
-| Expected evidence | Order-state matrix PASS |
-| Rollback | Disable public read; revoke capabilities; preserve canonical data |
-| Entry gate | IMPL-8; listed decisions resolved where features enabled |
+| Anticipated files | `insforge/functions/get-order-status/**`; `_shared/public-status/**`; unit tests; evidence |
+| External resources | InsForge functions (read-only); no Mercado Pago |
+| Blocking open decisions | Capability-token tightening (API-OD-004) deferred; panel webhook remains deferred; OD-018/019 not required for minimal status |
+| Scope | GET by opaque `tracking_ref` / `public_order_reference`; SPEC-031 public projection; no-store/privacy |
+| Out of scope | Landing UI, tickets/QR, MP calls, domain writes, IMPL-10 |
+| Automated tests | Reference validation, mapping matrix, orchestrate, static read-only guards |
+| Manual tests | Remote negative smokes 405/400/404 with zero transactional rows |
+| Expected evidence | `docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md` |
+| Rollback | Delete/disable `get-order-status`; no migration |
+| Entry gate | IMPL-8 closed; separate IMPL-9 authorization |
 | Exit gate | `ORDER_STATE_READY` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED / NOT AUTHORIZED` |
+| Remote artifacts | function `get-order-status` |
+| Technical result | PASS — negative smokes; domain writes = 0; MP reads/writes = 0 |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
 
 ### IMPL-10 — Teams and invitations
 
@@ -434,13 +436,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-9 authorization review
-Status: AWAITING SEPARATE HUMAN AUTHORIZATION
+IMPL-9 human closure review
+Status: AWAITING HUMAN CLOSURE
 ```
 
-IMPL-8 is `VALIDATED / CLOSED`. Mercado Pago panel webhook URL/secret remains
-`DEFERRED / NOT AUTHORIZED`. IMPL-9 remains `NOT_STARTED / NOT AUTHORIZED`.
-Do not start IMPL-9, open sales, or connect the landing without separate authorization.
+IMPL-9 technical validation is PASS under authorized read-only public status scope.
+Do not mark IMPL-9 `VALIDATED / CLOSED` until human closure. Do not start IMPL-10.
+Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
 
 ## I. IMPL-0 change set
 
@@ -459,7 +461,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_9_AUTHORIZATION
+READY_FOR_IMPL_9_HUMAN_CLOSURE
 ```
 
 IMPL-4 closure evidence (local):
@@ -560,7 +562,14 @@ Mercado Pago writes: 0
 Implementation blockers: None
 Panel webhook secret/URL: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md
-IMPL-9: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_9_AUTHORIZATION
+IMPL-9: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Function: get-order-status
+Migration 0007: NOT REQUIRED
+Smokes: 405 / 400 / 400 / 404
+Transactional rows after smoke: 0
+Mercado Pago reads/writes: 0
+Evidence: docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md
+IMPL-10: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_9_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

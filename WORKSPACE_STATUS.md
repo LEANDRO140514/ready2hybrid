@@ -30,8 +30,10 @@
 - Edge function `mp-webhook`: DEPLOYED
 - InsForge migration 0006 / remote v6: APPLIED (TX-2 RPC only)
 - Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
-- IMPL-9: NOT_STARTED / NOT AUTHORIZED
-- Mercado Pago writes during IMPL-8 validation: 0
+- IMPL-9 public order status: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+- Edge function `get-order-status`: DEPLOYED (read-only)
+- IMPL-10: NOT_STARTED / NOT AUTHORIZED
+- Mercado Pago reads/writes during IMPL-9 validation: 0
 - Landing changes: NONE
 
 ## Autoridad
@@ -71,7 +73,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2..8 `VALIDATED / CLOSED`;
-    IMPL-9 `NOT_STARTED / NOT AUTHORIZED`
+    IMPL-9 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`;
+    IMPL-10 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -84,10 +87,14 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md`
   - `mp-webhook` + 0006; smokes 405/401/503; MP writes = 0;
     human closure APPROVED 2026-07-25; panel config DEFERRED
+- `docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md`
+  - `get-order-status`; SPEC-031 mapping; smokes 405/400/404; writes = 0
 - `insforge/functions/mp-create-checkout/`
   - checkout start edge function (bundled deployable)
 - `insforge/functions/mp-webhook/`
   - signed idempotent webhook edge function (bundled deployable)
+- `insforge/functions/get-order-status/`
+  - read-only public order status edge function (bundled deployable)
 - `insforge/migrations/0005_checkout_start_transaction.sql`
   - TX RPCs for checkout start (no catalog changes)
 - `insforge/migrations/0006_webhook_payment_transaction.sql`
@@ -223,16 +230,17 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_9_AUTHORIZATION`
+`READY_FOR_IMPL_9_HUMAN_CLOSURE`
 
 Siguiente accion permitida:
 
-1. esperar autorizacion humana separada para IMPL-9;
-2. no iniciar ni preparar IMPL-9 sin esa autorizacion;
-3. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
-4. no conectar la landing;
-5. no configurar URL/secret real del webhook en Mercado Pago sin unidad autorizada;
-6. no crear preferencias ni pagos de validacion.
+1. revision humana del resultado tecnico de IMPL-9 y cierre documental final;
+2. no marcar IMPL-9 `VALIDATED / CLOSED` sin esa aprobacion humana;
+3. no iniciar IMPL-10;
+4. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
+5. no conectar la landing;
+6. no configurar URL/secret real del webhook en Mercado Pago sin unidad autorizada;
+7. no crear preferencias ni pagos de validacion.
 
 ## Ultimo cierre
 
@@ -266,6 +274,9 @@ IMPL-8 implemento `mp-webhook` + migracion `0006` (v6 remota) con smokes
 negativos 405/401/503 en `2379a90` y quedo `VALIDATED / CLOSED` el 2026-07-25
 con evidencia en
 `docs/implementation/evidence/IMPL-8-SIGNED-IDEMPOTENT-WEBHOOK-IMPLEMENTATION-VALIDATION.md`.
+IMPL-9 implemento `get-order-status` (read-only, mapping SPEC-031) con smokes
+405/400/404 y evidencia en
+`docs/implementation/evidence/IMPL-9-PUBLIC-ORDER-STATUS-IMPLEMENTATION-VALIDATION.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -273,6 +284,7 @@ IMPL-5: VALIDATED / CLOSED
 IMPL-6: VALIDATED / CLOSED
 IMPL-7: VALIDATED / CLOSED
 IMPL-8: VALIDATED / CLOSED
+IMPL-9: TECHNICAL_PASS / PENDING HUMAN CLOSURE
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -281,17 +293,18 @@ OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_9_AUTHORIZATION
-IMPL-9: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_9_HUMAN_CLOSURE
+IMPL-10: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
-El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout y
-el webhook firmado ya estan en InsForge (`ready2hybrid` / `4bg9ufz2.us-east`).
-El evento permanece en `CONFIGURADO`. No se abrieron ventas. No se crearon
-preferencias ni pagos Mercado Pago durante la validacion. La configuracion del
-secret/URL en el panel de Mercado Pago permanece `DEFERRED / NOT AUTHORIZED`.
-IMPL-9 permanece sin autorizacion. La landing publica existente permanece protegida:
+El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
+el webhook firmado y el estado publico read-only ya estan en InsForge
+(`ready2hybrid` / `4bg9ufz2.us-east`). El evento permanece en `CONFIGURADO`.
+No se abrieron ventas. No se crearon preferencias ni pagos Mercado Pago durante
+la validacion. La configuracion del secret/URL en el panel de Mercado Pago
+permanece `DEFERRED / NOT AUTHORIZED`. IMPL-10 permanece sin autorizacion.
+La landing publica existente permanece protegida:
 
 ```text
 LANDING_READY_FOR_READY2HYBRID_MATCH
