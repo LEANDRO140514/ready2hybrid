@@ -36,9 +36,11 @@
 - Edge function `team-roster`: DEPLOYED
 - InsForge migration 0007 / remote v7: APPLIED (team roster RPCs)
 - TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
-- IMPL-11 tickets and QR credentials: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+- IMPL-11 tickets and QR credentials: VALIDATED / CLOSED
 - Edge function `ticket-credentials`: DEPLOYED
 - InsForge migration 0008 / remote v8: APPLIED (ticket issuance RPCs)
+- OD-019 commercial folio: OPEN (technical opaque folio IMPLEMENTED)
+- OD-020 multiday: OPEN / FAIL-CLOSED
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
@@ -82,8 +84,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2..10 `VALIDATED / CLOSED`;
-    IMPL-11 `TECHNICAL_PASS / PENDING HUMAN CLOSURE`;
+  - plan trazable IMPL-1..12; IMPL-2..11 `VALIDATED / CLOSED`;
     IMPL-12 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
@@ -105,7 +106,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
     human closure APPROVED 2026-07-25
 - `docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md`
   - `ticket-credentials` + 0008; smokes 405/403/400/404/401; writes = 0;
-    email/public retrieval deferred; check-in not implemented
+    human closure APPROVED 2026-07-25; email/public retrieval deferred;
+    multiday fail-closed; check-in not implemented
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -251,16 +253,16 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_11_HUMAN_CLOSURE`
+`READY_FOR_IMPL_12_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision humana del resultado tecnico de IMPL-11 y cierre documental final;
-2. no marcar IMPL-11 `VALIDATED / CLOSED` sin esa aprobacion humana;
-3. no iniciar IMPL-12;
-4. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
-5. no conectar la landing;
-6. no enviar correos ni configurar recordatorios;
+1. esperar autorizacion humana separada para IMPL-12;
+2. no iniciar, preparar ni ejecutar IMPL-12 sin esa autorizacion;
+3. no abrir ventas ni cambiar el evento de `CONFIGURADO`;
+4. no conectar la landing;
+5. no enviar correos ni configurar recordatorios;
+6. no implementar manifiesto offline ni check-in sin unidad autorizada;
 7. no configurar URL/secret real del webhook en Mercado Pago sin unidad autorizada.
 
 ## Ultimo cierre
@@ -304,8 +306,8 @@ IMPL-10 implemento `team-roster` + migracion `0007` (v7 remota) con smokes
 con evidencia en
 `docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md`.
 IMPL-11 implemento `ticket-credentials` + migracion `0008` (v8 remota) con
-smokes 405/403/400/404/401 y queda `TECHNICAL_PASS / PENDING HUMAN CLOSURE`
-con evidencia en
+smokes 405/403/400/404/401 en `9c9daa4` y quedo `VALIDATED / CLOSED` el
+2026-07-25 con evidencia en
 `docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md`.
 
 ```text
@@ -316,7 +318,7 @@ IMPL-7: VALIDATED / CLOSED
 IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
-IMPL-11: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-11: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -330,8 +332,10 @@ Mercado Pago webhook URL/secret: DEFERRED / NOT AUTHORIZED
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
+OD-019 commercial folio: OPEN
+OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_11_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_12_AUTHORIZATION
 IMPL-12: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
@@ -343,9 +347,9 @@ emision server-side de tickets/QR hasheados ya estan en InsForge
 No se abrieron ventas. No se crearon preferencias ni pagos Mercado Pago
 durante la validacion. La configuracion del secret/URL en el panel de
 Mercado Pago permanece `DEFERRED / NOT AUTHORIZED`. Recordatorios, correo y
-recuperacion publica de QR permanecen diferidos. Check-in y manifiesto no
-fueron implementados. Esperar cierre humano de IMPL-11. IMPL-12 permanece
-sin autorizacion.
+recuperacion publica de QR permanecen diferidos. Productos multiday
+permanecen fail-closed. Check-in y manifiesto no fueron implementados.
+Esperar autorizacion humana separada para IMPL-12.
 La landing publica existente permanece protegida:
 
 ```text

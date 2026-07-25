@@ -312,10 +312,12 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Remote artifacts | function `ticket-credentials`; migration v8; SQL REPLACE webhook/accept (no edge redeploy) |
 | Technical result | PASS — negative smokes; domain rows = 0; MP = 0 |
-| Human closure | PENDING |
-| Implementation blockers | None for authorized backend scope (multiday/email/refund-auto-revoke remain deferred) |
-| Migration 0008 | APPLIED |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` |
+| Technical implementation commit | `9c9daa4` |
+| Human closure | APPROVED |
+| Human closure date | 2026-07-25 |
+| Implementation blockers | None for authorized scope |
+| Migration | v8 ticket-issuance-credentials |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-12 — Sandbox end-to-end
 
@@ -453,14 +455,14 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-11 human closure review
-Status: AWAITING HUMAN CLOSURE
+IMPL-12 — Sandbox end-to-end
+Status: NOT_STARTED / NOT AUTHORIZED
 ```
 
-IMPL-11 technical validation is PASS under authorized backend ticket/QR scope.
-Do not mark IMPL-11 `VALIDATED / CLOSED` until human closure. Do not start IMPL-12.
+IMPL-11 is `VALIDATED / CLOSED`. Do not start IMPL-12 without a separate human authorization.
 Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
-Reminders remain `DEFERRED / NOT AUTHORIZED`. Email/public QR retrieval remain deferred.
+Reminders, email, and public QR retrieval remain deferred. Multiday remains fail-closed.
+Offline manifesto and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -479,7 +481,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_11_HUMAN_CLOSURE
+READY_FOR_IMPL_12_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -604,17 +606,23 @@ Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
 Reminders: DEFERRED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-10-TEAM-ROSTER-INVITATIONS-IMPLEMENTATION-VALIDATION.md
-IMPL-11: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+IMPL-11: VALIDATED / CLOSED
+Technical implementation commit: 9c9daa4
+Human closure: APPROVED
+Human closure date: 2026-07-25
+Implementation blockers: None for authorized scope
+Migration: v8 ticket-issuance-credentials
 Function: ticket-credentials
-Migration 0008 / remote v8: APPLIED
 Webhook/team-roster edge redeploy: 0 (SQL-only issuance hooks)
 Smokes: 405 / 403 / 400 / 404 / 401 / 401 / 404
 Transactional rows after smoke: 0
 Mercado Pago reads/writes: 0
+OD-019 commercial folio: OPEN
+OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
-Check-in/manifest: NOT IMPLEMENTED
+Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
 IMPL-12: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_11_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_12_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```

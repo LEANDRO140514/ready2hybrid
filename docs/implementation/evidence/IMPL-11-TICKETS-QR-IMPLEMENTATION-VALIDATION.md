@@ -10,12 +10,15 @@ Canonical project: ready2hybrid
 Host: 4bg9ufz2.us-east
 Deployment slug: enforma
 Technical result: TECHNICAL PASS
-Human closure: PENDING
+Human closure: APPROVED 2026-07-25
+Final implementation status: VALIDATED / CLOSED
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 Mercado Pago panel configuration: DEFERRED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_11_HUMAN_CLOSURE
+OD-019 commercial folio: OPEN (technical opaque folio IMPLEMENTED)
+OD-020 multiday: OPEN / FAIL-CLOSED
+Gate: READY_FOR_IMPL_12_AUTHORIZATION
 ```
 
 ## 1. Baseline
@@ -207,7 +210,61 @@ Traceability updated in `IMPL-0` and `WORKSPACE_STATUS.md`.
 ## 39. Technical result / recommended gate
 
 ```text
+READY_FOR_IMPL_11_HUMAN_CLOSURE
 IMPL-11 = TECHNICAL_PASS / PENDING HUMAN CLOSURE
 IMPL-12 = NOT_STARTED / NOT AUTHORIZED
-Gate = READY_FOR_IMPL_11_HUMAN_CLOSURE
+```
+
+Superseded by human closure below.
+
+## 40. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-25
+
+Technical implementation commit:
+9c9daa4
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final implementation status:
+VALIDATED / CLOSED
+```
+
+Closure notes:
+
+- Human approval is based on the technical evidence published in this file and commit `9c9daa4`.
+- Local and remote tests were not repeated during this closure unit.
+- Deployed functions were not invoked during this closure unit.
+- InsForge was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- Mercado Pago was not consulted or modified during this closure unit (`reads = 0`, `writes = 0`).
+- No remote tickets or credentials were created during this closure unit.
+- Technical results, counts, and conclusions were not altered.
+- No emails were sent.
+- Public QR retrieval was not implemented.
+- Offline manifesto was not implemented.
+- Check-in was not implemented.
+- IMPL-12 remains without authorization.
+- Event remains `CONFIGURADO`; sales remain closed.
+- OD-019 commercial folio remains OPEN (technical opaque folio remains implemented).
+- OD-020 multiday remains OPEN / FAIL-CLOSED for PUB-3D/FOT-3D.
+- `PUBLIC_TICKET_RETRIEVAL`, `TICKET_EMAIL_DELIVERY`, `EMAIL_PROVIDER`, `TEAM_ROSTER_REMINDERS`, and Mercado Pago webhook URL/secret remain `DEFERRED / NOT AUTHORIZED`.
+- `OFFLINE_MANIFEST` and `CHECK_IN` remain `NOT IMPLEMENTED / NOT AUTHORIZED`.
+- OD-007, OD-017, OD-021, API-OD-004, and API-OD-010 retain their documented real status (not declared resolved).
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_12_AUTHORIZATION
+IMPL-11 = VALIDATED / CLOSED
+OD-019 commercial folio = OPEN
+OD-020 multiday = OPEN / FAIL-CLOSED
+ticket delivery / email = DEFERRED / NOT AUTHORIZED
+offline manifesto / check-in = NOT IMPLEMENTED / NOT AUTHORIZED
+Mercado Pago panel configuration = DEFERRED / NOT AUTHORIZED
+IMPL-12 = NOT_STARTED / NOT AUTHORIZED
 ```
