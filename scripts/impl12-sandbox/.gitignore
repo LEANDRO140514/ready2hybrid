@@ -1,0 +1,8 @@
+.last-*
+.gos.json
+CASE-A-HUMAN-PAYMENT.json
+*.png
+*.jpg
+*.jpeg
+.env
+*-secret*

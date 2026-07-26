@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `NOT_STARTED` |
+| Current state | `PROVIDER_SANDBOX_BLOCKED` (not closed; payment UI blocked) |
 
 ## E. Traceability matrix
 
@@ -456,11 +456,13 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: NOT_STARTED / NOT AUTHORIZED
+Status: PROVIDER_SANDBOX_BLOCKED (not closed)
 ```
 
-IMPL-11 is `VALIDATED / CLOSED`. Do not start IMPL-12 without a separate human authorization.
-Do not open sales or connect the landing. Mercado Pago panel webhook remains deferred.
+IMPL-12 isolated-branch preflight, signed webhook smoke, and sandbox preference
+creation passed; Checkout Pro sandbox could not complete a test payment.
+Do not start IMPL-13. Do not open sales on Main or connect the landing.
+Clear any leftover Mercado Pago sandbox webhook URL in the panel.
 Reminders, email, and public QR retrieval remain deferred. Multiday remains fail-closed.
 Offline manifesto and check-in remain not implemented.
 
@@ -481,7 +483,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_12_AUTHORIZATION
+PROVIDER_SANDBOX_BLOCKED
 ```
 
 IMPL-4 closure evidence (local):
@@ -622,7 +624,13 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_AUTHORIZATION
-LANDING_READY_FOR_READY2HYBRID_MATCH
+IMPL-12: PROVIDER_SANDBOX_BLOCKED
+Technical validation: isolated branch + signed pre-webhook + checkout preferences PASS
+Payment completion (Checkout Pro sandbox UI): BLOCKED
+Sandbox branch: DELETED
+Canonical Main differences: 0
+Evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
+IMPL-13: NOT_STARTED / NOT AUTHORIZED
+Gate: PROVIDER_SANDBOX_BLOCKED
+Manual MP action: clear leftover sandbox webhook URL in panel if still present
 ```
