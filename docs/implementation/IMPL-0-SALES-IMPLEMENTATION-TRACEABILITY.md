@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `VALIDATION_FAILED / NOT CLOSED` (R2: webhook TX NOT NULL defect after Case A payment) |
+| Current state | `CORRECTIVE_VALIDATION_FAILED / NOT CLOSED` (R3: 0009 fixes RPC on branch; Case A full checklist FAIL — expired hold) |
 
 ## E. Traceability matrix
 
@@ -456,14 +456,15 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: VALIDATION_FAILED / NOT CLOSED
-Gate: IMPL_12_VALIDATION_FAILED
+Status: CORRECTIVE_VALIDATION_FAILED / NOT CLOSED
+Gate: IMPL_12_CORRECTIVE_VALIDATION_FAILED
 ```
 
-IMPL-12-R1 cleared Checkout Pro session conflict. IMPL-12-R2 completed Case A
-sandbox payment ($300 MXN) but signed webhook apply failed: RPC
-`webhook_apply_payment_tx` inserts `payment_verification_records` without
-`payment_id` while the column is NOT NULL (migration 0002). No in-unit fix.
+IMPL-12-R3 added forward-only migration 0009 (payment upsert before verification
+insert) and proved on an isolated branch: signed webhook HTTP 200, canonical
+payment created, verification `payment_id` NOT NULL, idempotent DUPLICATE.
+Case A full checklist still failed because the capacity hold expired before
+webhook apply (`REQUIRES_REVIEW`, tickets=0). Main remains on migrations v1–v8.
 Do not start IMPL-13. Do not open sales on Main or connect the landing.
 Reminders, email, and public QR retrieval remain deferred. Multiday remains
 fail-closed. Offline manifesto and check-in remain not implemented.
@@ -485,7 +486,7 @@ instruction.
 ## J. Gate
 
 ```text
-IMPL_12_VALIDATION_FAILED
+IMPL_12_CORRECTIVE_VALIDATION_FAILED
 ```
 
 IMPL-4 closure evidence (local):
@@ -626,13 +627,14 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: VALIDATION_FAILED / NOT CLOSED
-IMPL-12-R1 root cause: BROWSER_SESSION_CONFLICT
-IMPL-12-R2 Case A payment: approved / accredited ($300 MXN) PASS
-IMPL-12-R2 signed webhook: HTTP 500 — payment_verification_records.payment_id NOT NULL
-Evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
+IMPL-12: CORRECTIVE_VALIDATION_FAILED / NOT CLOSED
+IMPL-12-R3 migration 0009: payment upsert before verification insert
+IMPL-12-R3 branch proof: webhook HTTP 200; payment+verification.payment_id PASS
+IMPL-12-R3 Case A full checklist: FAIL (expired hold → REQUIRES_REVIEW; tickets=0)
+Evidence: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
+Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: IMPL_12_VALIDATION_FAILED
+Gate: IMPL_12_CORRECTIVE_VALIDATION_FAILED
 ```
