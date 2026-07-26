@@ -44,12 +44,11 @@
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-- IMPL-12 sandbox E2E: CASE_A_CORRECTIVE_PASS / NOT CLOSED
-  (R4: Main v9 deployed; Case A within active hold → PAID + ticket/credential/entitlement;
-  remaining cases B–E not yet authorized)
-- InsForge sandbox branches R1–R4: DELETED
+- IMPL-12 sandbox E2E: PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED
+  (B/D PASS; C OD-001 fail-closed; E CONT not stable pending in provider sandbox)
+- InsForge sandbox branches R1–R4 + remaining-cases: DELETED
 - InsForge Main migrations: v1–v9
-- Mercado Pago test webhook: URL STORED (may point at deleted R4 host); verify topics NONE in panel
+- Mercado Pago test webhook: URL may remain stored; verify topics NONE / callback DISABLED in panel
 - Mercado Pago production webhook: NOT CONFIGURED
 - IMPL-13: NOT_STARTED / NOT AUTHORIZED
 - Landing changes: NONE
@@ -92,7 +91,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2..11 `VALIDATED / CLOSED`;
-    IMPL-12 `CASE_A_CORRECTIVE_PASS / NOT CLOSED`
+    IMPL-12 `PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -131,6 +130,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md`
   - Main v9 deploy; Case A within hold TTL PASS (PAID + ticket/credential/entitlement);
     duplicate DUPLICATE; invalid sig 401; branch deleted
+- `docs/implementation/evidence/IMPL-12-REMAINING-CASES-VALIDATION.md`
+  - B PASS; C OD-001 fail-closed; D PASS; E PROVIDER_SANDBOX_CONT_NOT_STABLE;
+    branch deleted; Main transactional 0
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -276,17 +278,18 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION`
+`READY_FOR_IMPL_12_PENDING_CASE_VALIDATION_DECISION`
 
 Siguiente accion permitida:
 
-1. esperar autorizacion humana para Casos B–E (+ multiday) de IMPL-12;
-2. no declarar IMPL-12 `VALIDATED / CLOSED` sin la matriz restante + cierre humano;
-3. no iniciar IMPL-13;
-4. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
-5. no conectar la landing;
-6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
-7. humano: verificar topics NONE del webhook de prueba en el panel MP.
+1. decidir como validar `PENDING` (simulador / fixture / metodo asincrono / aceptar bloqueo);
+2. no repetir pagos CONT inutiles sin autorizacion;
+3. no declarar IMPL-12 `TECHNICAL_PASS` ni `VALIDATED / CLOSED` sin cierre humano;
+4. no iniciar IMPL-13;
+5. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
+6. no conectar la landing;
+7. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
+8. humano: verificar topics NONE / callback DISABLED del webhook de prueba en el panel MP.
 
 ## Ultimo cierre
 
@@ -336,11 +339,11 @@ IMPL-12 valido el entorno sandbox aislado, preferencias y pre-webhook firmado,
 pero el Checkout Pro sandbox no completo pagos (`PROVIDER_SANDBOX_BLOCKED`).
 Evidencia en
 `docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md`.
-IMPL-12-R4 desplego `0009` en Main y revalido Caso A dentro del TTL del hold:
-webhook `PAID`, order `PAID`, ticket/credential/entitlement = 1, duplicado
-`DUPLICATE`, firma invalida 401. Evidencia en
-`docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md`.
-IMPL-12 = `CASE_A_CORRECTIVE_PASS / NOT CLOSED`. Casos B–E pendientes.
+IMPL-12-R4 desplego `0009` en Main y revalido Caso A dentro del TTL del hold.
+Casos restantes: B PASS, C OD-001 fail-closed, D PASS, E bloqueado por sandbox
+CONT del proveedor (`in_process` UI → API `rejected`). Evidencia en
+`docs/implementation/evidence/IMPL-12-REMAINING-CASES-VALIDATION.md`.
+IMPL-12 = `PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED`.
 
 ```text
 IMPL-4: VALIDATED
@@ -351,7 +354,7 @@ IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
 IMPL-11: VALIDATED / CLOSED
-IMPL-12: CASE_A_CORRECTIVE_PASS / NOT CLOSED
+IMPL-12: PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -363,14 +366,14 @@ OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago production webhook: NOT CONFIGURED
-Mercado Pago test webhook: URL STORED / VERIFY TOPICS NONE IN PANEL
+Mercado Pago test webhook: URL MAY REMAIN STORED / VERIFY TOPICS NONE + CALLBACK DISABLED IN PANEL
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
+Gate: READY_FOR_IMPL_12_PENDING_CASE_VALIDATION_DECISION
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
@@ -380,10 +383,11 @@ el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
 payment/verification. El evento canónico permanece en `CONFIGURADO`. Main no
-fue usado como sandbox de pagos. Caso A sandbox cerro PASS; restan Casos B–E.
-Recordatorios, correo y recuperacion publica de QR permanecen diferidos.
-Productos multiday permanecen fail-closed. Check-in y manifiesto no fueron
-implementados. IMPL-13 no esta autorizado.
+fue usado como sandbox de pagos. Casos A/B/D PASS; C fail-closed OD-001;
+pending estable (E) no reproducible con CONT. Recordatorios, correo y
+recuperacion publica de QR permanecen diferidos. Productos multiday
+permanecen fail-closed. Check-in y manifiesto no fueron implementados.
+IMPL-13 no esta autorizado.
 La landing publica existente permanece protegida:
 
 ```text

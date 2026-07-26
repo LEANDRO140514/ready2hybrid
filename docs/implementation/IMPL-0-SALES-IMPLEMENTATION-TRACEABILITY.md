@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `CASE_A_CORRECTIVE_PASS / NOT CLOSED` (R4: Main v9 + Case A within hold TTL PASS; B–E pending) |
+| Current state | `PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED` (B/D PASS; C OD-001 fail-closed; E CONT not stable pending) |
 
 ## E. Traceability matrix
 
@@ -456,17 +456,19 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: CASE_A_CORRECTIVE_PASS / NOT CLOSED
-Gate: READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
+Status: PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED
+Gate: READY_FOR_IMPL_12_PENDING_CASE_VALIDATION_DECISION
 ```
 
-IMPL-12-R4 deployed migration 0009 on Main and revalidated Case A inside the
-active hold TTL: signed webhook outcome `PAID`, order `PAID`, registration
-`PAYMENT_CONFIRMED`, ticket/credential/entitlement = 1, duplicate `DUPLICATE`,
-invalid signature 401. Cases B–E remain unauthorized. Do not start IMPL-13.
-Do not open sales on Main or connect the landing. Reminders, email, and public
-QR retrieval remain deferred. Multiday remains fail-closed. Offline manifesto
-and check-in remain not implemented.
+IMPL-12 remaining cases: B PASS (team incomplete→eligible + tickets=2), C
+`BLOCKED_BY_OD_001` fail-closed, D PASS (REJECTED + hold RELEASED), E
+`NOT VALIDATED / PROVIDER_SANDBOX_CONT_NOT_STABLE` (two CONT attempts: UI
+`in_process` then MP API `rejected`/`cc_rejected_other_reason`; webhook
+correctly applied REJECTED). Not TECHNICAL_PASS. Not a new webhook code
+defect. Do not start IMPL-13. Do not open sales on Main or connect the
+landing. Reminders, email, and public QR retrieval remain deferred.
+Multiday remains fail-closed. Offline manifesto and check-in remain not
+implemented.
 
 ## I. IMPL-0 change set
 
@@ -485,7 +487,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
+READY_FOR_IMPL_12_PENDING_CASE_VALIDATION_DECISION
 ```
 
 IMPL-4 closure evidence (local):
@@ -626,14 +628,16 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: CASE_A_CORRECTIVE_PASS / NOT CLOSED
-IMPL-12-R4 Main migrations: v1–v9
-IMPL-12-R4 Case A: PAID + ticket/credential/entitlement + DUPLICATE + 401 PASS
-Evidence: docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md
+IMPL-12: PARTIAL_RUNTIME_PASS / PENDING_CASE_BLOCKED_BY_PROVIDER_SANDBOX / NOT CLOSED
+IMPL-12 Main migrations: v1–v9
+IMPL-12 Case A (R4): PAID + ticket/credential/entitlement + DUPLICATE + 401 PASS
+IMPL-12 remaining: B PASS · C OD-001 fail-closed · D PASS · E PROVIDER_SANDBOX_CONT_NOT_STABLE
+Evidence: docs/implementation/evidence/IMPL-12-REMAINING-CASES-VALIDATION.md
+Prior: docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
+Gate: READY_FOR_IMPL_12_PENDING_CASE_VALIDATION_DECISION
 ```
