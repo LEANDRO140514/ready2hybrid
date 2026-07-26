@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `CORRECTIVE_VALIDATION_FAILED / NOT CLOSED` (R3: 0009 fixes RPC on branch; Case A full checklist FAIL — expired hold) |
+| Current state | `CASE_A_CORRECTIVE_PASS / NOT CLOSED` (R4: Main v9 + Case A within hold TTL PASS; B–E pending) |
 
 ## E. Traceability matrix
 
@@ -456,18 +456,17 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: CORRECTIVE_VALIDATION_FAILED / NOT CLOSED
-Gate: IMPL_12_CORRECTIVE_VALIDATION_FAILED
+Status: CASE_A_CORRECTIVE_PASS / NOT CLOSED
+Gate: READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
 ```
 
-IMPL-12-R3 added forward-only migration 0009 (payment upsert before verification
-insert) and proved on an isolated branch: signed webhook HTTP 200, canonical
-payment created, verification `payment_id` NOT NULL, idempotent DUPLICATE.
-Case A full checklist still failed because the capacity hold expired before
-webhook apply (`REQUIRES_REVIEW`, tickets=0). Main remains on migrations v1–v8.
-Do not start IMPL-13. Do not open sales on Main or connect the landing.
-Reminders, email, and public QR retrieval remain deferred. Multiday remains
-fail-closed. Offline manifesto and check-in remain not implemented.
+IMPL-12-R4 deployed migration 0009 on Main and revalidated Case A inside the
+active hold TTL: signed webhook outcome `PAID`, order `PAID`, registration
+`PAYMENT_CONFIRMED`, ticket/credential/entitlement = 1, duplicate `DUPLICATE`,
+invalid signature 401. Cases B–E remain unauthorized. Do not start IMPL-13.
+Do not open sales on Main or connect the landing. Reminders, email, and public
+QR retrieval remain deferred. Multiday remains fail-closed. Offline manifesto
+and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -486,7 +485,7 @@ instruction.
 ## J. Gate
 
 ```text
-IMPL_12_CORRECTIVE_VALIDATION_FAILED
+READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
 ```
 
 IMPL-4 closure evidence (local):
@@ -627,14 +626,14 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: CORRECTIVE_VALIDATION_FAILED / NOT CLOSED
-IMPL-12-R3 migration 0009: payment upsert before verification insert
-IMPL-12-R3 branch proof: webhook HTTP 200; payment+verification.payment_id PASS
-IMPL-12-R3 Case A full checklist: FAIL (expired hold → REQUIRES_REVIEW; tickets=0)
-Evidence: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
+IMPL-12: CASE_A_CORRECTIVE_PASS / NOT CLOSED
+IMPL-12-R4 Main migrations: v1–v9
+IMPL-12-R4 Case A: PAID + ticket/credential/entitlement + DUPLICATE + 401 PASS
+Evidence: docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md
+Prior: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: IMPL_12_CORRECTIVE_VALIDATION_FAILED
+Gate: READY_FOR_IMPL_12_REMAINING_CASES_EXECUTION
 ```
