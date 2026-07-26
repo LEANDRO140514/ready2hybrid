@@ -44,8 +44,8 @@
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-- IMPL-12 sandbox E2E: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
-  (A–D PASS; E deferred; OD-001 spectator qty ≥ 1; async pending methods deferred)
+- IMPL-12 sandbox E2E: VALIDATED / CLOSED
+  (A–D PASS; E deferred; OD-001 spectator qty ≥ 1; human closure 2026-07-26 on `9cca6b4`)
 - InsForge sandbox branches R1–R4 + remaining-cases + case-c-quantity: DELETED
 - InsForge Main migrations: v1–v10 (0010 spectator-multi-quantity applied on Main)
 - Mercado Pago test webhook: URL may remain stored; verify topics NONE / callback DISABLED in panel
@@ -90,8 +90,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2..11 `VALIDATED / CLOSED`;
-    IMPL-12 `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE`
+  - plan trazable IMPL-1..12; IMPL-2..12 `VALIDATED / CLOSED`;
+    IMPL-13 `NOT_STARTED / NOT AUTHORIZED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -137,7 +137,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
     branch deleted; Main was v1–v9 at Case C close
 - `docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md`
   - Main v10 + `mp-create-checkout` deploy; HEX-2026 CONFIGURADO;
-    functions 5; transactional 0; no payments/sales
+    functions 5; transactional 0; no payments/sales;
+    human closure APPROVED 2026-07-26 → IMPL-12 `VALIDATED / CLOSED`
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -283,15 +284,15 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_12_HUMAN_CLOSURE`
+`READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT`
 
 Siguiente accion permitida:
 
-1. cierre humano de IMPL-12 para lanzamiento inicial con tarjeta;
+1. preflight de integracion IMPL-13 solo con autorizacion humana aparte;
 2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
-3. no iniciar IMPL-13;
-4. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
-5. no conectar la landing;
+3. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
+4. no conectar la landing a ventas reales;
+5. no configurar webhook productivo ni credenciales productivas;
 6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
 7. mantener webhook de prueba DISABLED y produccion NOT CONFIGURED hasta unidad aparte.
 
@@ -349,7 +350,8 @@ con tickets/credentials/entitlements = 2. Evidencia en
 IMPL-12 Canonical V10 aplico migracion 0010 y redesplego `mp-create-checkout`
 en Main sin pagos ni apertura de ventas. Evidencia en
 `docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md`.
-IMPL-12 = `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE`.
+El Project Owner cerro humanamente IMPL-12 el 2026-07-26 sobre evidencia
+hasta `9cca6b4`. IMPL-12 = `VALIDATED / CLOSED`.
 
 ```text
 IMPL-4: VALIDATED
@@ -360,7 +362,7 @@ IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
 IMPL-11: VALIDATED / CLOSED
-IMPL-12: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
+IMPL-12: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -382,7 +384,8 @@ PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+IMPL_12_HUMAN_CLOSED
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
@@ -392,11 +395,12 @@ el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
 payment/verification y la capacidad spectator multi-quantity (v10). El evento
-canónico permanece en `CONFIGURADO`. Main no fue usado como sandbox de pagos
-en este deploy. Casos A–D PASS; Case E y metodos async quedan diferidos del
-lanzamiento inicial. Recordatorios, correo y recuperacion publica de QR
-permanecen diferidos. Productos multiday permanecen fail-closed. Check-in y
-manifiesto no fueron implementados. IMPL-13 no esta autorizado.
+canónico permanece en `CONFIGURADO`. Ventas productivas, webhook productivo y
+conexion de landing a ventas reales no estan autorizados. Casos A–D PASS;
+Case E y metodos async quedan diferidos del lanzamiento inicial.
+Recordatorios, correo y recuperacion publica de QR permanecen diferidos.
+Productos multiday permanecen fail-closed. Check-in y manifiesto no fueron
+implementados. IMPL-13 permanece `NOT_STARTED` hasta autorizacion aparte.
 La landing publica existente permanece protegida:
 
 ```text

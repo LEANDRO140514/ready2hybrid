@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE` (A–D PASS; E deferred; OD-001 approved; Main v10 deployed) |
+| Current state | `VALIDATED / CLOSED` (A–D PASS; E deferred; OD-001 approved; Main v10; human closure 2026-07-26 on `9cca6b4`) |
 
 ## E. Traceability matrix
 
@@ -455,18 +455,18 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-12 — Sandbox end-to-end
-Status: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
-Gate: READY_FOR_IMPL_12_HUMAN_CLOSURE
+IMPL-13 — Integration preflight (authorization required)
+Status: NOT_STARTED / NOT AUTHORIZED
+Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
 ```
 
-IMPL-12 Case C implemented OD-001 (spectator quantity ≥ 1) and revalidated
-PUB-VIE × 2 → PAID with tickets/credentials/entitlements = 2. Cases A/B/D
-PASS. Case E deferred from initial launch (OD-PENDING D: CONT sandbox did
-not preserve pending). Async methods (OXXO/vouchers/etc.) not validated.
-Canonical Main deploy applied migration 0010 (v10) and redeployed
-`mp-create-checkout`; HEX-2026 remains CONFIGURADO; transactional rows 0.
-Do not start IMPL-13. Do not open sales on Main or connect the landing.
+IMPL-12 is `VALIDATED / CLOSED` by Project Owner human closure on 2026-07-26
+accepting technical evidence through `9cca6b4`. Initial-launch card path
+(Cases A–D) accepted. Case E / async methods remain
+`DEFERRED_FROM_INITIAL_LAUNCH`. Main remains CONFIGURADO / v1–v10 /
+functions 5 / transactional 0. Do not open productive sales, configure
+productive webhook/credentials, or connect the landing to real sales.
+Do not start IMPL-13 without a separate human authorization.
 Reminders, email, and public QR retrieval remain deferred. Multiday remains
 fail-closed. Offline manifesto and check-in remain not implemented.
 
@@ -487,7 +487,8 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_12_HUMAN_CLOSURE
+READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+IMPL_12_HUMAN_CLOSED
 ```
 
 IMPL-4 closure evidence (local):
@@ -628,11 +629,12 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
+IMPL-12: VALIDATED / CLOSED
 IMPL-12 Main migrations: v1–v10 (0010 spectator-multi-quantity applied on Main)
 IMPL-12 Case A–D: PASS · Case E: DEFERRED_FROM_INITIAL_LAUNCH
 OD-001: APPROVED (spectator quantity ≥ 1)
 OD-PENDING: D (async methods deferred; CONT not stable)
+Human closure: 2026-07-26 · evidence through 9cca6b4 · IMPL_12_HUMAN_CLOSED
 Evidence: docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md
 Prior: docs/implementation/evidence/IMPL-12-CASE-C-SPECTATOR-QUANTITY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-REMAINING-CASES-VALIDATION.md
@@ -642,5 +644,5 @@ Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.
 Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_HUMAN_CLOSURE
+Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
 ```

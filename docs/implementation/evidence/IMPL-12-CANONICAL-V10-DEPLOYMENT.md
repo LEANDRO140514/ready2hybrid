@@ -8,8 +8,8 @@ Baseline HEAD: 37084fc (fix(checkout): support multiple spectator tickets)
 CLI: @insforge/cli@0.2.1
 Canonical project: ready2hybrid / appkey 4bg9ufz2 / host 4bg9ufz2.us-east
 Result: MAIN_V10_DEPLOYED
-Gate: READY_FOR_IMPL_12_HUMAN_CLOSURE
-IMPL-12: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
+Technical gate (superseded by §7): READY_FOR_IMPL_12_HUMAN_CLOSURE
+Final status after human closure (§7): VALIDATED / CLOSED
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
 ```
 
@@ -76,8 +76,88 @@ DOES NOT: validate async methods (OD-PENDING D remains deferred)
 DOES NOT: start IMPL-13
 ```
 
-## 6. Gate
+## 6. Technical gate (pre-closure)
 
 ```text
 READY_FOR_IMPL_12_HUMAN_CLOSURE
+```
+
+Superseded by human closure below.
+
+## 7. Human closure
+
+```text
+Human closure authority:
+Leandro Espinosa — Project Owner
+
+Human closure date:
+2026-07-26
+
+Technical evidence commit accepted:
+9cca6b4
+
+Human decision:
+APPROVED FOR CLOSURE
+
+Final implementation status:
+VALIDATED / CLOSED
+
+Human gate:
+IMPL_12_HUMAN_CLOSED
+```
+
+Accepted initial-launch scope (immediate card / Checkout Pro):
+
+```text
+Case A competitor individual approved = PASS
+Case B team of two = PASS
+Case C two spectator accesses in one order = PASS
+Case D rejected payment = PASS
+Signed webhook / MP server-side verify / canonical payment /
+order PAID / registration confirmed / tickets / credentials /
+entitlements / idempotency / invalid signature no effects = PASS
+```
+
+Deferred (not validated for initial launch):
+
+```text
+Case E async PENDING / OXXO / Paycash / voucher
+= DEFERRED_FROM_INITIAL_LAUNCH
+```
+
+Canonical Main accepted at closure:
+
+```text
+HEX-2026 = CONFIGURADO
+products = 28
+migrations = v1–v10
+functions = 5
+transactional rows = 0
+```
+
+Continuing restrictions:
+
+```text
+productive sales = NOT AUTHORIZED
+productive credentials = NOT CONFIGURED
+productive webhook = NOT CONFIGURED
+landing connected to real sales = NO
+IMPL-13 = NOT_STARTED
+```
+
+Closure notes:
+
+- Human approval is based on published technical evidence through commit `9cca6b4`.
+- No code, migrations, functions, Mercado Pago, or InsForge changes in this closure unit.
+- Local/remote runtime tests were not repeated during this closure unit.
+- Case E / async methods remain deferred and must not be offered as validated.
+
+```text
+Gate after human closure:
+READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+IMPL-12 = VALIDATED / CLOSED
+IMPL_12_HUMAN_CLOSED
+Case E / async methods = DEFERRED_FROM_INITIAL_LAUNCH
+productive sales / webhook / landing = NOT AUTHORIZED
+IMPL-13 = NOT_STARTED / NOT AUTHORIZED
 ```
