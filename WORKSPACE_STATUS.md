@@ -47,7 +47,7 @@
 - IMPL-12 sandbox E2E: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
   (A–D PASS; E deferred; OD-001 spectator qty ≥ 1; async pending methods deferred)
 - InsForge sandbox branches R1–R4 + remaining-cases + case-c-quantity: DELETED
-- InsForge Main migrations: v1–v9 (0010 validated on sandbox only)
+- InsForge Main migrations: v1–v10 (0010 spectator-multi-quantity applied on Main)
 - Mercado Pago test webhook: URL may remain stored; verify topics NONE / callback DISABLED in panel
 - Mercado Pago production webhook: NOT CONFIGURED
 - IMPL-13: NOT_STARTED / NOT AUTHORIZED
@@ -134,7 +134,10 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - B PASS; C OD-001 fail-closed (pre-fix); D PASS; E PROVIDER_SANDBOX_CONT_NOT_STABLE
 - `docs/implementation/evidence/IMPL-12-CASE-C-SPECTATOR-QUANTITY-VALIDATION.md`
   - OD-001 spectator qty=2 PASS (tickets/creds/ents=2); OD-PENDING D;
-    branch deleted; Main v1–v9 transactional 0
+    branch deleted; Main was v1–v9 at Case C close
+- `docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md`
+  - Main v10 + `mp-create-checkout` deploy; HEX-2026 CONFIGURADO;
+    functions 5; transactional 0; no payments/sales
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -285,13 +288,12 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 Siguiente accion permitida:
 
 1. cierre humano de IMPL-12 para lanzamiento inicial con tarjeta;
-2. decidir por separado el deploy de migracion 0010 en Main;
-3. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
-4. no iniciar IMPL-13;
-5. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
-6. no conectar la landing;
-7. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
-8. humano: verificar topics NONE / callback DISABLED del webhook de prueba en el panel MP.
+2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
+3. no iniciar IMPL-13;
+4. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
+5. no conectar la landing;
+6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
+7. mantener webhook de prueba DISABLED y produccion NOT CONFIGURED hasta unidad aparte.
 
 ## Ultimo cierre
 
@@ -344,6 +346,9 @@ Evidencia en
 IMPL-12 Case C implemento OD-001 (spectator quantity) y valido PUB-VIE × 2
 con tickets/credentials/entitlements = 2. Evidencia en
 `docs/implementation/evidence/IMPL-12-CASE-C-SPECTATOR-QUANTITY-VALIDATION.md`.
+IMPL-12 Canonical V10 aplico migracion 0010 y redesplego `mp-create-checkout`
+en Main sin pagos ni apertura de ventas. Evidencia en
+`docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md`.
 IMPL-12 = `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE`.
 
 ```text
@@ -363,14 +368,14 @@ InsForge webhook TX migration 0006 / v6: APPLIED
 InsForge team roster migration 0007 / v7: APPLIED
 InsForge ticket issuance migration 0008 / v8: APPLIED
 InsForge webhook order fix migration 0009 / v9: APPLIED ON MAIN
-InsForge spectator qty migration 0010: VALIDATED ON SANDBOX ONLY (not on Main)
+InsForge spectator qty migration 0010 / v10: APPLIED ON MAIN
 OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago production webhook: NOT CONFIGURED
-Mercado Pago test webhook: URL MAY REMAIN STORED / VERIFY TOPICS NONE + CALLBACK DISABLED IN PANEL
+Mercado Pago test webhook: TOPICS NONE / CALLBACK DISABLED (human-confirmed; URL may remain stored)
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
@@ -386,13 +391,12 @@ El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
 el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
-payment/verification. El evento canónico permanece en `CONFIGURADO`. Main no
-fue usado como sandbox de pagos. Casos A–D PASS; Case E y metodos async
-quedan diferidos del lanzamiento inicial. Migracion 0010 esta en el repo y
-fue validada en branch eliminada; Main permanece en v1–v9 hasta autorizacion
-aparte. Recordatorios, correo y recuperacion publica de QR permanecen
-diferidos. Productos multiday permanecen fail-closed. Check-in y manifiesto
-no fueron implementados. IMPL-13 no esta autorizado.
+payment/verification y la capacidad spectator multi-quantity (v10). El evento
+canónico permanece en `CONFIGURADO`. Main no fue usado como sandbox de pagos
+en este deploy. Casos A–D PASS; Case E y metodos async quedan diferidos del
+lanzamiento inicial. Recordatorios, correo y recuperacion publica de QR
+permanecen diferidos. Productos multiday permanecen fail-closed. Check-in y
+manifiesto no fueron implementados. IMPL-13 no esta autorizado.
 La landing publica existente permanece protegida:
 
 ```text

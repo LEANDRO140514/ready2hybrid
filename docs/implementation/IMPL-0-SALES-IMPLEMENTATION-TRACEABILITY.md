@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE` (A–D PASS; E deferred; OD-001 spectator qty approved) |
+| Current state | `TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE` (A–D PASS; E deferred; OD-001 approved; Main v10 deployed) |
 
 ## E. Traceability matrix
 
@@ -464,10 +464,11 @@ IMPL-12 Case C implemented OD-001 (spectator quantity ≥ 1) and revalidated
 PUB-VIE × 2 → PAID with tickets/credentials/entitlements = 2. Cases A/B/D
 PASS. Case E deferred from initial launch (OD-PENDING D: CONT sandbox did
 not preserve pending). Async methods (OXXO/vouchers/etc.) not validated.
+Canonical Main deploy applied migration 0010 (v10) and redeployed
+`mp-create-checkout`; HEX-2026 remains CONFIGURADO; transactional rows 0.
 Do not start IMPL-13. Do not open sales on Main or connect the landing.
 Reminders, email, and public QR retrieval remain deferred. Multiday remains
 fail-closed. Offline manifesto and check-in remain not implemented.
-Main still on migrations v1–v9; 0010 validated on deleted sandbox branch.
 
 ## I. IMPL-0 change set
 
@@ -628,11 +629,12 @@ Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
 IMPL-12: TECHNICAL_PASS_FOR_INITIAL_CARD_LAUNCH / PENDING_METHODS_DEFERRED / PENDING HUMAN CLOSURE
-IMPL-12 Main migrations: v1–v9 (0010 spectator qty validated on sandbox branch only)
+IMPL-12 Main migrations: v1–v10 (0010 spectator-multi-quantity applied on Main)
 IMPL-12 Case A–D: PASS · Case E: DEFERRED_FROM_INITIAL_LAUNCH
 OD-001: APPROVED (spectator quantity ≥ 1)
 OD-PENDING: D (async methods deferred; CONT not stable)
-Evidence: docs/implementation/evidence/IMPL-12-CASE-C-SPECTATOR-QUANTITY-VALIDATION.md
+Evidence: docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md
+Prior: docs/implementation/evidence/IMPL-12-CASE-C-SPECTATOR-QUANTITY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-REMAINING-CASES-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R4-CASE-A-TTL-REVALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
