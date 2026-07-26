@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `DIAGNOSED / NOT CLOSED` (R1: BROWSER_SESSION_CONFLICT; payment possible) |
+| Current state | `VALIDATION_FAILED / NOT CLOSED` (R2: webhook TX NOT NULL defect after Case A payment) |
 
 ## E. Traceability matrix
 
@@ -456,16 +456,17 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: DIAGNOSED / NOT CLOSED
-Gate: READY_FOR_IMPL_12_RETRY_AUTHORIZATION
+Status: VALIDATION_FAILED / NOT CLOSED
+Gate: IMPL_12_VALIDATION_FAILED
 ```
 
-IMPL-12-R1 established `BROWSER_SESSION_CONFLICT` and completed one sandbox
-payment ($300 MXN) with a clean test-buyer session + email OTP. Full IMPL-12
-matrix remains unauthorized. Do not start IMPL-13. Do not open sales on Main
-or connect the landing. Reminders, email, and public QR retrieval remain
-deferred. Multiday remains fail-closed. Offline manifesto and check-in remain
-not implemented.
+IMPL-12-R1 cleared Checkout Pro session conflict. IMPL-12-R2 completed Case A
+sandbox payment ($300 MXN) but signed webhook apply failed: RPC
+`webhook_apply_payment_tx` inserts `payment_verification_records` without
+`payment_id` while the column is NOT NULL (migration 0002). No in-unit fix.
+Do not start IMPL-13. Do not open sales on Main or connect the landing.
+Reminders, email, and public QR retrieval remain deferred. Multiday remains
+fail-closed. Offline manifesto and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -484,7 +485,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_12_RETRY_AUTHORIZATION
+IMPL_12_VALIDATION_FAILED
 ```
 
 IMPL-4 closure evidence (local):
@@ -625,11 +626,13 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: DIAGNOSED / NOT CLOSED
+IMPL-12: VALIDATION_FAILED / NOT CLOSED
 IMPL-12-R1 root cause: BROWSER_SESSION_CONFLICT
-IMPL-12-R1 sandbox payment: approved / accredited ($300 MXN)
-Evidence: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
-Prior block evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
+IMPL-12-R2 Case A payment: approved / accredited ($300 MXN) PASS
+IMPL-12-R2 signed webhook: HTTP 500 — payment_verification_records.payment_id NOT NULL
+Evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
+Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
+Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_12_RETRY_AUTHORIZATION
+Gate: IMPL_12_VALIDATION_FAILED
 ```

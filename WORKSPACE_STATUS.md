@@ -44,10 +44,11 @@
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-- IMPL-12 sandbox E2E: DIAGNOSED / NOT CLOSED
-  (`ROOT_CAUSE_ESTABLISHED: BROWSER_SESSION_CONFLICT` via IMPL-12-R1)
-- InsForge diagnostic branch `impl12-r1-mpdiag-20260725`: DELETED
-- Mercado Pago test webhook: DISABLED / URL STORED / NO EVENTS
+- IMPL-12 sandbox E2E: VALIDATION_FAILED / NOT CLOSED
+  (R1: checkout payment possible; R2: signed webhook TX fails —
+  `payment_verification_records.payment_id` NOT NULL vs RPC insert-before-payment)
+- InsForge branches `impl12-r1-mpdiag-20260725` / `impl12-r2-e2e-20260725`: DELETED
+- Mercado Pago test webhook: URL STORED (points at deleted R2 host); topics may still list `payment` (MCP clear incomplete)
 - Mercado Pago production webhook: NOT CONFIGURED
 - IMPL-13: NOT_STARTED / NOT AUTHORIZED
 - Landing changes: NONE
@@ -120,6 +121,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md`
   - root cause `BROWSER_SESSION_CONFLICT`; sandbox payment approved $300 MXN;
     no code change; Main differences = 0; branch deleted
+- `docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md`
+  - IMPL-12-R2; Case A payment PASS; signed webhook HTTP 500;
+    schema/RPC NOT NULL defect; no code patch; branch deleted; Main transactional = 0
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
