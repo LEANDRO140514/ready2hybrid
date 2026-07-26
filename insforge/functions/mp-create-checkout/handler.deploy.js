@@ -227,6 +227,26 @@ function buildPriceSnapshot(product, journey, quantity) {
   };
 }
 
+// insforge/functions/_shared/checkout/quantity.ts
+function assertQuantityForProduct(product, quantity) {
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new CheckoutError("INVALID_REQUEST", "quantity must be a positive integer");
+  }
+  if (product.kind === "spectator") {
+    if (quantity > product.cupo) {
+      throw new CheckoutError("SOLD_OUT");
+    }
+    return;
+  }
+  if (quantity !== 1) {
+    throw new CheckoutError("INVALID_REQUEST", "Only quantity=1 is accepted for this product");
+  }
+}
+function capacityUnitsForQuantity(product, quantity) {
+  if (product.kind === "spectator") return quantity;
+  return 1;
+}
+
 // insforge/functions/_shared/checkout/sales.ts
 var CLOSED_PRODUCT_STATES = /* @__PURE__ */ new Set([
   "SOLD_OUT",
@@ -11464,9 +11484,6 @@ function parseCheckoutRequest(raw) {
     throw new CheckoutError("INVALID_REQUEST");
   }
   const quantity = parsed.data.quantity ?? 1;
-  if (quantity !== 1) {
-    throw new CheckoutError("INVALID_REQUEST", "Only quantity=1 is accepted");
-  }
   if (!journeyForProductCode(parsed.data.product_code)) {
     throw new CheckoutError("PRODUCT_NOT_FOUND");
   }
@@ -11486,12 +11503,14 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     if (!found) throw new CheckoutError("PRODUCT_NOT_FOUND");
     assertSalesOpen(found.event, deps.now?.() ?? /* @__PURE__ */ new Date());
     assertProductSellable(found.product);
+    assertQuantityForProduct(found.product, req.quantity);
     const config2 = loadCheckoutRuntimeConfig(deps.env);
     assertWaiverConfig(config2, journey, req.waiver);
     if ((journey === "J2" || journey === "J3") && !config2.invitationTtlSeconds) {
       throw new CheckoutError("CONFIGURATION_ERROR", "TEAM_INVITATION_TTL_SECONDS missing");
     }
     const price = buildPriceSnapshot(found.product, journey, req.quantity);
+    const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity);
     const normalized = {
       product_code: req.product_code,
       quantity: req.quantity,
@@ -11511,7 +11530,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       totalCents: price.total_cents,
       currency: "MXN",
       capacityUnit: price.capacity_unit,
-      capacityUnits: 1,
+      capacityUnits,
       holdDurationSeconds: config2.holdDurationSeconds,
       idempotencyKeyHash,
       requestFingerprint,
@@ -11536,6 +11555,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         chip_extra_cents: 0,
         insurance_extra_cents: 0,
         unit_price_cents: price.unit_price_cents,
+        quantity: req.quantity,
         currency: "MXN"
       }
     });

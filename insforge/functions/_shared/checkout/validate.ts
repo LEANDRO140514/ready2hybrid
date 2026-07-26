@@ -66,10 +66,8 @@ export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity
     throw new CheckoutError('INVALID_REQUEST')
   }
   const quantity = parsed.data.quantity ?? 1
-  if (quantity !== 1) {
-    // OD-001 remains open: only quantity=1 is accepted.
-    throw new CheckoutError('INVALID_REQUEST', 'Only quantity=1 is accepted')
-  }
+  // Product-kind quantity rules (OD-001 spectator multi-unit) are enforced after
+  // catalog load in orchestrate; Zod already rejects non-positive / non-integer.
   if (!journeyForProductCode(parsed.data.product_code)) {
     throw new CheckoutError('PRODUCT_NOT_FOUND')
   }

@@ -4,6 +4,7 @@ import { fingerprintRequest, hashIdempotencyKey } from './idempotency'
 import { journeyForProductCode } from './journeys'
 import type { MercadoPagoClient } from './mp-client'
 import { buildPriceSnapshot } from './pricing'
+import { assertQuantityForProduct, capacityUnitsForQuantity } from './quantity'
 import { assertProductSellable, assertSalesOpen, type EventSalesRow, type ProductSalesRow } from './sales'
 import { parseCheckoutRequest } from './validate'
 
@@ -97,6 +98,7 @@ export async function orchestrateCheckoutStart(
 
     assertSalesOpen(found.event, deps.now?.() ?? new Date())
     assertProductSellable(found.product)
+    assertQuantityForProduct(found.product, req.quantity)
 
     const config = loadCheckoutRuntimeConfig(deps.env)
     assertWaiverConfig(config, journey, req.waiver)
@@ -105,6 +107,7 @@ export async function orchestrateCheckoutStart(
     }
 
     const price = buildPriceSnapshot(found.product, journey, req.quantity)
+    const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity)
     const normalized = {
       product_code: req.product_code,
       quantity: req.quantity,
@@ -125,7 +128,7 @@ export async function orchestrateCheckoutStart(
       totalCents: price.total_cents,
       currency: 'MXN',
       capacityUnit: price.capacity_unit,
-      capacityUnits: 1,
+      capacityUnits,
       holdDurationSeconds: config.holdDurationSeconds,
       idempotencyKeyHash,
       requestFingerprint,
@@ -150,6 +153,7 @@ export async function orchestrateCheckoutStart(
         chip_extra_cents: 0,
         insurance_extra_cents: 0,
         unit_price_cents: price.unit_price_cents,
+        quantity: req.quantity,
         currency: 'MXN',
       },
     })
