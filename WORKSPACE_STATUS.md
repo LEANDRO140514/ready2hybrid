@@ -44,12 +44,14 @@
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-- IMPL-12 sandbox E2E: PROVIDER_SANDBOX_BLOCKED (not closed)
-- InsForge sandbox branch `impl12-sandbox-20260725`: DELETED
-- Mercado Pago sandbox callback cleanup: PENDING MANUAL (panel)
+- IMPL-12 sandbox E2E: DIAGNOSED / NOT CLOSED
+  (`ROOT_CAUSE_ESTABLISHED: BROWSER_SESSION_CONFLICT` via IMPL-12-R1)
+- InsForge diagnostic branch `impl12-r1-mpdiag-20260725`: DELETED
+- Mercado Pago test webhook: DISABLED / URL STORED / NO EVENTS
 - Mercado Pago production webhook: NOT CONFIGURED
 - IMPL-13: NOT_STARTED / NOT AUTHORIZED
 - Landing changes: NONE
+- `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
 
 ## Autoridad
 
@@ -88,7 +90,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..12; IMPL-2..11 `VALIDATED / CLOSED`;
-    IMPL-12 `PROVIDER_SANDBOX_BLOCKED` (not closed)
+    IMPL-12 `DIAGNOSED / NOT CLOSED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -115,6 +117,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - isolated branch + signed pre-webhook + checkout preferences PASS;
     Checkout Pro sandbox payment UI BLOCKED; Main differences = 0;
     branch deleted; IMPL-13 not started
+- `docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md`
+  - root cause `BROWSER_SESSION_CONFLICT`; sandbox payment approved $300 MXN;
+    no code change; Main differences = 0; branch deleted
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -260,18 +265,17 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`PROVIDER_SANDBOX_BLOCKED`
+`READY_FOR_IMPL_12_RETRY_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. limpiar manualmente en el panel de Mercado Pago el callback sandbox residual
-   (si aun apunta a `4bg9ufz2-jyq`);
-2. no declarar IMPL-12 `TECHNICAL_PASS` ni `VALIDATED / CLOSED`;
+1. esperar autorizacion humana para reintentar IMPL-12 con protocolo de
+   comprador de prueba (Incognito + OTP + sin sesion vendedor);
+2. no declarar IMPL-12 `TECHNICAL_PASS` ni `VALIDATED / CLOSED` sin esa unidad;
 3. no iniciar IMPL-13;
 4. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
 5. no conectar la landing;
-6. reintentar IMPL-12 solo con nueva autorizacion humana cuando el Checkout Pro
-   sandbox permita completar un pago de prueba.
+6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte.
 
 ## Ultimo cierre
 
@@ -321,6 +325,10 @@ IMPL-12 valido el entorno sandbox aislado, preferencias y pre-webhook firmado,
 pero el Checkout Pro sandbox no completo pagos (`PROVIDER_SANDBOX_BLOCKED`).
 Evidencia en
 `docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md`.
+IMPL-12-R1 diagnostico la causa como `BROWSER_SESSION_CONFLICT` y completo un
+pago sandbox de $300 MXN con comprador de prueba + OTP; IMPL-12 permanece
+NOT CLOSED. Evidencia en
+`docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -331,7 +339,7 @@ IMPL-8: VALIDATED / CLOSED
 IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
 IMPL-11: VALIDATED / CLOSED
-IMPL-12: PROVIDER_SANDBOX_BLOCKED
+IMPL-12: DIAGNOSED / NOT CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -342,14 +350,14 @@ OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
 Event status: CONFIGURADO
 Mercado Pago production webhook: NOT CONFIGURED
-Mercado Pago sandbox callback cleanup: PENDING MANUAL
+Mercado Pago test webhook: DISABLED / NO EVENTS
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: PROVIDER_SANDBOX_BLOCKED
+Gate: READY_FOR_IMPL_12_RETRY_AUTHORIZATION
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
@@ -358,11 +366,12 @@ El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
 el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`). El evento canónico permanece en
-`CONFIGURADO`. Main no fue usado como sandbox. IMPL-12 quedo bloqueado por
-el UI de Checkout Pro sandbox (redirect loop / Pagar deshabilitado). La branch
-temporal fue eliminada. Recordatorios, correo y recuperacion publica de QR
-permanecen diferidos. Productos multiday permanecen fail-closed. Check-in y
-manifiesto no fueron implementados. IMPL-13 no esta autorizado.
+`CONFIGURADO`. Main no fue usado como sandbox. IMPL-12-R1 demostro que Checkout
+Pro sandbox puede completar un pago con protocolo de comprador de prueba; la
+matriz E2E de IMPL-12 sigue pendiente de autorizacion. Recordatorios, correo y
+recuperacion publica de QR permanecen diferidos. Productos multiday permanecen
+fail-closed. Check-in y manifiesto no fueron implementados. IMPL-13 no esta
+autorizado.
 La landing publica existente permanece protegida:
 
 ```text

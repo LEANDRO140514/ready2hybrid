@@ -337,7 +337,7 @@ this document does not authorize any unit by itself.
 | Entry gate | IMPL-1-11 validated; explicit sandbox authorization |
 | Exit gate | `SANDBOX_E2E_VALIDATED` |
 | Separate human authorization | Required |
-| Current state | `PROVIDER_SANDBOX_BLOCKED` (not closed; payment UI blocked) |
+| Current state | `DIAGNOSED / NOT CLOSED` (R1: BROWSER_SESSION_CONFLICT; payment possible) |
 
 ## E. Traceability matrix
 
@@ -456,15 +456,16 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-12 — Sandbox end-to-end
-Status: PROVIDER_SANDBOX_BLOCKED (not closed)
+Status: DIAGNOSED / NOT CLOSED
+Gate: READY_FOR_IMPL_12_RETRY_AUTHORIZATION
 ```
 
-IMPL-12 isolated-branch preflight, signed webhook smoke, and sandbox preference
-creation passed; Checkout Pro sandbox could not complete a test payment.
-Do not start IMPL-13. Do not open sales on Main or connect the landing.
-Clear any leftover Mercado Pago sandbox webhook URL in the panel.
-Reminders, email, and public QR retrieval remain deferred. Multiday remains fail-closed.
-Offline manifesto and check-in remain not implemented.
+IMPL-12-R1 established `BROWSER_SESSION_CONFLICT` and completed one sandbox
+payment ($300 MXN) with a clean test-buyer session + email OTP. Full IMPL-12
+matrix remains unauthorized. Do not start IMPL-13. Do not open sales on Main
+or connect the landing. Reminders, email, and public QR retrieval remain
+deferred. Multiday remains fail-closed. Offline manifesto and check-in remain
+not implemented.
 
 ## I. IMPL-0 change set
 
@@ -483,7 +484,7 @@ instruction.
 ## J. Gate
 
 ```text
-PROVIDER_SANDBOX_BLOCKED
+READY_FOR_IMPL_12_RETRY_AUTHORIZATION
 ```
 
 IMPL-4 closure evidence (local):
@@ -624,13 +625,11 @@ OD-020 multiday: OPEN / FAIL-CLOSED
 Email/public retrieval: DEFERRED / NOT AUTHORIZED
 Check-in/manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Evidence: docs/implementation/evidence/IMPL-11-TICKETS-QR-IMPLEMENTATION-VALIDATION.md
-IMPL-12: PROVIDER_SANDBOX_BLOCKED
-Technical validation: isolated branch + signed pre-webhook + checkout preferences PASS
-Payment completion (Checkout Pro sandbox UI): BLOCKED
-Sandbox branch: DELETED
-Canonical Main differences: 0
-Evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
+IMPL-12: DIAGNOSED / NOT CLOSED
+IMPL-12-R1 root cause: BROWSER_SESSION_CONFLICT
+IMPL-12-R1 sandbox payment: approved / accredited ($300 MXN)
+Evidence: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
+Prior block evidence: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
 IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: PROVIDER_SANDBOX_BLOCKED
-Manual MP action: clear leftover sandbox webhook URL in panel if still present
+Gate: READY_FOR_IMPL_12_RETRY_AUTHORIZATION
 ```
