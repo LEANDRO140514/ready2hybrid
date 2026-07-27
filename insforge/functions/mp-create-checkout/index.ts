@@ -78,6 +78,7 @@ function createPorts() {
           event_code: String(product.event_code),
           has_chip: Boolean(product.has_chip),
           has_insurance: Boolean(product.has_insurance),
+          day: product.day == null || product.day === '' ? null : String(product.day),
         },
         event: {
           code: String(event.code),

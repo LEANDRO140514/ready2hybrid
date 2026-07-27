@@ -31,6 +31,7 @@ const spectator = {
   event_code: 'HEX-2026',
   has_chip: false,
   has_insurance: false,
+  day: '2026-10-09',
 }
 
 const competitor = {

@@ -22,6 +22,8 @@ export type ProductSalesRow = {
   kind: string
   name: string
   id: string
+  /** Bound event day; null for multiday ASISTE products (OD-020 fail-closed). */
+  day: string | null
 }
 
 const CLOSED_PRODUCT_STATES = new Set([

@@ -424,9 +424,9 @@ this document does not authorize any unit by itself.
 | Field | Value |
 |---|---|
 | Related requirements | J5 single-day public/press beyond PUB-VIE |
-| Dependencies | IMPL-13D-H approved; sandbox branch retained; aligned prices |
+| Dependencies | IMPL-13D-H approved; IMPL-13E-0 closed; sandbox `4bg9ufz2-6mq` |
 | Anticipated files | landing checkout wiring extensions; sandbox evidence |
-| External resources | Sandbox InsForge `4bg9ufz2-rug`; MP test path |
+| External resources | Sandbox InsForge `impl-13e-public-press`; MP test path |
 | Blocking open decisions | None for listed single-day products; OD-020 still blocks *3D* |
 | Scope | PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM; reuse confirmando/status/Origin/flags |
 | Out of scope | PUB-3D/FOT-3D; WOD/IND/teams; Main EN_VENTA; abuse-gate implementation; Main price changes |
@@ -434,10 +434,30 @@ this document does not authorize any unit by itself.
 | Manual tests | Sandbox expansion checklist per product |
 | Expected evidence | IMPL-13E preparation + validation reports |
 | Rollback | Disable new product flags; restore prior sandbox wiring |
-| Entry gate | `READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION` + explicit start |
+| Entry gate | `READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL` + explicit start |
 | Exit gate | TBD by execution unit |
-| Separate human authorization | Required (preparation gate open; execution not started) |
-| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` |
+| Separate human authorization | Required (preparation open; execution not started) |
+| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` (after IMPL-13E-0) |
+
+### IMPL-13E-0 — Multiday checkout fail-closed hardening
+
+| Field | Value |
+|---|---|
+| Related requirements | OD-020 fail-closed at checkout (not only ticket issuance) |
+| Dependencies | IMPL-13D-H; catalog `day` null for PUB-3D/FOT-3D |
+| Anticipated files | eligibility helper; orchestrate; catalog day map; tests; evidence |
+| External resources | New sandbox branch `impl-13e-public-press` |
+| Blocking open decisions | OD-020 remains OPEN (no multiday enablement) |
+| Scope | Reject PUB-3D/FOT-3D before idempotency/order/MP; PRODUCT_NOT_AVAILABLE |
+| Out of scope | Landing; seeds; migrations; Main deploy; OD-020 resolution |
+| Automated tests | `tests/unit/checkout/multiday-checkout-eligibility.test.ts` |
+| Manual tests | Sandbox runtime matrix CONFIGURADO |
+| Expected evidence | `IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md` |
+| Rollback | Revert commit; redeploy prior checkout bundle to sandbox only |
+| Entry gate | `READY_FOR_IMPL_13E_0_MULTIDAY_FAIL_CLOSED_HARDENING` |
+| Exit gate | `READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL` |
+| Separate human authorization | Granted (this unit) |
+| Current state | `VALIDATED / CLOSED` |
 
 ## E. Traceability matrix
 
@@ -555,9 +575,10 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-Next unit: IMPL-13E — Public and press single-day sandbox expansion
-Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
+Next unit: IMPL-13E-X — Public and press single-day landing wiring
+Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
 Products: PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM
+Sandbox: impl-13e-public-press / 4bg9ufz2-6mq
 Recommended production blocker remaining:
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING
 ```
@@ -595,11 +616,12 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
+READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
 IMPL_13D_H_APPROVED_CLOSED
+IMPL_13E_0_VALIDATED_CLOSED
 ```
 
 IMPL-4 closure evidence (local):
@@ -776,6 +798,10 @@ Targets MXN: WOD 350 · IND 1500 · HALF-IND 850 · DOB 2500 · HALF-DOB 1700 ·
 Next: IMPL-13E (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
 Out of IMPL-13E: WOD/IND/teams (later) · PUB-3D/FOT-3D fail-closed (OD-020)
 Evidence: docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md
+IMPL-13E-0: VALIDATED / CLOSED
+Policy: spectator/press with day IS NULL → PRODUCT_NOT_AVAILABLE before writes/MP
+Sandbox: impl-13e-public-press / 4bg9ufz2-6mq · Main deploy = 0
+Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
+Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
 ```

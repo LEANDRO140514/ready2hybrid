@@ -28,6 +28,7 @@ const baseProduct = {
   event_code: 'HEX-2026',
   has_chip: true,
   has_insurance: true,
+  day: '2026-10-11',
 }
 
 const openEvent = {

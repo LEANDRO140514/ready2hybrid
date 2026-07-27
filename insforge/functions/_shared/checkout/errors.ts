@@ -25,7 +25,11 @@ export type PublicErrorBody = {
 const MESSAGES: Record<PublicErrorCode, { message: string; retry: PublicErrorBody['error']['retry']; status: number }> = {
   INVALID_REQUEST: { message: 'Invalid checkout request.', retry: 'NO', status: 400 },
   PRODUCT_NOT_FOUND: { message: 'Product was not found.', retry: 'NO', status: 404 },
-  PRODUCT_NOT_AVAILABLE: { message: 'Product is not available.', retry: 'AFTER_STATE_CHANGE', status: 409 },
+  PRODUCT_NOT_AVAILABLE: {
+    message: 'This product is not available for checkout.',
+    retry: 'AFTER_STATE_CHANGE',
+    status: 409,
+  },
   SALES_NOT_OPEN: { message: 'Sales have not opened.', retry: 'AFTER_STATE_CHANGE', status: 409 },
   SALES_CLOSED: { message: 'Sales are closed.', retry: 'NO', status: 409 },
   SOLD_OUT: { message: 'Product is sold out.', retry: 'AFTER_STATE_CHANGE', status: 409 },

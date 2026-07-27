@@ -11,7 +11,11 @@ import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 var MESSAGES = {
   INVALID_REQUEST: { message: "Invalid checkout request.", retry: "NO", status: 400 },
   PRODUCT_NOT_FOUND: { message: "Product was not found.", retry: "NO", status: 404 },
-  PRODUCT_NOT_AVAILABLE: { message: "Product is not available.", retry: "AFTER_STATE_CHANGE", status: 409 },
+  PRODUCT_NOT_AVAILABLE: {
+    message: "This product is not available for checkout.",
+    retry: "AFTER_STATE_CHANGE",
+    status: 409
+  },
   SALES_NOT_OPEN: { message: "Sales have not opened.", retry: "AFTER_STATE_CHANGE", status: 409 },
   SALES_CLOSED: { message: "Sales are closed.", retry: "NO", status: 409 },
   SOLD_OUT: { message: "Product is sold out.", retry: "AFTER_STATE_CHANGE", status: 409 },
@@ -226,6 +230,17 @@ function buildPriceSnapshot(product, journey, quantity) {
     chip_extra_cents: 0,
     insurance_extra_cents: 0
   };
+}
+
+// insforge/functions/_shared/checkout/eligibility.ts
+function isMultidayCheckoutBlocked(product) {
+  if (product.kind !== "spectator" && product.kind !== "press") return false;
+  return product.day == null || product.day === "";
+}
+function assertCheckoutProductAvailable(product) {
+  if (isMultidayCheckoutBlocked(product)) {
+    throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
+  }
 }
 
 // insforge/functions/_shared/checkout/quantity.ts
@@ -11502,6 +11517,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     if (!journey) throw new CheckoutError("PRODUCT_NOT_FOUND");
     const found = await deps.catalog.getProductWithEvent(req.product_code);
     if (!found) throw new CheckoutError("PRODUCT_NOT_FOUND");
+    assertCheckoutProductAvailable(found.product);
     assertSalesOpen(found.event, deps.now?.() ?? /* @__PURE__ */ new Date());
     assertProductSellable(found.product);
     assertQuantityForProduct(found.product, req.quantity);
@@ -11743,7 +11759,8 @@ function createPorts() {
           team_size: Number(product.team_size),
           event_code: String(product.event_code),
           has_chip: Boolean(product.has_chip),
-          has_insurance: Boolean(product.has_insurance)
+          has_insurance: Boolean(product.has_insurance),
+          day: product.day == null || product.day === "" ? null : String(product.day)
         },
         event: {
           code: String(event.code),

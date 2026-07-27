@@ -4,6 +4,7 @@ import { fingerprintRequest, hashIdempotencyKey } from './idempotency'
 import { journeyForProductCode } from './journeys'
 import type { MercadoPagoClient } from './mp-client'
 import { buildPriceSnapshot } from './pricing'
+import { assertCheckoutProductAvailable } from './eligibility'
 import { assertQuantityForProduct, capacityUnitsForQuantity } from './quantity'
 import { assertProductSellable, assertSalesOpen, type EventSalesRow, type ProductSalesRow } from './sales'
 import { parseCheckoutRequest } from './validate'
@@ -95,6 +96,9 @@ export async function orchestrateCheckoutStart(
 
     const found = await deps.catalog.getProductWithEvent(req.product_code)
     if (!found) throw new CheckoutError('PRODUCT_NOT_FOUND')
+
+    // OD-020: block multiday ASISTE before sales window, idempotency, holds, or MP.
+    assertCheckoutProductAvailable(found.product)
 
     assertSalesOpen(found.event, deps.now?.() ?? new Date())
     assertProductSellable(found.product)

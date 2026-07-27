@@ -62,10 +62,15 @@
 - IMPL-13D remaining-journeys preflight: EXECUTED (read-only; no code/price mutation)
 - IMPL-13D-H product/price/journey decisions: APPROVED / CLOSED
   (PO 2026-07-26; OPCIÓN B target prices; IMPL-13E next; Main prices NOT updated yet)
+- IMPL-13E-0 multiday checkout fail-closed: VALIDATED / CLOSED
+  (PUB-3D/FOT-3D → PRODUCT_NOT_AVAILABLE before writes/MP; sandbox `4bg9ufz2-6mq`)
 - Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
-- Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (not in IMPL-13E)
-- Next prepared unit: IMPL-13E — Public and press single-day sandbox expansion
+- Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
+- Next prepared unit: IMPL-13E-X — Public and press single-day landing wiring
   (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM; awaiting execution authorization)
+- InsForge sandbox branches retained:
+  `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
+  `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
 - Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
 - `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
@@ -169,6 +174,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md`
   - PO OPCIÓN B prices; IMPL-13E scope; later WOD/IND/teams; multiday fail-closed;
     abuse gate remains OPEN for production
+- `docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md`
+  - PUB-3D/FOT-3D checkout fail-closed; sandbox `4bg9ufz2-6mq`; zero writes
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -314,11 +321,11 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION`
+`READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL`
 
 Siguiente accion permitida:
 
-1. preparar/ejecutar IMPL-13E solo con autorizacion humana explicita de ejecucion;
+1. preparar/ejecutar IMPL-13E-X solo con autorizacion humana explicita de ejecucion;
 2. no modificar precios canonicos de Main hasta una unidad de precios separada;
 3. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
 4. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
@@ -397,6 +404,10 @@ tecnica `1de0be2` y captura complementaria (op `170714344550`,
 El Project Owner aprobo IMPL-13D-H el 2026-07-26 (OPCIÓN B precios objetivo;
 siguiente unidad IMPL-13E; Main sin mutacion de precios). Evidencia en
 `docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md`.
+IMPL-13E-0 endurecio fail-closed de checkout para PUB-3D/FOT-3D
+(`PRODUCT_NOT_AVAILABLE` antes de writes/MP) en sandbox
+`impl-13e-public-press` / `4bg9ufz2-6mq`. Evidencia en
+`docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -411,6 +422,7 @@ IMPL-12: VALIDATED / CLOSED
 IMPL-13B: VALIDATED / CLOSED
 IMPL-13C: VALIDATED / CLOSED
 IMPL-13D-H: APPROVED / CLOSED
+IMPL-13E-0: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -426,7 +438,9 @@ Catalog: 1 event / 3 days / 28 products
 Commercial target prices (landing): APPROVED (OPCIÓN B)
 Main canonical price update: PENDING SEPARATE UNIT
 Event status (Main): CONFIGURADO
-Sandbox branch: impl-13b-spectator-wiring / 4bg9ufz2-rug
+Sandbox branches:
+  impl-13b-spectator-wiring / 4bg9ufz2-rug (IMPL-13C evidence)
+  impl-13e-public-press / 4bg9ufz2-6mq (IMPL-13E surface)
 Mercado Pago production webhook: NOT CONFIGURED
 Mercado Pago test webhook: TOPICS NONE / CALLBACK DISABLED (human-confirmed; URL may remain stored)
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
@@ -434,14 +448,15 @@ EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
 OD-019 commercial folio: OPEN
-OD-020 multiday: OPEN / FAIL-CLOSED
+OD-020 multiday: OPEN / FAIL-CLOSED (checkout + ticket)
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
 IMPL_13D_H_APPROVED_CLOSED
-Next prepared: IMPL-13E (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
-Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
+IMPL_13E_0_VALIDATED_CLOSED
+Next prepared: IMPL-13E-X (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
+Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
