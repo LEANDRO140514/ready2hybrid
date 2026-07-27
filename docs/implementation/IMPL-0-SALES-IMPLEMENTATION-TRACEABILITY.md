@@ -477,7 +477,7 @@ this document does not authorize any unit by itself.
 | Entry gate | `READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL` |
 | Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE` (blocked until auto_return proven) |
 | Separate human authorization | Granted (this unit) |
-| Current state | `PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / AUTO_RETURN APPROVED NOT YET PROVEN` |
+| Current state | `PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / HTTPS AUTO_RETURN REACHABILITY PROVEN / RETURN PUBLIC REF BINDING GAP OPEN` |
 
 ### IMPL-13E-Y-R2A — HTTPS preview and confirming page validation
 
@@ -492,8 +492,23 @@ this document does not authorize any unit by itself.
 | Expected evidence | `IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md` |
 | Entry gate | `READY_FOR_IMPL_13E_Y_R2_RETURN_FLOW_APPROVAL` |
 | Exit gate | `READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
-| Separate human authorization | Granted (this unit) |
-| Current state | `EXECUTED / READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
+| Separate human authorization | Granted |
+| Current state | `EXECUTED / CLOSED INTO R2B` |
+
+### IMPL-13E-Y-R2B — Single HTTPS auto-return sandbox payment
+
+| Field | Value |
+|---|---|
+| Related requirements | Prove MP `auto_return` to HTTPS preview confirming |
+| Dependencies | R2A preview + CORS/back URLs; sandbox `4bg9ufz2-6mq` |
+| Scope | One FOT-SAB×1 sandbox payment; webhook; confirming with `?ref=` |
+| Out of scope | Code changes; Main EN_VENTA; additional products |
+| Expected evidence | `IMPL-13E-Y-R2B-HTTPS-AUTO-RETURN-PAYMENT.md` |
+| Entry gate | `READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
+| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW` |
+| Separate human authorization | Granted (PO “vamos a hacerlo”) |
+| Current state | `EXECUTED / READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW` |
+| Open gap | `RETURN_PUBLIC_REF_BINDING` (static back_url without embedded `?ref=`) |
 
 ## E. Traceability matrix
 
@@ -842,16 +857,18 @@ Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 Landing wiring: PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM · page lock · session v2
 Evidence: docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md
-IMPL-13E-Y: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / AUTO_RETURN APPROVED NOT YET PROVEN
-PUB-SAB×2 $500 (170718270018) · FOT-VIE×1 $350 (170719199176)
+IMPL-13E-Y: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / HTTPS AUTO_RETURN REACHABILITY PROVEN / RETURN PUBLIC REF BINDING GAP OPEN
+PUB-SAB×2 $500 (170718270018) · FOT-VIE×1 $350 (170719199176) · FOT-SAB×1 $350 (170723724364)
 Sandbox 4bg9ufz2-6mq rolled back CONFIGURADO · Main intact
 Evidence: docs/implementation/evidence/IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md
-IMPL-13E-Y-R2A: EXECUTED / READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL
+IMPL-13E-Y-R2A: EXECUTED / CLOSED into R2B
 Preview HTTPS: https://3e9sriq7.insforge.site @ landing b4f50c0
-Confirming APPROVED on paid refs (local + HTTPS); auto_return not yet proven
 Evidence: docs/implementation/evidence/IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md
+IMPL-13E-Y-R2B: EXECUTED / READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW
+FOT-SAB×1 · payment 170723724364 · MP returned to preview confirmando · UI APPROVED with ?ref=
+Gap: RETURN_PUBLIC_REF_BINDING (static back_url without ?ref= / sessionStorage dependence)
+Evidence: docs/implementation/evidence/IMPL-13E-Y-R2B-HTTPS-AUTO-RETURN-PAYMENT.md
 PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Next: IMPL-13E-Y-R2B — Single HTTPS Auto-Return Sandbox Payment (auth required)
-Gate: READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL
+Gate: READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW
 ```
