@@ -379,6 +379,66 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required (execution + human closure granted 2026-07-26) |
 | Current state | `VALIDATED / CLOSED` (evidence `1de0be2`; op `170714344550`; human closure 2026-07-26) |
 
+### IMPL-13D — Remaining journeys and product decision preflight
+
+| Field | Value |
+|---|---|
+| Related requirements | Product/journey inventory after PUB-VIE; price alignment; abuse gate status |
+| Dependencies | IMPL-13C closed |
+| Anticipated files | documentary evidence only |
+| External resources | Read-only Main/sandbox status; landing catalog compare |
+| Blocking open decisions | Human price option A/B/C; next journey selection |
+| Scope | READ_ONLY inventory + decision package for PO |
+| Out of scope | Code; price mutation; MP; InsForge writes; IMPL-13E implementation |
+| Automated tests | N/A (read-only) |
+| Manual tests | Git preflight; catalog/price/journey matrix |
+| Expected evidence | Preflight report delivered to PO; feeds IMPL-13D-H |
+| Rollback | N/A (no mutations) |
+| Entry gate | `READY_FOR_NEXT_AUTHORIZED_UNIT` after IMPL-13C |
+| Exit gate | `READY_FOR_IMPL_13D_HUMAN_PRODUCT_DECISION` |
+| Separate human authorization | Preflight authorized; closed into IMPL-13D-H |
+| Current state | `EXECUTED / CLOSED` (read-only; 2026-07-26) |
+
+### IMPL-13D-H — Product, price, and journey human decisions
+
+| Field | Value |
+|---|---|
+| Related requirements | Commercial price targets; journey sequencing; IMPL-13E scope |
+| Dependencies | IMPL-13D preflight |
+| Anticipated files | evidence + WORKSPACE_STATUS + this traceability doc |
+| External resources | None (documentary) |
+| Blocking open decisions | Resolved by PO 2026-07-26 (OPCIÓN B; IMPL-13E next) |
+| Scope | Record OPCIÓN B targets; prepare IMPL-13E; sequence later journeys |
+| Out of scope | Main price SQL/seed mutation; IMPL-13E runtime; production open |
+| Automated tests | N/A |
+| Manual tests | Documentary consistency review |
+| Expected evidence | `IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md` |
+| Rollback | Revert documentary commit only |
+| Entry gate | `READY_FOR_IMPL_13D_HUMAN_PRODUCT_DECISION` |
+| Exit gate | `READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION` |
+| Separate human authorization | Granted 2026-07-26 |
+| Current state | `APPROVED / CLOSED` (2026-07-26) |
+
+### IMPL-13E — Public and press single-day sandbox expansion
+
+| Field | Value |
+|---|---|
+| Related requirements | J5 single-day public/press beyond PUB-VIE |
+| Dependencies | IMPL-13D-H approved; sandbox branch retained; aligned prices |
+| Anticipated files | landing checkout wiring extensions; sandbox evidence |
+| External resources | Sandbox InsForge `4bg9ufz2-rug`; MP test path |
+| Blocking open decisions | None for listed single-day products; OD-020 still blocks *3D* |
+| Scope | PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM; reuse confirmando/status/Origin/flags |
+| Out of scope | PUB-3D/FOT-3D; WOD/IND/teams; Main EN_VENTA; abuse-gate implementation; Main price changes |
+| Automated tests | As defined by execution unit |
+| Manual tests | Sandbox expansion checklist per product |
+| Expected evidence | IMPL-13E preparation + validation reports |
+| Rollback | Disable new product flags; restore prior sandbox wiring |
+| Entry gate | `READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION` + explicit start |
+| Exit gate | TBD by execution unit |
+| Separate human authorization | Required (preparation gate open; execution not started) |
+| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` |
+
 ## E. Traceability matrix
 
 Every implementation unit requires separate human authorization.
@@ -495,22 +555,28 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-Next unit: awaiting explicit Project Owner authorization
-Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
+Next unit: IMPL-13E — Public and press single-day sandbox expansion
+Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
+Products: PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM
 Recommended production blocker remaining:
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING
 ```
 
 IMPL-12, IMPL-13B, and IMPL-13C are `VALIDATED / CLOSED` (human 2026-07-26).
-IMPL-13C accepted PUB-VIE sandbox path through op `170714344550`, signed
-webhook `PAID`, `get-order-status` `APPROVED`, and technical evidence
-`1de0be2`. Visual MP success capture is complementary only. Provider
-`live_mode=true` remains a recorded discrepancy, not productive authorization.
-Main remains CONFIGURADO / v1–v10 / functions 5. Do not open productive sales,
-configure productive webhook/credentials, or connect the landing to productive
-sales. Before production, close `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
-Reminders, email, and public QR retrieval remain deferred. Multiday remains
-fail-closed. Offline manifesto and check-in remain not implemented.
+IMPL-13D-H is `APPROVED / CLOSED` (human 2026-07-26): OPCIÓN B commercial
+target prices (landing-visible); Main canonical price update pending a
+separate unit; IMPL-13E prepared for single-day public/press sandbox;
+WOD/individual/teams remain later (not cancelled); PUB-3D/FOT-3D fail-closed
+pending OD-020. IMPL-13C accepted PUB-VIE sandbox path through op
+`170714344550`, signed webhook `PAID`, `get-order-status` `APPROVED`, and
+technical evidence `1de0be2`. Visual MP success capture is complementary
+only. Provider `live_mode=true` remains a recorded discrepancy, not
+productive authorization. Main remains CONFIGURADO / v1–v10 / functions 5.
+Do not open productive sales, configure productive webhook/credentials, or
+connect the landing to productive sales. Before production, close
+`PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`. Reminders, email, and public QR
+retrieval remain deferred. Multiday remains fail-closed. Offline manifesto
+and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -529,10 +595,11 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_NEXT_AUTHORIZED_UNIT
+READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
+IMPL_13D_H_APPROVED_CLOSED
 ```
 
 IMPL-4 closure evidence (local):
@@ -702,6 +769,13 @@ Webhook PAID · get-order-status APPROVED · canonical InsForge artifacts valida
 Human closure: 2026-07-26 · IMPL_13C_HUMAN_CLOSED
 Evidence: docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md
 Prior: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
+IMPL-13D: EXECUTED / CLOSED (read-only preflight)
+IMPL-13D-H: APPROVED / CLOSED
+Price decision: OPCIÓN B (landing targets; Main update PENDING separate unit)
+Targets MXN: WOD 350 · IND 1500 · HALF-IND 850 · DOB 2500 · HALF-DOB 1700 · REL 3400
+Next: IMPL-13E (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
+Out of IMPL-13E: WOD/IND/teams (later) · PUB-3D/FOT-3D fail-closed (OD-020)
+Evidence: docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
+Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
 ```

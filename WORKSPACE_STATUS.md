@@ -59,6 +59,13 @@
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED before production / NOT CLOSED
 - IMPL-13C single spectator sandbox E2E: VALIDATED / CLOSED
   (human closure 2026-07-26; evidence `1de0be2`; op `170714344550`; Mercadopago*fake)
+- IMPL-13D remaining-journeys preflight: EXECUTED (read-only; no code/price mutation)
+- IMPL-13D-H product/price/journey decisions: APPROVED / CLOSED
+  (PO 2026-07-26; OPCIÓN B target prices; IMPL-13E next; Main prices NOT updated yet)
+- Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
+- Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (not in IMPL-13E)
+- Next prepared unit: IMPL-13E — Public and press single-day sandbox expansion
+  (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM; awaiting execution authorization)
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
 - Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
 - `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
@@ -99,7 +106,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..13; IMPL-2..12, IMPL-13B e IMPL-13C `VALIDATED / CLOSED`
+  - plan trazable IMPL-1..13E; IMPL-2..12, IMPL-13B/C `VALIDATED / CLOSED`;
+    IMPL-13D-H `APPROVED / CLOSED`; IMPL-13E prepared
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -158,6 +166,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - PUB-VIE paid; webhook PAID/ALREADY_PAID; status APPROVED; Main TX 0
 - `docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md`
   - PO closure APPROVED 2026-07-26 → IMPL-13C `VALIDATED / CLOSED`
+- `docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md`
+  - PO OPCIÓN B prices; IMPL-13E scope; later WOD/IND/teams; multiday fail-closed;
+    abuse gate remains OPEN for production
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -303,19 +314,21 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_NEXT_AUTHORIZED_UNIT`
+`READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION`
 
 Siguiente accion permitida:
 
-1. solo unidades con autorizacion humana explicita aparte;
-2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
-3. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
-4. no conectar la landing a ventas productivas ni habilitar checkout en el host
+1. preparar/ejecutar IMPL-13E solo con autorizacion humana explicita de ejecucion;
+2. no modificar precios canonicos de Main hasta una unidad de precios separada;
+3. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
+4. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
+5. no conectar la landing a ventas productivas ni habilitar checkout en el host
    de produccion;
-5. no configurar webhook productivo ni credenciales productivas;
-6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
-7. mantener webhook de produccion NOT CONFIGURED; prueba solo en sandbox/test;
-8. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
+6. no configurar webhook productivo ni credenciales productivas;
+7. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
+8. mantener webhook de produccion NOT CONFIGURED; prueba solo en sandbox/test;
+9. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`;
+10. no abrir PUB-3D / FOT-3D hasta resolver OD-020.
 
 ## Ultimo cierre
 
@@ -381,6 +394,9 @@ El Project Owner cerro humanamente IMPL-13C el 2026-07-26 sobre evidencia
 tecnica `1de0be2` y captura complementaria (op `170714344550`,
 `Mercadopago*fake`). Evidencia en
 `docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md`.
+El Project Owner aprobo IMPL-13D-H el 2026-07-26 (OPCIÓN B precios objetivo;
+siguiente unidad IMPL-13E; Main sin mutacion de precios). Evidencia en
+`docs/implementation/evidence/IMPL-13D-H-PRODUCT-JOURNEY-DECISIONS.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -393,6 +409,8 @@ IMPL-10: VALIDATED / CLOSED
 IMPL-11: VALIDATED / CLOSED
 IMPL-12: VALIDATED / CLOSED
 IMPL-13B: VALIDATED / CLOSED
+IMPL-13C: VALIDATED / CLOSED
+IMPL-13D-H: APPROVED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -405,6 +423,8 @@ OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
+Commercial target prices (landing): APPROVED (OPCIÓN B)
+Main canonical price update: PENDING SEPARATE UNIT
 Event status (Main): CONFIGURADO
 Sandbox branch: impl-13b-spectator-wiring / 4bg9ufz2-rug
 Mercado Pago production webhook: NOT CONFIGURED
@@ -419,8 +439,9 @@ check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
-IMPL-13C: VALIDATED / CLOSED
-Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
+IMPL_13D_H_APPROVED_CLOSED
+Next prepared: IMPL-13E (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
+Gate: READY_FOR_IMPL_13E_PUBLIC_PRESS_SANDBOX_PREPARATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -429,13 +450,16 @@ el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
 payment/verification y la capacidad spectator multi-quantity (v10). El E2E
-spectator sandbox PUB-VIE quedo validado y cerrado. El evento canónico Main
-permanece en `CONFIGURADO`. Ventas productivas, webhook productivo y conexion
-de landing a ventas reales no estan autorizados. Casos A–D PASS; Case E y
-metodos async quedan diferidos del lanzamiento inicial. Recordatorios, correo
-y recuperacion publica de QR permanecen diferidos. Productos multiday
-permanecen fail-closed. Check-in y manifiesto no fueron implementados.
-Antes de produccion permanece abierto
+spectator sandbox PUB-VIE quedo validado y cerrado. El Project Owner fijo
+precios comerciales objetivo (landing) bajo OPCIÓN B; la actualizacion
+canonica de Main queda pendiente de unidad separada. IMPL-13E queda preparado
+para expansion sandbox public/press de un dia (sin multiday). El evento
+canonico Main permanece en `CONFIGURADO`. Ventas productivas, webhook
+productivo y conexion de landing a ventas reales no estan autorizados. Casos
+A–D PASS; Case E y metodos async quedan diferidos del lanzamiento inicial.
+Recordatorios, correo y recuperacion publica de QR permanecen diferidos.
+Productos multiday permanecen fail-closed. Check-in y manifiesto no fueron
+implementados. Antes de produccion permanece abierto
 `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 La landing publica existente permanece protegida (checkout off por defecto):
 
