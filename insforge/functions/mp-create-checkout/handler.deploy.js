@@ -17,6 +17,7 @@ var MESSAGES = {
   SOLD_OUT: { message: "Product is sold out.", retry: "AFTER_STATE_CHANGE", status: 409 },
   PRICE_CHANGED: { message: "Product price changed.", retry: "AFTER_STATE_CHANGE", status: 409 },
   WAIVER_REQUIRED: { message: "Waiver acceptance is required.", retry: "NO", status: 409 },
+  ORIGIN_NOT_ALLOWED: { message: "Request origin is not allowed.", retry: "NO", status: 403 },
   CONFIGURATION_ERROR: { message: "Checkout is not configured.", retry: "NO", status: 503 },
   CHECKOUT_CREATION_FAILED: { message: "Checkout could not be created.", retry: "OPTIONAL", status: 502 },
   CONFLICT: { message: "Request conflicts with an existing operation.", retry: "AFTER_STATE_CHANGE", status: 409 },
@@ -11626,25 +11627,91 @@ function assertWaiverConfig(config2, journey, waiver) {
   }
 }
 
+// insforge/functions/_shared/http/origin-guard.ts
+var PUBLIC_ORIGIN_NOT_ALLOWED = {
+  error: {
+    code: "ORIGIN_NOT_ALLOWED",
+    message: "Request origin is not allowed.",
+    retry: "NO"
+  }
+};
+function normalizeConfiguredOrigin(raw) {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+function readConfiguredOrigin(env2, primaryKey, fallbackKey) {
+  const primary = normalizeConfiguredOrigin(env2(primaryKey));
+  if (primary) return primary;
+  if (fallbackKey) return normalizeConfiguredOrigin(env2(fallbackKey));
+  return null;
+}
+function readRequestOrigin(req) {
+  const raw = req.headers.get("Origin");
+  if (raw == null) return null;
+  if (raw === "null") return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+function buildCorsHeaders(input) {
+  return {
+    "Access-Control-Allow-Origin": input.allowedOrigin,
+    Vary: "Origin",
+    "Access-Control-Allow-Methods": input.allowMethods,
+    "Access-Control-Allow-Headers": input.allowHeaders,
+    ...input.extra ?? {}
+  };
+}
+function gateRequestOrigin(input) {
+  if (!input.allowedOrigin) {
+    return { ok: false, kind: "MISSING_CONFIG" };
+  }
+  const requestOrigin = readRequestOrigin(input.req);
+  if (requestOrigin == null || requestOrigin !== input.allowedOrigin) {
+    return { ok: false, kind: "ORIGIN_NOT_ALLOWED" };
+  }
+  return {
+    ok: true,
+    origin: input.allowedOrigin,
+    headers: buildCorsHeaders({
+      allowedOrigin: input.allowedOrigin,
+      allowMethods: input.allowMethods,
+      allowHeaders: input.allowHeaders,
+      extra: input.extraHeaders
+    })
+  };
+}
+function originNotAllowedBody() {
+  return PUBLIC_ORIGIN_NOT_ALLOWED;
+}
+function originNotAllowedResponse() {
+  return new Response(JSON.stringify(originNotAllowedBody()), {
+    status: 403,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
 // insforge/functions/mp-create-checkout/index.ts
 function env(key) {
   return Deno.env.get(key) ?? void 0;
 }
-function corsHeaders() {
-  const origin = env("CHECKOUT_CORS_ORIGIN")?.trim();
-  const headers = {
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Idempotency-Key",
-    "Content-Type": "application/json"
-  };
-  if (origin) {
-    headers["Access-Control-Allow-Origin"] = origin;
-    headers["Vary"] = "Origin";
-  }
-  return headers;
+var ALLOW_METHODS = "POST, OPTIONS";
+var ALLOW_HEADERS = "Content-Type, Authorization, X-Idempotency-Key";
+function gateOrigin(req) {
+  const allowedOrigin = readConfiguredOrigin(env, "CHECKOUT_CORS_ORIGIN");
+  return gateRequestOrigin({
+    req,
+    allowedOrigin,
+    allowMethods: ALLOW_METHODS,
+    allowHeaders: ALLOW_HEADERS,
+    extraHeaders: { "Content-Type": "application/json" }
+  });
 }
-function jsonResponse(status, body) {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders() });
+function jsonResponse(status, body, corsHeaders) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
 }
 function createPorts() {
   const baseUrl = env("INSFORGE_BASE_URL");
@@ -11769,16 +11836,40 @@ function createPorts() {
 }
 async function handler(req) {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    const gate2 = gateOrigin(req);
+    if (!gate2.ok) {
+      if (gate2.kind === "MISSING_CONFIG") {
+        return new Response(JSON.stringify(new CheckoutError("CONFIGURATION_ERROR").toPublicBody()), {
+          status: 503,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return originNotAllowedResponse();
+    }
+    const { "Content-Type": _ct, ...preflightHeaders } = gate2.headers;
+    return new Response(null, { status: 204, headers: preflightHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse(405, new CheckoutError("INVALID_REQUEST").toPublicBody());
+    return new Response(JSON.stringify(new CheckoutError("INVALID_REQUEST").toPublicBody()), {
+      status: 405,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  const gate = gateOrigin(req);
+  if (!gate.ok) {
+    if (gate.kind === "MISSING_CONFIG") {
+      return new Response(JSON.stringify(new CheckoutError("CONFIGURATION_ERROR").toPublicBody()), {
+        status: 503,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    return originNotAllowedResponse();
   }
   let raw;
   try {
     raw = await req.json();
   } catch {
-    return jsonResponse(400, new CheckoutError("INVALID_REQUEST").toPublicBody());
+    return jsonResponse(400, new CheckoutError("INVALID_REQUEST").toPublicBody(), gate.headers);
   }
   try {
     const { catalog, repo } = createPorts();
@@ -11788,12 +11879,12 @@ async function handler(req) {
       repo,
       mp: createHttpMercadoPagoClient()
     });
-    return jsonResponse(result.status, result.body);
+    return jsonResponse(result.status, result.body, gate.headers);
   } catch (error40) {
     if (error40 instanceof CheckoutError) {
-      return jsonResponse(error40.status, error40.toPublicBody());
+      return jsonResponse(error40.status, error40.toPublicBody(), gate.headers);
     }
-    return jsonResponse(500, new CheckoutError("INTERNAL_ERROR").toPublicBody());
+    return jsonResponse(500, new CheckoutError("INTERNAL_ERROR").toPublicBody(), gate.headers);
   }
 }
 export {

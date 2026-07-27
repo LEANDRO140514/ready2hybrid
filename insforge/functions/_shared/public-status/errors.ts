@@ -2,6 +2,7 @@ export type OrderStatusErrorCode =
   | 'METHOD_NOT_ALLOWED'
   | 'INVALID_REFERENCE'
   | 'ORDER_NOT_FOUND'
+  | 'ORIGIN_NOT_ALLOWED'
   | 'CONFIGURATION_ERROR'
   | 'SERVICE_UNAVAILABLE'
   | 'INTERNAL_ERROR'
@@ -21,6 +22,7 @@ const MESSAGES: Record<
   METHOD_NOT_ALLOWED: { message: 'Method not allowed.', retry: 'NO', status: 405 },
   INVALID_REFERENCE: { message: 'Order reference is invalid.', retry: 'NO', status: 400 },
   ORDER_NOT_FOUND: { message: 'Order was not found.', retry: 'OPTIONAL', status: 404 },
+  ORIGIN_NOT_ALLOWED: { message: 'Request origin is not allowed.', retry: 'NO', status: 403 },
   CONFIGURATION_ERROR: { message: 'Order status is not configured.', retry: 'NO', status: 503 },
   SERVICE_UNAVAILABLE: { message: 'Order status temporarily unavailable.', retry: 'OPTIONAL', status: 503 },
   INTERNAL_ERROR: { message: 'Unexpected order status error.', retry: 'OPTIONAL', status: 500 },

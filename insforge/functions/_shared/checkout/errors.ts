@@ -7,6 +7,7 @@ export type PublicErrorCode =
   | 'SOLD_OUT'
   | 'PRICE_CHANGED'
   | 'WAIVER_REQUIRED'
+  | 'ORIGIN_NOT_ALLOWED'
   | 'CONFIGURATION_ERROR'
   | 'CHECKOUT_CREATION_FAILED'
   | 'CONFLICT'
@@ -30,6 +31,7 @@ const MESSAGES: Record<PublicErrorCode, { message: string; retry: PublicErrorBod
   SOLD_OUT: { message: 'Product is sold out.', retry: 'AFTER_STATE_CHANGE', status: 409 },
   PRICE_CHANGED: { message: 'Product price changed.', retry: 'AFTER_STATE_CHANGE', status: 409 },
   WAIVER_REQUIRED: { message: 'Waiver acceptance is required.', retry: 'NO', status: 409 },
+  ORIGIN_NOT_ALLOWED: { message: 'Request origin is not allowed.', retry: 'NO', status: 403 },
   CONFIGURATION_ERROR: { message: 'Checkout is not configured.', retry: 'NO', status: 503 },
   CHECKOUT_CREATION_FAILED: { message: 'Checkout could not be created.', retry: 'OPTIONAL', status: 502 },
   CONFLICT: { message: 'Request conflicts with an existing operation.', retry: 'AFTER_STATE_CHANGE', status: 409 },

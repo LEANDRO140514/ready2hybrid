@@ -6,27 +6,35 @@ import {
   type CatalogPort,
   type CheckoutRepository,
 } from '../_shared/checkout/orchestrate'
+import {
+  gateRequestOrigin,
+  originNotAllowedResponse,
+  readConfiguredOrigin,
+} from '../_shared/http/origin-guard'
 
 function env(key: string): string | undefined {
   return Deno.env.get(key) ?? undefined
 }
 
-function corsHeaders(): Record<string, string> {
-  const origin = env('CHECKOUT_CORS_ORIGIN')?.trim()
-  const headers: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Idempotency-Key',
-    'Content-Type': 'application/json',
-  }
-  if (origin) {
-    headers['Access-Control-Allow-Origin'] = origin
-    headers['Vary'] = 'Origin'
-  }
-  return headers
+const ALLOW_METHODS = 'POST, OPTIONS'
+const ALLOW_HEADERS = 'Content-Type, Authorization, X-Idempotency-Key'
+
+function gateOrigin(req: Request) {
+  const allowedOrigin = readConfiguredOrigin(env, 'CHECKOUT_CORS_ORIGIN')
+  return gateRequestOrigin({
+    req,
+    allowedOrigin,
+    allowMethods: ALLOW_METHODS,
+    allowHeaders: ALLOW_HEADERS,
+    extraHeaders: { 'Content-Type': 'application/json' },
+  })
 }
 
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders() })
+function jsonResponse(status: number, body: unknown, corsHeaders: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
 }
 
 function createPorts() {
@@ -169,17 +177,43 @@ function createPorts() {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() })
+    const gate = gateOrigin(req)
+    if (!gate.ok) {
+      if (gate.kind === 'MISSING_CONFIG') {
+        return new Response(JSON.stringify(new CheckoutError('CONFIGURATION_ERROR').toPublicBody()), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return originNotAllowedResponse()
+    }
+    const { 'Content-Type': _ct, ...preflightHeaders } = gate.headers
+    return new Response(null, { status: 204, headers: preflightHeaders })
   }
+
   if (req.method !== 'POST') {
-    return jsonResponse(405, new CheckoutError('INVALID_REQUEST').toPublicBody())
+    return new Response(JSON.stringify(new CheckoutError('INVALID_REQUEST').toPublicBody()), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const gate = gateOrigin(req)
+  if (!gate.ok) {
+    if (gate.kind === 'MISSING_CONFIG') {
+      return new Response(JSON.stringify(new CheckoutError('CONFIGURATION_ERROR').toPublicBody()), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    return originNotAllowedResponse()
   }
 
   let raw: unknown
   try {
     raw = await req.json()
   } catch {
-    return jsonResponse(400, new CheckoutError('INVALID_REQUEST').toPublicBody())
+    return jsonResponse(400, new CheckoutError('INVALID_REQUEST').toPublicBody(), gate.headers)
   }
 
   try {
@@ -190,11 +224,11 @@ export default async function handler(req: Request): Promise<Response> {
       repo,
       mp: createHttpMercadoPagoClient(),
     })
-    return jsonResponse(result.status, result.body)
+    return jsonResponse(result.status, result.body, gate.headers)
   } catch (error) {
     if (error instanceof CheckoutError) {
-      return jsonResponse(error.status, error.toPublicBody())
+      return jsonResponse(error.status, error.toPublicBody(), gate.headers)
     }
-    return jsonResponse(500, new CheckoutError('INTERNAL_ERROR').toPublicBody())
+    return jsonResponse(500, new CheckoutError('INTERNAL_ERROR').toPublicBody(), gate.headers)
   }
 }
