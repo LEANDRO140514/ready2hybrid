@@ -83,13 +83,32 @@
   - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
   - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
   - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
-  - Gate: READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION
-  - Runtime implementation: NOT STARTED / NOT AUTHORIZED
-  - IMPL-14A-3*: NOT AUTHORIZED
+  - Gate: selective commit/push decision for IMPL-14A-3A
+  - IMPL-14A-3A: logical capacity expiry exclusion (SPEC-040-I007/R004)
+    local migration `0011_logical_capacity_expiry_exclusion.sql` (not applied remotely)
+    CODE REVIEW = PASSED (CTO)
+    LOCAL AUTOMATED VALIDATION = PASSED (tests / typecheck / lint)
+    RUNTIME / SANDBOX VALIDATION = NOT RUN
+  - IMPL-14A-3A-FIX-1 (CTO CHANGES_REQUIRED, applied local-only): cupo predicate is
+    null-safe; unknown expiry keeps reserving cupo (fail-closed). No NOT NULL
+    constraint, no backfill, no historical repair in 3A.
+  - IMPL-14A-3A-FIX-2 (CTO CHANGES_REQUIRED, applied local-only): lock-aware
+    canonical capacity clock — `v_capacity_now := clock_timestamp()` captured once
+    after the product/event locks; predicate is
+    `state='ACTIVE' AND (expires_at IS NULL OR expires_at > v_capacity_now)`.
+    `now()` (transaction start) is no longer used for the cupo decision.
+  - OPEN FOR IMPL-14A-3B: boundary asymmetry — `checkout_start_tx` frees cupo at
+    `expires_at <= v_capacity_now` while TX-2 (`0009`) treats a hold as expired
+    only at `expires_at < now()`. NO CHANGE TO TX-2 IN 3A.
+  - TIME-SEMANTICS-AUDIT (OPEN): other `now()` uses in checkout
+    (e.g. `v_expires_at := now() + make_interval(...)`, sales gates) and in TX-2
+    may need separate analysis. Out of scope for FIX-2; required before integral
+    runtime validation / production.
+  - IMPL-14A-3B…3G: NOT AUTHORIZED
+  - Runtime remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
-- Next: complete IMPL-14A-2C documentary consolidation and selective incorporation prep
-  (gate READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION);
-  no IMPL-14A-3* / code/SQL/cron/deploy/commit/push until separately authorized
+- Next: selective commit/push decision for IMPL-14A-3A;
+  no IMPL-14A-3B+ / remote apply / cron / push until separately authorized
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
@@ -346,23 +365,22 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION`
+`READY_FOR_IMPL_14A_3A_SELECTIVE_PUSH_DECISION`
 
 Siguiente accion permitida:
 
-1. completar consolidacion documental IMPL-14A-2C (narrativa, registro de
-   aprobacion del plan, preparacion de incorporacion selectiva);
-2. no iniciar IMPL-14A-3A…3G sin autorizacion humana explicita separada;
-3. no modificar codigo, SQL, migraciones, cron/schedules ni edge functions;
-4. no ejecutar writes InsForge / sandbox / backfill / pagos / reembolsos;
-5. no abrir Main `EN_VENTA` ni conectar landing a ventas productivas;
-6. no configurar webhook productivo ni credenciales productivas;
-7. no versionar `.cursor/settings.json`, `.cursor/mcp.env`, ni residuos
-   `.cursor/*` de evidencia/probes; prohibido `git add -A`;
-8. no borrar `.cursor/*` en esta unidad; higiene controlada en unidad aparte;
-9. no commit ni push hasta autorizacion humana explicita de incorporacion;
-10. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
-11. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
+1. decidir incorporacion selectiva (push) de IMPL-14A-3A; code review CTO
+   PASSED y validacion local automatizada PASSED; runtime/sandbox NOT RUN;
+2. no iniciar IMPL-14A-3B…3G sin autorizacion humana explicita separada;
+3. no aplicar migracion 0011 en InsForge / Main / sandbox en esta unidad;
+4. no crear schedules/cron, edge functions, dry-run reconciler ni admin recovery;
+5. no persistir EXPIRED de orden/hold/ORDER_HOLDER ni cancelar registrations;
+   no agregar NOT NULL a `capacity_holds.expires_at` ni reparar filas historicas;
+6. no ejecutar pagos/reembolsos ni Main `EN_VENTA`;
+7. no versionar `.cursor/*`; prohibido `git add -A`;
+8. no commit ni push hasta autorizacion humana explicita;
+9. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
+10. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 
 ## Ultimo cierre
 
@@ -507,8 +525,9 @@ IMPL_13E_0_VALIDATED_CLOSED
 IMPL_13E_X_TECHNICALLY_VALIDATED
 IMPL_13E_Y_HUMAN_CLOSED
 IMPL_14A_2_PLAN_APPROVED
-Next prepared: IMPL-14A-2C (documentary consolidation; no commit until authorized)
-Gate: READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION
+IMPL_14A_3A_CODE_REVIEW_PASSED_LOCAL_ONLY
+Next: IMPL-14A-3A selective push decision (no remote apply until authorized)
+Gate: READY_FOR_IMPL_14A_3A_SELECTIVE_PUSH_DECISION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -521,7 +540,10 @@ spectator sandbox PUB-VIE (IMPL-13C) y el E2E public/press sandbox
 (IMPL-13E-Y) quedaron validados y cerrados. El Project Owner fijo precios
 comerciales objetivo (landing) bajo OPCIÓN B; la actualizacion canonica de
 Main queda pendiente de unidad separada. SPEC-040 y el plan IMPL-14A-2
-estan APPROVED; la implementacion runtime IMPL-14A-3* no esta autorizada.
+estan APPROVED. IMPL-14A-3A esta IMPLEMENTING local-only para la exclusion
+logica de cupo, con predicado null-safe (FIX-1) evaluado contra un reloj
+canonico capturado tras los locks (FIX-2); 0011 no fue aplicada remotamente.
+IMPL-14A-3B…3G no estan autorizadas.
 El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
 webhook productivo y conexion de landing a ventas reales no estan
 autorizados. Casos A–D PASS; Case E y metodos async quedan diferidos del

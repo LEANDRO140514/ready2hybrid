@@ -264,4 +264,8 @@ describe('0010 spectator multi-quantity SQL contracts', () => {
     expect(sql).not.toMatch(/CREATE TABLE|ALTER TABLE|DROP TABLE/i)
     expect(sql).toContain('CREATE OR REPLACE FUNCTION public.checkout_start_tx')
   })
+
+  it('0010 historical inventory predicate counts ACTIVE holds (superseded by 0011)', () => {
+    expect(sql).toMatch(/AND state = 'ACTIVE';\s*\n\s*\n\s*IF v_active_holds/)
+  })
 })
