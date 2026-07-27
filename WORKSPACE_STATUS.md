@@ -64,10 +64,12 @@
   (PO 2026-07-26; OPCIÓN B target prices; IMPL-13E next; Main prices NOT updated yet)
 - IMPL-13E-0 multiday checkout fail-closed: VALIDATED / CLOSED
   (PUB-3D/FOT-3D → PRODUCT_NOT_AVAILABLE before writes/MP; sandbox `4bg9ufz2-6mq`)
+- IMPL-13E-X public/press single-day landing wiring: IMPLEMENTED / TECHNICALLY VALIDATED
+  (PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM sandbox; no payments; flags default off)
 - Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
 - Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
-- Next prepared unit: IMPL-13E-X — Public and press single-day landing wiring
-  (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM; awaiting execution authorization)
+- Next prepared unit: IMPL-13E-Y — Public and press sandbox E2E
+  (awaiting execution authorization; no payments until authorized)
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
@@ -176,6 +178,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
     abuse gate remains OPEN for production
 - `docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md`
   - PUB-3D/FOT-3D checkout fail-closed; sandbox `4bg9ufz2-6mq`; zero writes
+- `docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md`
+  - landing sandbox wiring PUB/FOT single-day; page lock; session v2; no payments
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -321,11 +325,11 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL`
+`READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL`
 
 Siguiente accion permitida:
 
-1. preparar/ejecutar IMPL-13E-X solo con autorizacion humana explicita de ejecucion;
+1. preparar/ejecutar IMPL-13E-Y solo con autorizacion humana explicita;
 2. no modificar precios canonicos de Main hasta una unidad de precios separada;
 3. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
 4. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
@@ -423,6 +427,7 @@ IMPL-13B: VALIDATED / CLOSED
 IMPL-13C: VALIDATED / CLOSED
 IMPL-13D-H: APPROVED / CLOSED
 IMPL-13E-0: VALIDATED / CLOSED
+IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -455,8 +460,9 @@ IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
 IMPL_13D_H_APPROVED_CLOSED
 IMPL_13E_0_VALIDATED_CLOSED
-Next prepared: IMPL-13E-X (PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM)
-Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
+IMPL_13E_X_TECHNICALLY_VALIDATED
+Next prepared: IMPL-13E-Y (public/press sandbox E2E)
+Gate: READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 

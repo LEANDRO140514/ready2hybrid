@@ -436,8 +436,8 @@ this document does not authorize any unit by itself.
 | Rollback | Disable new product flags; restore prior sandbox wiring |
 | Entry gate | `READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL` + explicit start |
 | Exit gate | TBD by execution unit |
-| Separate human authorization | Required (preparation open; execution not started) |
-| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` (after IMPL-13E-0) |
+| Separate human authorization | Required (granted for IMPL-13E-X wiring; E2E payments not started) |
+| Current state | `IMPLEMENTED / TECHNICALLY VALIDATED` (landing wiring; no payments) |
 
 ### IMPL-13E-0 — Multiday checkout fail-closed hardening
 
@@ -575,9 +575,9 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-Next unit: IMPL-13E-X — Public and press single-day landing wiring
-Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
-Products: PUB-SAB, PUB-DOM, FOT-VIE, FOT-SAB, FOT-DOM
+Next unit: IMPL-13E-Y — Public and press sandbox E2E
+Gate: READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
+Products: PUB-SAB (+qty) and FOT-VIE suggested for paid E2E
 Sandbox: impl-13e-public-press / 4bg9ufz2-6mq
 Recommended production blocker remaining:
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING
@@ -616,12 +616,13 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
+READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 IMPL_13C_HUMAN_CLOSED
 IMPL_13D_H_APPROVED_CLOSED
 IMPL_13E_0_VALIDATED_CLOSED
+IMPL_13E_X_TECHNICALLY_VALIDATED
 ```
 
 IMPL-4 closure evidence (local):
@@ -802,6 +803,9 @@ IMPL-13E-0: VALIDATED / CLOSED
 Policy: spectator/press with day IS NULL → PRODUCT_NOT_AVAILABLE before writes/MP
 Sandbox: impl-13e-public-press / 4bg9ufz2-6mq · Main deploy = 0
 Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md
+IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
+Landing wiring: PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM · page lock · session v2
+Evidence: docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL
+Gate: READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
 ```
