@@ -375,9 +375,9 @@ this document does not authorize any unit by itself.
 | Expected evidence | IMPL-13C E2E validation report |
 | Rollback | Stop sandbox E2E; restore sandbox transactional cleanliness |
 | Entry gate | `READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E` + explicit start |
-| Exit gate | `SPECTATOR_SANDBOX_E2E_VALIDATED` (when executed) |
-| Separate human authorization | Required for execution (preparation only as of 2026-07-26) |
-| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` (PUB-VIE sandbox E2E 2026-07-26) |
+| Exit gate | `SPECTATOR_SANDBOX_E2E_VALIDATED` |
+| Separate human authorization | Required (execution + human closure granted 2026-07-26) |
+| Current state | `VALIDATED / CLOSED` (evidence `1de0be2`; op `170714344550`; human closure 2026-07-26) |
 
 ## E. Traceability matrix
 
@@ -495,23 +495,22 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-13C — Single spectator sandbox E2E (PUB-VIE)
-Status: TECHNICAL_PASS / PENDING HUMAN CLOSURE
-Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
-Evidence: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
+Next unit: awaiting explicit Project Owner authorization
+Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
+Recommended production blocker remaining:
+PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING
 ```
 
-IMPL-12 is `VALIDATED / CLOSED` (human 2026-07-26, evidence through `9cca6b4`).
-IMPL-13B is `VALIDATED / CLOSED` (human 2026-07-26): sandbox gateway CORS
-limitation accepted; application Origin fail-closed gate retained; landing
-atomic submit retained. Technical HEADs: Ready2Hybrid `0cb8b12`, landing
-`9b9cf48`. Main remains CONFIGURADO / v1–v10 / functions 5. Do not open
-productive sales, configure productive webhook/credentials, or connect the
-landing to productive sales. Do not start IMPL-13C execution without an
-explicit start instruction. Before production, close
-`PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`. Reminders, email, and public QR
-retrieval remain deferred. Multiday remains fail-closed. Offline manifesto
-and check-in remain not implemented.
+IMPL-12, IMPL-13B, and IMPL-13C are `VALIDATED / CLOSED` (human 2026-07-26).
+IMPL-13C accepted PUB-VIE sandbox path through op `170714344550`, signed
+webhook `PAID`, `get-order-status` `APPROVED`, and technical evidence
+`1de0be2`. Visual MP success capture is complementary only. Provider
+`live_mode=true` remains a recorded discrepancy, not productive authorization.
+Main remains CONFIGURADO / v1–v10 / functions 5. Do not open productive sales,
+configure productive webhook/credentials, or connect the landing to productive
+sales. Before production, close `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
+Reminders, email, and public QR retrieval remain deferred. Multiday remains
+fail-closed. Offline manifesto and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -530,9 +529,10 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_13C_HUMAN_CLOSURE
+READY_FOR_NEXT_AUTHORIZED_UNIT
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
+IMPL_13C_HUMAN_CLOSED
 ```
 
 IMPL-4 closure evidence (local):
@@ -695,8 +695,13 @@ Application Origin gate: RETAINED (fail-closed; ≠ authentication)
 Human closure: 2026-07-26 · IMPL_13B_HUMAN_CLOSED
 Evidence: docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md
 Prior: docs/implementation/evidence/IMPL-13B-R2-APPLICATION-ORIGIN-HARDENING.md
-IMPL-13C: TECHNICAL_PASS / PENDING HUMAN CLOSURE
-Evidence: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
+IMPL-13C: VALIDATED / CLOSED
+Technical evidence: 1de0be2
+Operation: 170714344550 · PUB-VIE · $250 · Mercadopago*fake
+Webhook PAID · get-order-status APPROVED · canonical InsForge artifacts validated
+Human closure: 2026-07-26 · IMPL_13C_HUMAN_CLOSED
+Evidence: docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md
+Prior: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
+Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
 ```

@@ -57,8 +57,8 @@
 - Gateway CORS residual (OPTIONS reflect / POST-GET ACAO *): ACCEPTED FOR SANDBOX
 - Application Origin fail-closed gate: RETAINED (defense-in-depth; ≠ authentication)
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED before production / NOT CLOSED
-- IMPL-13C single spectator sandbox E2E: TECHNICAL PASS / PENDING HUMAN CLOSURE
-  (PUB-VIE paid + webhook PAID + status APPROVED; sandbox rolled back to CONFIGURADO)
+- IMPL-13C single spectator sandbox E2E: VALIDATED / CLOSED
+  (human closure 2026-07-26; evidence `1de0be2`; op `170714344550`; Mercadopago*fake)
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
 - Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
 - `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
@@ -99,8 +99,7 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..13; IMPL-2..12 y IMPL-13B `VALIDATED / CLOSED`;
-    IMPL-13C `PREPARED / AWAITING_EXECUTION_AUTHORIZATION`
+  - plan trazable IMPL-1..13; IMPL-2..12, IMPL-13B e IMPL-13C `VALIDATED / CLOSED`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -157,6 +156,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - single PUB-VIE sandbox E2E prep
 - `docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md`
   - PUB-VIE paid; webhook PAID/ALREADY_PAID; status APPROVED; Main TX 0
+- `docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md`
+  - PO closure APPROVED 2026-07-26 → IMPL-13C `VALIDATED / CLOSED`
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -302,11 +303,11 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13C_HUMAN_CLOSURE`
+`READY_FOR_NEXT_AUTHORIZED_UNIT`
 
 Siguiente accion permitida:
 
-1. cierre humano de IMPL-13C sobre evidencia tecnica publicada;
+1. solo unidades con autorizacion humana explicita aparte;
 2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
 3. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
 4. no conectar la landing a ventas productivas ni habilitar checkout en el host
@@ -376,8 +377,10 @@ El Project Owner cerro humanamente IMPL-13B el 2026-07-26 aceptando la
 limitacion CORS del gateway InsForge para sandbox y reteniendo el gate
 server-side de `Origin`. Evidencia en
 `docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md`.
-IMPL-13C queda preparado (no ejecutado) en
-`docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md`.
+El Project Owner cerro humanamente IMPL-13C el 2026-07-26 sobre evidencia
+tecnica `1de0be2` y captura complementaria (op `170714344550`,
+`Mercadopago*fake`). Evidencia en
+`docs/implementation/evidence/IMPL-13C-HUMAN-CLOSURE.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -413,11 +416,11 @@ PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
-IMPL-13C: TECHNICAL_PASS / PENDING HUMAN CLOSURE
-Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
+IMPL_13C_HUMAN_CLOSED
+IMPL-13C: VALIDATED / CLOSED
+Gate: READY_FOR_NEXT_AUTHORIZED_UNIT
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -425,14 +428,15 @@ El esquema minimo de ventas, el catalogo Hybrid Event, el inicio de checkout,
 el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
-payment/verification y la capacidad spectator multi-quantity (v10). El evento
-canónico Main permanece en `CONFIGURADO`. Ventas productivas, webhook
-productivo y conexion de landing a ventas reales no estan autorizados.
-Casos A–D PASS; Case E y metodos async quedan diferidos del lanzamiento
-inicial. Recordatorios, correo y recuperacion publica de QR permanecen
-diferidos. Productos multiday permanecen fail-closed. Check-in y manifiesto
-no fueron implementados. IMPL-13B esta cerrado; IMPL-13C espera autorizacion
-explicita de ejecucion para un unico E2E spectator en sandbox.
+payment/verification y la capacidad spectator multi-quantity (v10). El E2E
+spectator sandbox PUB-VIE quedo validado y cerrado. El evento canónico Main
+permanece en `CONFIGURADO`. Ventas productivas, webhook productivo y conexion
+de landing a ventas reales no estan autorizados. Casos A–D PASS; Case E y
+metodos async quedan diferidos del lanzamiento inicial. Recordatorios, correo
+y recuperacion publica de QR permanecen diferidos. Productos multiday
+permanecen fail-closed. Check-in y manifiesto no fueron implementados.
+Antes de produccion permanece abierto
+`PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 La landing publica existente permanece protegida (checkout off por defecto):
 
 ```text

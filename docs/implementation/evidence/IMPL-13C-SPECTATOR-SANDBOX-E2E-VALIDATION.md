@@ -9,7 +9,9 @@ Landing HEAD: 9b9cf48
 Sandbox: impl-13b-spectator-wiring / 4bg9ufz2-rug
 Host: https://4bg9ufz2-rug.us-east.insforge.app
 Result: SPECTATOR_SANDBOX_E2E_PASS
-Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
+Human closure: APPROVED 2026-07-26 → VALIDATED / CLOSED
+  (see IMPL-13C-HUMAN-CLOSURE.md; evidence commit 1de0be2)
+Gate after human closure: READY_FOR_NEXT_AUTHORIZED_UNIT
 ```
 
 ## 1. Authority
@@ -159,7 +161,7 @@ No productive webhook panel changes
 
 ```text
 SPECTATOR_SANDBOX_E2E_PASS
-READY_FOR_IMPL_13C_HUMAN_CLOSURE
-IMPL-13C technical = PASS / PENDING HUMAN CLOSURE
+IMPL-13C = VALIDATED / CLOSED (human 2026-07-26)
+READY_FOR_NEXT_AUTHORIZED_UNIT
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING = still REQUIRED before production
 ```
