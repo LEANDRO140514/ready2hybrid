@@ -57,8 +57,10 @@
 - Gateway CORS residual (OPTIONS reflect / POST-GET ACAO *): ACCEPTED FOR SANDBOX
 - Application Origin fail-closed gate: RETAINED (defense-in-depth; ≠ authentication)
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED before production / NOT CLOSED
-- IMPL-13C single spectator sandbox E2E: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
+- IMPL-13C single spectator sandbox E2E: TECHNICAL PASS / PENDING HUMAN CLOSURE
+  (PUB-VIE paid + webhook PAID + status APPROVED; sandbox rolled back to CONFIGURADO)
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
+- Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
 - `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
 
 ## Autoridad
@@ -152,7 +154,9 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md`
   - PO accepted sandbox gateway CORS limitation; IMPL-13B `VALIDATED / CLOSED`
 - `docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md`
-  - single PUB-VIE sandbox E2E prep; execution not started
+  - single PUB-VIE sandbox E2E prep
+- `docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md`
+  - PUB-VIE paid; webhook PAID/ALREADY_PAID; status APPROVED; Main TX 0
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -298,12 +302,11 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E`
+`READY_FOR_IMPL_13C_HUMAN_CLOSURE`
 
 Siguiente accion permitida:
 
-1. ejecutar IMPL-13C (un solo E2E spectator PUB-VIE en sandbox) solo con
-   instruccion explicita de inicio;
+1. cierre humano de IMPL-13C sobre evidencia tecnica publicada;
 2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
 3. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
 4. no conectar la landing a ventas productivas ni habilitar checkout en el host
@@ -413,7 +416,8 @@ check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
 Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
-IMPL-13C: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
+IMPL-13C: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 

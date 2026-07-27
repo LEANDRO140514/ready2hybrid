@@ -377,7 +377,7 @@ this document does not authorize any unit by itself.
 | Entry gate | `READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E` + explicit start |
 | Exit gate | `SPECTATOR_SANDBOX_E2E_VALIDATED` (when executed) |
 | Separate human authorization | Required for execution (preparation only as of 2026-07-26) |
-| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` |
+| Current state | `TECHNICAL_PASS / PENDING HUMAN CLOSURE` (PUB-VIE sandbox E2E 2026-07-26) |
 
 ## E. Traceability matrix
 
@@ -496,9 +496,9 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 
 ```text
 IMPL-13C — Single spectator sandbox E2E (PUB-VIE)
-Status: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
-Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
-Preparation: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md
+Status: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
+Evidence: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
 ```
 
 IMPL-12 is `VALIDATED / CLOSED` (human 2026-07-26, evidence through `9cca6b4`).
@@ -530,7 +530,7 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
+READY_FOR_IMPL_13C_HUMAN_CLOSURE
 IMPL_12_HUMAN_CLOSED
 IMPL_13B_HUMAN_CLOSED
 ```
@@ -695,8 +695,8 @@ Application Origin gate: RETAINED (fail-closed; ≠ authentication)
 Human closure: 2026-07-26 · IMPL_13B_HUMAN_CLOSED
 Evidence: docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md
 Prior: docs/implementation/evidence/IMPL-13B-R2-APPLICATION-ORIGIN-HARDENING.md
-IMPL-13C: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
-Preparation: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md
+IMPL-13C: TECHNICAL_PASS / PENDING HUMAN CLOSURE
+Evidence: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-VALIDATION.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
+Gate: READY_FOR_IMPL_13C_HUMAN_CLOSURE
 ```
