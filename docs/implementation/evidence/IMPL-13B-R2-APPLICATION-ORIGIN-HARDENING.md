@@ -9,11 +9,12 @@ Landing baseline HEAD: 5cb5848
 Sandbox: impl-13b-spectator-wiring / 4bg9ufz2-rug
 Host: https://4bg9ufz2-rug.us-east.insforge.app
 Result: APPLICATION_ORIGIN_ENFORCEMENT = PASS
-        STRICT_CORS_CONTRACT = NOT CLAIMED (gateway ACAO * residual)
+        STRICT_CORS_CONTRACT = ACCEPTED_AS_GATEWAY_LIMITATION_FOR_SANDBOX
+          (human closure 2026-07-26 — see IMPL-13B-HUMAN-CLOSURE.md)
         FRONTEND_ATOMIC_SUBMIT = PASS (sync lock + zero-dep script)
-Gate: READY_FOR_IMPL_13B_R3_GATEWAY_DECISION
-IMPL-13B: IMPLEMENTED / APPLICATION_HARDENED / GATEWAY_CORS_LIMITATION_PENDING_DECISION
-IMPL-13C: NOT AUTHORIZED
+Gate after human closure: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
+IMPL-13B: VALIDATED / CLOSED
+IMPL-13C: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
 ```
 
 ## 1. Root cause (confirmed from IMPL-13B-R1)
@@ -173,8 +174,11 @@ Feature flag remains off by default
 | Landing package.json / lockfile | intact |
 | New dependencies | 0 |
 
-## 14. Next unit
+## 14. Human decision (post-R2)
 
 ```text
-IMPL-13B-R3 — Gateway CORS limitation decision
+2026-07-26 — Project Owner accepted gateway CORS limitation for sandbox.
+IMPL-13B-R3 not required as a separate technical unit.
+Closure evidence: IMPL-13B-HUMAN-CLOSURE.md
+Next: IMPL-13C — Single spectator sandbox E2E (preparation ready)
 ```

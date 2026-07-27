@@ -50,8 +50,15 @@
 - InsForge Main migrations: v1–v10 (0010 spectator-multi-quantity applied on Main)
 - Mercado Pago test webhook: URL may remain stored; verify topics NONE / callback DISABLED in panel
 - Mercado Pago production webhook: NOT CONFIGURED
-- IMPL-13: NOT_STARTED / NOT AUTHORIZED
-- Landing changes: NONE
+- IMPL-13A integration preflight: EXECUTED (read-only) during IMPL-13 path
+- IMPL-13B spectator sandbox wiring + Origin hardening: VALIDATED / CLOSED
+  (human closure 2026-07-26; technical R2H `0cb8b12` / landing `9b9cf48`)
+- InsForge sandbox branch retained: `impl-13b-spectator-wiring` / `4bg9ufz2-rug`
+- Gateway CORS residual (OPTIONS reflect / POST-GET ACAO *): ACCEPTED FOR SANDBOX
+- Application Origin fail-closed gate: RETAINED (defense-in-depth; ≠ authentication)
+- PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED before production / NOT CLOSED
+- IMPL-13C single spectator sandbox E2E: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
+- Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
 - `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
 
 ## Autoridad
@@ -90,8 +97,8 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
-  - plan trazable IMPL-1..12; IMPL-2..12 `VALIDATED / CLOSED`;
-    IMPL-13 `NOT_STARTED / NOT AUTHORIZED`
+  - plan trazable IMPL-1..13; IMPL-2..12 y IMPL-13B `VALIDATED / CLOSED`;
+    IMPL-13C `PREPARED / AWAITING_EXECUTION_AUTHORIZATION`
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-PREPARATION-VALIDATION.md`
   - OD-022 APPROVED; seed blob `530bdde7…`; local PG16 PASS
 - `docs/implementation/evidence/IMPL-5-CATALOG-SEED-REMOTE-EXECUTION-VALIDATION.md`
@@ -139,6 +146,13 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
   - Main v10 + `mp-create-checkout` deploy; HEX-2026 CONFIGURADO;
     functions 5; transactional 0; no payments/sales;
     human closure APPROVED 2026-07-26 → IMPL-12 `VALIDATED / CLOSED`
+- `docs/implementation/evidence/IMPL-13B-R2-APPLICATION-ORIGIN-HARDENING.md`
+  - exact Origin gate before catalog/DB/writes/MP; atomic landing submit;
+    sandbox matrices PASS; gateway ACAO * residual measured
+- `docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md`
+  - PO accepted sandbox gateway CORS limitation; IMPL-13B `VALIDATED / CLOSED`
+- `docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md`
+  - single PUB-VIE sandbox E2E prep; execution not started
 - `insforge/functions/team-roster/`
   - opaque invitation GET/POST edge function (bundled deployable)
 - `insforge/migrations/0007_team_roster_invitations.sql`
@@ -284,17 +298,20 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT`
+`READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E`
 
 Siguiente accion permitida:
 
-1. preflight de integracion IMPL-13 solo con autorizacion humana aparte;
+1. ejecutar IMPL-13C (un solo E2E spectator PUB-VIE en sandbox) solo con
+   instruccion explicita de inicio;
 2. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
-3. no abrir ventas en Main ni cambiar el evento canónico de `CONFIGURADO`;
-4. no conectar la landing a ventas reales;
+3. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
+4. no conectar la landing a ventas productivas ni habilitar checkout en el host
+   de produccion;
 5. no configurar webhook productivo ni credenciales productivas;
 6. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
-7. mantener webhook de prueba DISABLED y produccion NOT CONFIGURED hasta unidad aparte.
+7. mantener webhook de produccion NOT CONFIGURED; prueba solo en sandbox/test;
+8. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 
 ## Ultimo cierre
 
@@ -352,6 +369,12 @@ en Main sin pagos ni apertura de ventas. Evidencia en
 `docs/implementation/evidence/IMPL-12-CANONICAL-V10-DEPLOYMENT.md`.
 El Project Owner cerro humanamente IMPL-12 el 2026-07-26 sobre evidencia
 hasta `9cca6b4`. IMPL-12 = `VALIDATED / CLOSED`.
+El Project Owner cerro humanamente IMPL-13B el 2026-07-26 aceptando la
+limitacion CORS del gateway InsForge para sandbox y reteniendo el gate
+server-side de `Origin`. Evidencia en
+`docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md`.
+IMPL-13C queda preparado (no ejecutado) en
+`docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md`.
 
 ```text
 IMPL-4: VALIDATED
@@ -363,6 +386,7 @@ IMPL-9: VALIDATED / CLOSED
 IMPL-10: VALIDATED / CLOSED
 IMPL-11: VALIDATED / CLOSED
 IMPL-12: VALIDATED / CLOSED
+IMPL-13B: VALIDATED / CLOSED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -375,18 +399,21 @@ OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
 Catalog: 1 event / 3 days / 28 products
-Event status: CONFIGURADO
+Event status (Main): CONFIGURADO
+Sandbox branch: impl-13b-spectator-wiring / 4bg9ufz2-rug
 Mercado Pago production webhook: NOT CONFIGURED
 Mercado Pago test webhook: TOPICS NONE / CALLBACK DISABLED (human-confirmed; URL may remain stored)
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
+PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
 IMPL_12_HUMAN_CLOSED
-IMPL-13: NOT_STARTED / NOT AUTHORIZED
+IMPL_13B_HUMAN_CLOSED
+IMPL-13C: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -395,13 +422,14 @@ el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
 payment/verification y la capacidad spectator multi-quantity (v10). El evento
-canónico permanece en `CONFIGURADO`. Ventas productivas, webhook productivo y
-conexion de landing a ventas reales no estan autorizados. Casos A–D PASS;
-Case E y metodos async quedan diferidos del lanzamiento inicial.
-Recordatorios, correo y recuperacion publica de QR permanecen diferidos.
-Productos multiday permanecen fail-closed. Check-in y manifiesto no fueron
-implementados. IMPL-13 permanece `NOT_STARTED` hasta autorizacion aparte.
-La landing publica existente permanece protegida:
+canónico Main permanece en `CONFIGURADO`. Ventas productivas, webhook
+productivo y conexion de landing a ventas reales no estan autorizados.
+Casos A–D PASS; Case E y metodos async quedan diferidos del lanzamiento
+inicial. Recordatorios, correo y recuperacion publica de QR permanecen
+diferidos. Productos multiday permanecen fail-closed. Check-in y manifiesto
+no fueron implementados. IMPL-13B esta cerrado; IMPL-13C espera autorizacion
+explicita de ejecucion para un unico E2E spectator en sandbox.
+La landing publica existente permanece protegida (checkout off por defecto):
 
 ```text
 LANDING_READY_FOR_READY2HYBRID_MATCH

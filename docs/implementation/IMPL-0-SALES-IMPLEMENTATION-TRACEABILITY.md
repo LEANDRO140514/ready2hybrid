@@ -339,6 +339,46 @@ this document does not authorize any unit by itself.
 | Separate human authorization | Required |
 | Current state | `VALIDATED / CLOSED` (A–D PASS; E deferred; OD-001 approved; Main v10; human closure 2026-07-26 on `9cca6b4`) |
 
+### IMPL-13B — Spectator sandbox wiring + Origin hardening
+
+| Field | Value |
+|---|---|
+| Related requirements | SPEC-031 public checkout/status; browser Origin defense-in-depth |
+| Dependencies | IMPL-12 closed; landing spectator wiring; sandbox branch |
+| Anticipated files | edge Origin guard; landing submit lock; evidence |
+| External resources | InsForge sandbox `4bg9ufz2-rug`; localhost landing |
+| Blocking open decisions | Gateway CORS residual accepted for sandbox by PO |
+| Scope | Exact Origin gate before business; atomic submit; sandbox wiring |
+| Out of scope | Main EN_VENTA; productive webhook/credentials; gateway replacement |
+| Automated tests | `tests/unit/http/origin-guard.test.ts`; landing submit-lock script |
+| Manual tests | Sandbox Origin matrices POST/GET/OPTIONS |
+| Expected evidence | Origin hardening + human closure |
+| Rollback | Revert hardening/submit commits; redeploy prior sandbox functions |
+| Entry gate | IMPL-12 closed; IMPL-13B authorized |
+| Exit gate | `IMPL_13B_HUMAN_CLOSED` |
+| Separate human authorization | Required (granted 2026-07-26) |
+| Current state | `VALIDATED / CLOSED` (R2H `0cb8b12` / landing `9b9cf48`; gateway CORS accepted for sandbox) |
+
+### IMPL-13C — Single spectator sandbox E2E
+
+| Field | Value |
+|---|---|
+| Related requirements | End-to-end J5 spectator path (PUB-VIE) |
+| Dependencies | IMPL-13B closed; sandbox branch retained |
+| Anticipated files | evidence / local env flags only unless execution unit expands |
+| External resources | Sandbox InsForge; MP test buyer/credentials |
+| Blocking open decisions | Sandbox sales-state handling during E2E; abuse/rate-limit remains prod blocker |
+| Scope | One PUB-VIE sandbox purchase through paid + public status |
+| Out of scope | Main EN_VENTA; productive sales/webhook/credentials; multi-product matrix |
+| Automated tests | As defined by execution unit |
+| Manual tests | Single spectator sandbox checklist |
+| Expected evidence | IMPL-13C E2E validation report |
+| Rollback | Stop sandbox E2E; restore sandbox transactional cleanliness |
+| Entry gate | `READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E` + explicit start |
+| Exit gate | `SPECTATOR_SANDBOX_E2E_VALIDATED` (when executed) |
+| Separate human authorization | Required for execution (preparation only as of 2026-07-26) |
+| Current state | `PREPARED / AWAITING_EXECUTION_AUTHORIZATION` |
+
 ## E. Traceability matrix
 
 Every implementation unit requires separate human authorization.
@@ -455,20 +495,23 @@ Seed hash verified during IMPL-0: 20d73e626981604da65e1ea34dc1a03b37f0845f
 ## H. Next recommended unit
 
 ```text
-IMPL-13 — Integration preflight (authorization required)
-Status: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+IMPL-13C — Single spectator sandbox E2E (PUB-VIE)
+Status: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
+Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
+Preparation: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md
 ```
 
-IMPL-12 is `VALIDATED / CLOSED` by Project Owner human closure on 2026-07-26
-accepting technical evidence through `9cca6b4`. Initial-launch card path
-(Cases A–D) accepted. Case E / async methods remain
-`DEFERRED_FROM_INITIAL_LAUNCH`. Main remains CONFIGURADO / v1–v10 /
-functions 5 / transactional 0. Do not open productive sales, configure
-productive webhook/credentials, or connect the landing to real sales.
-Do not start IMPL-13 without a separate human authorization.
-Reminders, email, and public QR retrieval remain deferred. Multiday remains
-fail-closed. Offline manifesto and check-in remain not implemented.
+IMPL-12 is `VALIDATED / CLOSED` (human 2026-07-26, evidence through `9cca6b4`).
+IMPL-13B is `VALIDATED / CLOSED` (human 2026-07-26): sandbox gateway CORS
+limitation accepted; application Origin fail-closed gate retained; landing
+atomic submit retained. Technical HEADs: Ready2Hybrid `0cb8b12`, landing
+`9b9cf48`. Main remains CONFIGURADO / v1–v10 / functions 5. Do not open
+productive sales, configure productive webhook/credentials, or connect the
+landing to productive sales. Do not start IMPL-13C execution without an
+explicit start instruction. Before production, close
+`PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`. Reminders, email, and public QR
+retrieval remain deferred. Multiday remains fail-closed. Offline manifesto
+and check-in remain not implemented.
 
 ## I. IMPL-0 change set
 
@@ -487,8 +530,9 @@ instruction.
 ## J. Gate
 
 ```text
-READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
 IMPL_12_HUMAN_CLOSED
+IMPL_13B_HUMAN_CLOSED
 ```
 
 IMPL-4 closure evidence (local):
@@ -643,6 +687,16 @@ Prior: docs/implementation/evidence/IMPL-12-R3-WEBHOOK-PAYMENT-ORDER-FIX.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-RETRY-VALIDATION.md
 Prior: docs/implementation/evidence/IMPL-12-R1-MP-CHECKOUT-DIAGNOSTIC.md
 Prior: docs/implementation/evidence/IMPL-12-SANDBOX-END-TO-END-VALIDATION.md
-IMPL-13: NOT_STARTED / NOT AUTHORIZED
-Gate: READY_FOR_IMPL_13_INTEGRATION_PREFLIGHT
+IMPL-13B: VALIDATED / CLOSED
+Technical: Ready2Hybrid 0cb8b12 · Landing 9b9cf48
+Sandbox: impl-13b-spectator-wiring / 4bg9ufz2-rug
+Gateway CORS residual: ACCEPTED FOR SANDBOX
+Application Origin gate: RETAINED (fail-closed; ≠ authentication)
+Human closure: 2026-07-26 · IMPL_13B_HUMAN_CLOSED
+Evidence: docs/implementation/evidence/IMPL-13B-HUMAN-CLOSURE.md
+Prior: docs/implementation/evidence/IMPL-13B-R2-APPLICATION-ORIGIN-HARDENING.md
+IMPL-13C: PREPARED / AWAITING_EXECUTION_AUTHORIZATION
+Preparation: docs/implementation/evidence/IMPL-13C-SPECTATOR-SANDBOX-E2E-PREPARATION.md
+PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
+Gate: READY_FOR_IMPL_13C_SPECTATOR_SANDBOX_E2E
 ```
