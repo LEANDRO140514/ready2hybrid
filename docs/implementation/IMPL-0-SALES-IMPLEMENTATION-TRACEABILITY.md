@@ -468,16 +468,16 @@ this document does not authorize any unit by itself.
 | Anticipated files | evidence only (no feature code) |
 | External resources | Sandbox InsForge; MP Checkout Pro test; signed webhook |
 | Blocking open decisions | Abuse/rate-limit still blocks production EN_VENTA |
-| Scope | PUB-SAB×2 + FOT-VIE×1 test payments; negative gates; artifacts; rollback |
+| Scope | PUB-SAB×2 + FOT-VIE×1 + FOT-SAB×1 (R2B) sandbox payments; negative gates; HTTPS return; artifacts; rollback |
 | Out of scope | Main EN_VENTA; other products; real money; code changes |
 | Automated tests | Repo gates PASS without technical diff |
-| Manual tests | Two sandbox Checkout Pro approvals |
-| Expected evidence | `IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md` |
+| Manual tests | Three sandbox Checkout Pro approvals (incl. HTTPS auto-return) |
+| Expected evidence | `IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md`; R2A/R2B evidence; `IMPL-13E-Y-HUMAN-CLOSURE.md` |
 | Rollback | Sandbox event → CONFIGURADO (done); retain TX evidence |
 | Entry gate | `READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL` |
-| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE` (blocked until auto_return proven) |
-| Separate human authorization | Granted (this unit) |
-| Current state | `PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / HTTPS AUTO_RETURN REACHABILITY PROVEN / RETURN PUBLIC REF BINDING GAP OPEN` |
+| Exit gate | human closed → `READY_FOR_IMPL_13E_POST_CLOSURE_PRIORITY_DECISION` |
+| Separate human authorization | Granted (this unit) · human closure 2026-07-27 |
+| Current state | `VALIDATED / CLOSED` |
 
 ### IMPL-13E-Y-R2A — HTTPS preview and confirming page validation
 
@@ -505,10 +505,10 @@ this document does not authorize any unit by itself.
 | Out of scope | Code changes; Main EN_VENTA; additional products |
 | Expected evidence | `IMPL-13E-Y-R2B-HTTPS-AUTO-RETURN-PAYMENT.md` |
 | Entry gate | `READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
-| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW` |
+| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW` → Y human-closed |
 | Separate human authorization | Granted (PO “vamos a hacerlo”) |
-| Current state | `EXECUTED / READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW` |
-| Open gap | `RETURN_PUBLIC_REF_BINDING` (static back_url without embedded `?ref=`) |
+| Current state | `EXECUTED / HUMAN-ACCEPTED INTO Y CLOSURE` |
+| Open gap retained | `RETURN_REFERENCE_RESILIENCE` (non-blocking for Y closure) |
 
 ## E. Traceability matrix
 
@@ -857,18 +857,17 @@ Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 Landing wiring: PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM · page lock · session v2
 Evidence: docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md
-IMPL-13E-Y: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / HTTPS AUTO_RETURN REACHABILITY PROVEN / RETURN PUBLIC REF BINDING GAP OPEN
+IMPL-13E-Y: VALIDATED / CLOSED
+Human closure: 2026-07-27 · IMPL_13E_Y_HUMAN_CLOSED
 PUB-SAB×2 $500 (170718270018) · FOT-VIE×1 $350 (170719199176) · FOT-SAB×1 $350 (170723724364)
-Sandbox 4bg9ufz2-6mq rolled back CONFIGURADO · Main intact
+Sandbox 4bg9ufz2-6mq CONFIGURADO · Main intact
 Evidence: docs/implementation/evidence/IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md
-IMPL-13E-Y-R2A: EXECUTED / CLOSED into R2B
-Preview HTTPS: https://3e9sriq7.insforge.site @ landing b4f50c0
-Evidence: docs/implementation/evidence/IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md
-IMPL-13E-Y-R2B: EXECUTED / READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW
-FOT-SAB×1 · payment 170723724364 · MP returned to preview confirmando · UI APPROVED with ?ref=
-Gap: RETURN_PUBLIC_REF_BINDING (static back_url without ?ref= / sessionStorage dependence)
-Evidence: docs/implementation/evidence/IMPL-13E-Y-R2B-HTTPS-AUTO-RETURN-PAYMENT.md
+R2A: docs/implementation/evidence/IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md
+R2B: docs/implementation/evidence/IMPL-13E-Y-R2B-HTTPS-AUTO-RETURN-PAYMENT.md (commit 435c9d5 accepted)
+Human closure: docs/implementation/evidence/IMPL-13E-Y-HUMAN-CLOSURE.md
+ORDER_HOLDER = EXPECTED_NON_TICKET_CREDENTIAL (accepted)
+RETURN_REFERENCE_RESILIENCE: OPEN / NON-BLOCKING FOR CURRENT CLOSURE
 PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
-PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW
+PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
+Gate: READY_FOR_IMPL_13E_POST_CLOSURE_PRIORITY_DECISION
 ```

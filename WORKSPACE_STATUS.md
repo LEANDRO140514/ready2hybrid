@@ -66,18 +66,17 @@
   (PUB-3D/FOT-3D → PRODUCT_NOT_AVAILABLE before writes/MP; sandbox `4bg9ufz2-6mq`)
 - IMPL-13E-X public/press single-day landing wiring: IMPLEMENTED / TECHNICALLY VALIDATED
   (PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM sandbox; no payments; flags default off)
-- IMPL-13E-Y public/press sandbox E2E: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / HTTPS AUTO_RETURN REACHABILITY PROVEN / RETURN PUBLIC REF BINDING GAP OPEN
-  (PUB-SAB×2 + FOT-VIE×1 + FOT-SAB×1 `170723724364`; preview return reached; `?ref=` binding gap recorded)
+- IMPL-13E-Y public/press sandbox E2E: VALIDATED / CLOSED
+  (human closure 2026-07-27; PUB-SAB×2 + FOT-VIE×1 + FOT-SAB×1; R2B `435c9d5`; sandbox CONFIGURADO)
 - IMPL-13E-Y-R1 residual forensics: VALIDATED / CLOSED (ORDER_HOLDER expected; unpaid invariants PASS)
 - IMPL-13E-Y-R2A HTTPS preview + confirming: EXECUTED / CLOSED into R2B
-  (preview `https://3e9sriq7.insforge.site` @ landing `b4f50c0`)
-- IMPL-13E-Y-R2B single HTTPS auto-return payment: EXECUTED / READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE_REVIEW
-  (FOT-SAB×1 $350 · payment `170723724364` · confirming APPROVED with correct `trk_…692…`)
+- IMPL-13E-Y-R2B single HTTPS auto-return payment: EXECUTED / HUMAN-ACCEPTED into Y closure
 - Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
 - Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
+- RETURN_REFERENCE_RESILIENCE: OPEN / NON-BLOCKING FOR CURRENT CLOSURE
 - PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
-- RETURN_PUBLIC_REF_BINDING: OPEN (static back_url lacks `?ref=`; landing sessionStorage required today)
-- Next: human closure review of IMPL-13E-Y (or authorize return-ref binding fix unit)
+- PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
+- Next: IMPL-13E post-closure priority decision (gate READY_FOR_IMPL_13E_POST_CLOSURE_PRIORITY_DECISION)
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
