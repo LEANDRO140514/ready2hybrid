@@ -75,14 +75,28 @@
 - Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
 - RETURN_REFERENCE_RESILIENCE: OPEN / NON-BLOCKING FOR CURRENT CLOSURE
 - PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
+  - IMPL-14A PO contract decisions D1–D10: APPROVED 2026-07-27
+  - SPEC-040 v0.1.1: APPROVED 2026-07-27 by Project Owner
+  - IMPL-14A-2 plan: PLAN / APPROVED v0.2.0 (PO 2026-07-27 after CTO READY_FOR_APPROVAL + IMPL-14A-2V)
+    (`docs/implementation/IMPL-14A-2-PAYMENT-PENDING-EXPIRY-IMPLEMENTATION-PLAN.md`)
+    approved content SHA-256: `04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`
+  - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
+  - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
+  - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
+  - Gate: READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION
+  - Runtime implementation: NOT STARTED / NOT AUTHORIZED
+  - IMPL-14A-3*: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
-- Next: IMPL-13E post-closure priority decision (gate READY_FOR_IMPL_13E_POST_CLOSURE_PRIORITY_DECISION)
+- Next: complete IMPL-14A-2C documentary consolidation and selective incorporation prep
+  (gate READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION);
+  no IMPL-14A-3* / code/SQL/cron/deploy/commit/push until separately authorized
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
 - Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
-- `.cursor/settings.json`: local Stripe plugin enablement — UNTRACKED
+- `.cursor/settings.json`: local Stripe plugin enablement — IGNORED_LOCAL_CONFIG
+  (`.git/info/exclude`; do not version)
 
 ## Autoridad
 
@@ -332,21 +346,23 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL`
+`READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION`
 
 Siguiente accion permitida:
 
-1. preparar/ejecutar IMPL-13E-Y solo con autorizacion humana explicita;
-2. no modificar precios canonicos de Main hasta una unidad de precios separada;
-3. no declarar OXXO/vouchers validados; metodos async siguen diferidos;
-4. no abrir ventas en Main ni cambiar el evento canónico Main de `CONFIGURADO`;
-5. no conectar la landing a ventas productivas ni habilitar checkout en el host
-   de produccion;
+1. completar consolidacion documental IMPL-14A-2C (narrativa, registro de
+   aprobacion del plan, preparacion de incorporacion selectiva);
+2. no iniciar IMPL-14A-3A…3G sin autorizacion humana explicita separada;
+3. no modificar codigo, SQL, migraciones, cron/schedules ni edge functions;
+4. no ejecutar writes InsForge / sandbox / backfill / pagos / reembolsos;
+5. no abrir Main `EN_VENTA` ni conectar landing a ventas productivas;
 6. no configurar webhook productivo ni credenciales productivas;
-7. no versionar `.cursor/settings.json` ni autenticar Stripe sin unidad aparte;
-8. mantener webhook de produccion NOT CONFIGURED; prueba solo en sandbox/test;
-9. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`;
-10. no abrir PUB-3D / FOT-3D hasta resolver OD-020.
+7. no versionar `.cursor/settings.json`, `.cursor/mcp.env`, ni residuos
+   `.cursor/*` de evidencia/probes; prohibido `git add -A`;
+8. no borrar `.cursor/*` en esta unidad; higiene controlada en unidad aparte;
+9. no commit ni push hasta autorizacion humana explicita de incorporacion;
+10. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
+11. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 
 ## Ultimo cierre
 
@@ -419,6 +435,20 @@ IMPL-13E-0 endurecio fail-closed de checkout para PUB-3D/FOT-3D
 (`PRODUCT_NOT_AVAILABLE` antes de writes/MP) en sandbox
 `impl-13e-public-press` / `4bg9ufz2-6mq`. Evidencia en
 `docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.md`.
+IMPL-13E-X cableo landing public/press single-day (flags off; sin pagos).
+Evidencia en
+`docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md`.
+El Project Owner cerro humanamente IMPL-13E-Y el 2026-07-27
+(PUB-SAB×2 + FOT-VIE×1 + FOT-SAB×1; R2B). Evidencia en
+`docs/implementation/evidence/IMPL-13E-Y-HUMAN-CLOSURE.md` y
+`docs/implementation/evidence/IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md`.
+HEAD de cierre Y: `9668dfe`. SPEC-040 v0.1.1 Payment Pending Expiry
+Reconciliation fue APPROVED 2026-07-27. IMPL-14A-2 plan v0.2.0 fue
+APPROVED 2026-07-27 por el Project Owner (SHA contenido aprobado
+`04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`)
+tras CTO `READY_FOR_APPROVAL` e IMPL-14A-2V. Runtime IMPL-14A y
+IMPL-14A-3* permanecen NOT AUTHORIZED. Siguiente unidad autorizada:
+IMPL-14A-2C documentary consolidation (sin commit/push hasta autorizacion).
 
 ```text
 IMPL-4: VALIDATED
@@ -435,6 +465,9 @@ IMPL-13C: VALIDATED / CLOSED
 IMPL-13D-H: APPROVED / CLOSED
 IMPL-13E-0: VALIDATED / CLOSED
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
+IMPL-13E-Y: VALIDATED / CLOSED
+SPEC-040 v0.1.1: APPROVED
+IMPL-14A-2 plan v0.2.0: PLAN / APPROVED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
 InsForge checkout TX migration 0005 / v5: APPLIED
@@ -446,6 +479,9 @@ InsForge spectator qty migration 0010 / v10: APPLIED ON MAIN
 OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
+OD-040-001: cadence/SLA APPROVED; anti-overlap OPEN (BLOCKS 3C)
+OD-040-002: OPEN (BLOCKS 3C + 3D)
+OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK
 Catalog: 1 event / 3 days / 28 products
 Commercial target prices (landing): APPROVED (OPCIÓN B)
 Main canonical price update: PENDING SEPARATE UNIT
@@ -459,6 +495,7 @@ TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
 EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
+PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
 OD-019 commercial folio: OPEN
 OD-020 multiday: OPEN / FAIL-CLOSED (checkout + ticket)
 check-in / manifest: NOT IMPLEMENTED / NOT AUTHORIZED
@@ -468,8 +505,10 @@ IMPL_13C_HUMAN_CLOSED
 IMPL_13D_H_APPROVED_CLOSED
 IMPL_13E_0_VALIDATED_CLOSED
 IMPL_13E_X_TECHNICALLY_VALIDATED
-Next prepared: IMPL-13E-Y (public/press sandbox E2E)
-Gate: READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
+IMPL_13E_Y_HUMAN_CLOSED
+IMPL_14A_2_PLAN_APPROVED
+Next prepared: IMPL-14A-2C (documentary consolidation; no commit until authorized)
+Gate: READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -478,16 +517,18 @@ el webhook firmado, el estado publico read-only, el roster backend y la
 emision server-side de tickets/QR hasheados ya estan en InsForge
 (`ready2hybrid` / `4bg9ufz2.us-east`), incluyendo la correccion v9 del orden
 payment/verification y la capacidad spectator multi-quantity (v10). El E2E
-spectator sandbox PUB-VIE quedo validado y cerrado. El Project Owner fijo
-precios comerciales objetivo (landing) bajo OPCIÓN B; la actualizacion
-canonica de Main queda pendiente de unidad separada. IMPL-13E queda preparado
-para expansion sandbox public/press de un dia (sin multiday). El evento
-canonico Main permanece en `CONFIGURADO`. Ventas productivas, webhook
-productivo y conexion de landing a ventas reales no estan autorizados. Casos
-A–D PASS; Case E y metodos async quedan diferidos del lanzamiento inicial.
-Recordatorios, correo y recuperacion publica de QR permanecen diferidos.
-Productos multiday permanecen fail-closed. Check-in y manifiesto no fueron
-implementados. Antes de produccion permanece abierto
+spectator sandbox PUB-VIE (IMPL-13C) y el E2E public/press sandbox
+(IMPL-13E-Y) quedaron validados y cerrados. El Project Owner fijo precios
+comerciales objetivo (landing) bajo OPCIÓN B; la actualizacion canonica de
+Main queda pendiente de unidad separada. SPEC-040 y el plan IMPL-14A-2
+estan APPROVED; la implementacion runtime IMPL-14A-3* no esta autorizada.
+El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
+webhook productivo y conexion de landing a ventas reales no estan
+autorizados. Casos A–D PASS; Case E y metodos async quedan diferidos del
+lanzamiento inicial. Recordatorios, correo y recuperacion publica de QR
+permanecen diferidos. Productos multiday permanecen fail-closed. Check-in
+y manifiesto no fueron implementados. Antes de produccion permanecen
+abiertos `PAYMENT_PENDING_EXPIRY_RECONCILIATION` y
 `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 La landing publica existente permanece protegida (checkout off por defecto):
 

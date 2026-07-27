@@ -37,6 +37,7 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
 | SPEC-031 | Public Sales API and Backend Contract | APPROVED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
 | SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | APPROVED | 0.1.0 | SALE-3 | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031; compatible with SPEC-011 | `SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md` |
+| SPEC-040 | Payment Pending Expiry Reconciliation | APPROVED | 0.1.1 | IMPL-14A | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031, SPEC-032; compatible with SPEC-011 | `SPEC-040-PAYMENT-PENDING-EXPIRY-RECONCILIATION.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
@@ -50,14 +51,20 @@ SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_IMPL_1_APPROVAL`
+`READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION`
 
-SPEC-000 v0.2.0, SPEC-030 v0.1.0, SPEC-031 v0.1.0, and SPEC-032 v0.1.0 are
-approved. SPEC-032 v0.1.0 was approved explicitly by the Project Owner on
-2026-07-24. The approval authorizes preparing implementation traceability, but
-does not authorize executing implementation. F0-E remains unauthorized and not
-started. The next proposed unit is IMPL-1 seed correction, still
-`PROPOSED / NOT AUTHORIZED`.
+SPEC-040 v0.1.1 remains `APPROVED`. IMPL-14A-2 plan v0.2.0 is
+`PLAN / APPROVED` (Project Owner 2026-07-27 after CTO `READY_FOR_APPROVAL`
+and IMPL-14A-2V). Approved plan content SHA-256:
+`04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`.
+
+Runtime implementation is **NOT STARTED** and not authorized. Do not set
+`IMPLEMENTING`, `READY FOR 3A`, or `VALIDATED` without a new human decision.
+Do not start IMPL-14A-3* without separate authorization.
+
+Open: OD-040-001 anti-overlap (cadence/SLA approved; blocks 3C),
+OD-040-002 (actor/auth OPEN; blocks 3C+3D), OD-040-003 (runbook deferred).
+SPEC-032-R042 unchanged. F0-E unauthorized.
 
 ## Lifecycle
 
