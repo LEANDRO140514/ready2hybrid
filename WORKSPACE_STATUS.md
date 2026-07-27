@@ -66,11 +66,15 @@
   (PUB-3D/FOT-3D → PRODUCT_NOT_AVAILABLE before writes/MP; sandbox `4bg9ufz2-6mq`)
 - IMPL-13E-X public/press single-day landing wiring: IMPLEMENTED / TECHNICALLY VALIDATED
   (PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM sandbox; no payments; flags default off)
-- IMPL-13E-Y public/press sandbox E2E: TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE
+- IMPL-13E-Y public/press sandbox E2E: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / AUTO_RETURN APPROVED NOT YET PROVEN
   (PUB-SAB×2 $500 + FOT-VIE×1 $350; ops 170718270018 / 170719199176; sandbox rolled back CONFIGURADO)
+- IMPL-13E-Y-R1 residual forensics: VALIDATED / CLOSED (ORDER_HOLDER expected; unpaid invariants PASS)
+- IMPL-13E-Y-R2A HTTPS preview + confirming: EXECUTED / READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL
+  (preview `https://3e9sriq7.insforge.site` @ landing `b4f50c0`; confirming APPROVED on paid refs; no new payment)
 - Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
 - Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
-- Next: human closure of IMPL-13E-Y (not VALIDATED/CLOSED until PO closes)
+- PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION (not fixed in R2A)
+- Next: IMPL-13E-Y-R2B single HTTPS auto-return sandbox payment (authorization required; FOT-SAB×1 recommended)
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)

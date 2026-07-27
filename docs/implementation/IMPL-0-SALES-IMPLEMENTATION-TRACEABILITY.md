@@ -475,9 +475,25 @@ this document does not authorize any unit by itself.
 | Expected evidence | `IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md` |
 | Rollback | Sandbox event → CONFIGURADO (done); retain TX evidence |
 | Entry gate | `READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL` |
-| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE` |
+| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE` (blocked until auto_return proven) |
 | Separate human authorization | Granted (this unit) |
-| Current state | `TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE` |
+| Current state | `PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / AUTO_RETURN APPROVED NOT YET PROVEN` |
+
+### IMPL-13E-Y-R2A — HTTPS preview and confirming page validation
+
+| Field | Value |
+|---|---|
+| Related requirements | Return-flow evidence for IMPL-13E-Y human closure |
+| Dependencies | IMPL-13E-Y paid refs; landing `b4f50c0`; sandbox `4bg9ufz2-6mq` |
+| Anticipated files | evidence + status/traceability docs only |
+| External resources | InsForge landing preview (`3e9sriq7`); sandbox CORS/back URLs |
+| Scope | Local+HTTPS confirming with existing APPROVED refs; preview deploy; CORS/back URLs; MP format check |
+| Out of scope | New preference/payment; EN_VENTA; code/function changes; productive domain |
+| Expected evidence | `IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md` |
+| Entry gate | `READY_FOR_IMPL_13E_Y_R2_RETURN_FLOW_APPROVAL` |
+| Exit gate | `READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
+| Separate human authorization | Granted (this unit) |
+| Current state | `EXECUTED / READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL` |
 
 ## E. Traceability matrix
 
@@ -826,10 +842,16 @@ Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 Landing wiring: PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM · page lock · session v2
 Evidence: docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md
-IMPL-13E-Y: TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE
+IMPL-13E-Y: PAYMENTS AND DOMAIN ARTIFACTS VALIDATED / AUTO_RETURN APPROVED NOT YET PROVEN
 PUB-SAB×2 $500 (170718270018) · FOT-VIE×1 $350 (170719199176)
 Sandbox 4bg9ufz2-6mq rolled back CONFIGURADO · Main intact
 Evidence: docs/implementation/evidence/IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md
+IMPL-13E-Y-R2A: EXECUTED / READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL
+Preview HTTPS: https://3e9sriq7.insforge.site @ landing b4f50c0
+Confirming APPROVED on paid refs (local + HTTPS); auto_return not yet proven
+Evidence: docs/implementation/evidence/IMPL-13E-Y-R2A-HTTPS-RETURN-PREPARATION.md
+PAYMENT_PENDING_EXPIRY_RECONCILIATION: OPEN / REQUIRED BEFORE PRODUCTION
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE
+Next: IMPL-13E-Y-R2B — Single HTTPS Auto-Return Sandbox Payment (auth required)
+Gate: READY_FOR_SINGLE_HTTPS_RETURN_PAYMENT_APPROVAL
 ```
