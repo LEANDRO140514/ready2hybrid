@@ -436,8 +436,8 @@ this document does not authorize any unit by itself.
 | Rollback | Disable new product flags; restore prior sandbox wiring |
 | Entry gate | `READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL` + explicit start |
 | Exit gate | TBD by execution unit |
-| Separate human authorization | Required (granted for IMPL-13E-X wiring; E2E payments not started) |
-| Current state | `IMPLEMENTED / TECHNICALLY VALIDATED` (landing wiring; no payments) |
+| Separate human authorization | Required (granted for IMPL-13E-X wiring + IMPL-13E-Y E2E) |
+| Current state | `IMPLEMENTED / TECHNICALLY VALIDATED` (landing); E2E see IMPL-13E-Y |
 
 ### IMPL-13E-0 — Multiday checkout fail-closed hardening
 
@@ -458,6 +458,26 @@ this document does not authorize any unit by itself.
 | Exit gate | `READY_FOR_IMPL_13E_X_PUBLIC_PRESS_WIRING_APPROVAL` |
 | Separate human authorization | Granted (this unit) |
 | Current state | `VALIDATED / CLOSED` |
+
+### IMPL-13E-Y — Public and press sandbox E2E
+
+| Field | Value |
+|---|---|
+| Related requirements | J5 public/press sandbox payment authority end-to-end |
+| Dependencies | IMPL-13E-0; IMPL-13E-X; sandbox `4bg9ufz2-6mq` |
+| Anticipated files | evidence only (no feature code) |
+| External resources | Sandbox InsForge; MP Checkout Pro test; signed webhook |
+| Blocking open decisions | Abuse/rate-limit still blocks production EN_VENTA |
+| Scope | PUB-SAB×2 + FOT-VIE×1 test payments; negative gates; artifacts; rollback |
+| Out of scope | Main EN_VENTA; other products; real money; code changes |
+| Automated tests | Repo gates PASS without technical diff |
+| Manual tests | Two sandbox Checkout Pro approvals |
+| Expected evidence | `IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md` |
+| Rollback | Sandbox event → CONFIGURADO (done); retain TX evidence |
+| Entry gate | `READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL` |
+| Exit gate | `READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE` |
+| Separate human authorization | Granted (this unit) |
+| Current state | `TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE` |
 
 ## E. Traceability matrix
 
@@ -806,6 +826,10 @@ Evidence: docs/implementation/evidence/IMPL-13E-0-MULTIDAY-CHECKOUT-FAIL-CLOSED.
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 Landing wiring: PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM · page lock · session v2
 Evidence: docs/implementation/evidence/IMPL-13E-X-PUBLIC-PRESS-LANDING-WIRING.md
+IMPL-13E-Y: TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE
+PUB-SAB×2 $500 (170718270018) · FOT-VIE×1 $350 (170719199176)
+Sandbox 4bg9ufz2-6mq rolled back CONFIGURADO · Main intact
+Evidence: docs/implementation/evidence/IMPL-13E-Y-PUBLIC-PRESS-SANDBOX-E2E.md
 PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED BEFORE PRODUCTION / NOT CLOSED
-Gate: READY_FOR_IMPL_13E_Y_PUBLIC_PRESS_SANDBOX_E2E_APPROVAL
+Gate: READY_FOR_IMPL_13E_Y_HUMAN_CLOSURE
 ```

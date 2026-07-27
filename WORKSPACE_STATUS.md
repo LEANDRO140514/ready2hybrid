@@ -66,10 +66,11 @@
   (PUB-3D/FOT-3D → PRODUCT_NOT_AVAILABLE before writes/MP; sandbox `4bg9ufz2-6mq`)
 - IMPL-13E-X public/press single-day landing wiring: IMPLEMENTED / TECHNICALLY VALIDATED
   (PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM sandbox; no payments; flags default off)
+- IMPL-13E-Y public/press sandbox E2E: TECHNICALLY VALIDATED / READY_FOR_HUMAN_CLOSURE
+  (PUB-SAB×2 $500 + FOT-VIE×1 $350; ops 170718270018 / 170719199176; sandbox rolled back CONFIGURADO)
 - Commercial target prices (landing-visible): APPROVED — Main canonical update PENDING separate unit
 - Multiday PUB-3D / FOT-3D: FAIL-CLOSED pending OD-020 (checkout + ticket layers)
-- Next prepared unit: IMPL-13E-Y — Public and press sandbox E2E
-  (awaiting execution authorization; no payments until authorized)
+- Next: human closure of IMPL-13E-Y (not VALIDATED/CLOSED until PO closes)
 - InsForge sandbox branches retained:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
   `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
