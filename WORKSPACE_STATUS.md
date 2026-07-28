@@ -53,7 +53,8 @@
 - IMPL-13A integration preflight: EXECUTED (read-only) during IMPL-13 path
 - IMPL-13B spectator sandbox wiring + Origin hardening: VALIDATED / CLOSED
   (human closure 2026-07-26; technical R2H `0cb8b12` / landing `9b9cf48`)
-- InsForge sandbox branch retained: `impl-13b-spectator-wiring` / `4bg9ufz2-rug`
+- InsForge sandbox branch `impl-13b-spectator-wiring` / `4bg9ufz2-rug`: RETIRED
+  (retired during IMPL-14A-3A-SBX-PROVISION; evidence already captured in docs)
 - Gateway CORS residual (OPTIONS reflect / POST-GET ACAO *): ACCEPTED FOR SANDBOX
 - Application Origin fail-closed gate: RETAINED (defense-in-depth; ≠ authentication)
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: REQUIRED before production / NOT CLOSED
@@ -83,12 +84,51 @@
   - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
   - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
   - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
-  - Gate: selective commit/push decision for IMPL-14A-3A
+  - Gate: CTO post-push review of IMPL-14A-3A traceability
   - IMPL-14A-3A: logical capacity expiry exclusion (SPEC-040-I007/R004)
-    local migration `0011_logical_capacity_expiry_exclusion.sql` (not applied remotely)
+    migration `insforge/migrations/0011_logical-capacity-expiry-exclusion.sql`
+    SHA-256 `7C145C0C749CAA7BB27761F03FCC09F727F476C6266148C59B7A51E621F98A22`
+    rename similarity 100% / SQL content changes 0
+    COMMIT / PUSH `ced7c62` = COMPLETED (origin/main; pre-rename filename)
     CODE REVIEW = PASSED (CTO)
     LOCAL AUTOMATED VALIDATION = PASSED (tests / typecheck / lint)
-    RUNTIME / SANDBOX VALIDATION = NOT RUN
+    SANDBOX RUNTIME VALIDATION = EXECUTED (IMPL-14A-3A-SBX-RUNTIME 2026-07-28)
+    CTO RUNTIME REVIEW = PASSED
+    ARTIFACT FIX REVIEW = PASSED
+    ARTIFACT FILENAME CORRECTION = COMPLETED
+  - IMPL-14A-3A runtime evidence (redacted capture in
+    `docs/implementation/evidence/IMPL-14A-3A-SBX-RUNTIME.md`):
+    SPEC-040-I007 = RUNTIME PASS; SPEC-040-R004 = RUNTIME PASS;
+    SPEC-040-AC003 = RUNTIME PASS; concurrency = PASS;
+    physical discriminating lock-wait = PASS; zero expiry persistence = PASS;
+    RPC regression = PASS.
+    Sandbox `impl-14a-expiry` / `4bg9ufz2-2w7`; migration v11 applied only there
+    (remote name `logical-capacity-expiry-exclusion`). ACTIVE future / past /
+    NULL, exact temporal equality, mixed holds and non-ACTIVE states all PASS;
+    the discriminating lock-wait proved transaction-start `now()` would still have
+    counted a hold that expired during the wait, while `v_capacity_now` did not.
+    Effective reserved capacity never exceeded cupo on any synthetic product;
+    zero payments, tickets,
+    entitlements, TICKET_ACCESS credentials or webhook rows, and no hold/order/
+    registration state transition produced by the expiry logic.
+    Main remained v1–v10 with 0011 absent, HEX-2026 `CONFIGURADO`, sales closed
+    and zero transactional rows.
+  - IMPL-14A-3A-ARTIFACT-FIX (CTO CHANGES_REQUIRED): the InsForge migration
+    runner rejects filenames whose descriptive segment uses underscores, so the
+    versioned artifact was renamed via `git mv` (100% similarity) to
+    `insforge/migrations/0011_logical-capacity-expiry-exclusion.sql`. SQL content
+    and SHA-256 `7C145C0C749CAA7BB27761F03FCC09F727F476C6266148C59B7A51E621F98A22`
+    unchanged, so the sandbox runtime evidence remains applicable. The SQL header
+    comment still cites the previous filename on purpose: changing it would alter
+    the bytes physically validated in the sandbox. Migrations 0001–0009 keep their
+    historical underscore names: already applied remotely, out of scope here and
+    pinned by a frozen allowlist so no new migration may use that shape.
+  - Main application of 0011: NOT AUTHORIZED (remains NOT AUTHORIZED after the
+    filename correction; Main stays at v1–v10 with version 11 absent)
+  - IMPL-14A-3A sandbox inventory: `impl-14a-expiry` / `4bg9ufz2-2w7` ACTIVE
+    (`schema-only`, migration max 11); `impl-13b-spectator-wiring` / `4bg9ufz2-rug`
+    RETIRED during IMPL-14A-3A-SBX-PROVISION to free branch quota. Operational
+    inventory corrected in IMPL-14A-3A-FINALIZE (CTO D-4).
   - IMPL-14A-3A-FIX-1 (CTO CHANGES_REQUIRED, applied local-only): cupo predicate is
     null-safe; unknown expiry keeps reserving cupo (fail-closed). No NOT NULL
     constraint, no backfill, no historical repair in 3A.
@@ -97,6 +137,19 @@
     after the product/event locks; predicate is
     `state='ACTIVE' AND (expires_at IS NULL OR expires_at > v_capacity_now)`.
     `now()` (transaction start) is no longer used for the cupo decision.
+  - IMPL-14A-3A runtime observations (OPEN, non-blocking for 3A):
+    NB-1: TX-1 creates the order/hold in `PREFERENCE_PENDING` before the Mercado
+    Pago preference exists, so a preference failure leaves a hold that only
+    expiry reconciliation can clear.
+    NB-2: `capacity_holds.updated_at` has no trigger maintenance; it is written
+    only by explicit statements, so it is not a reliable change timestamp.
+    NB-3: an isolated TX-1 replay depends on `idempotency_records.response_ref`;
+    without it the replay path cannot rebuild the original response.
+    NB-4: the retained sandbox still holds inherited secrets that are unused
+    after `MERCADOPAGO_ACCESS_TOKEN` was neutralised; Main's token is intact.
+    NB-5: the validation harness artifacts (synthetic events/days/products and
+    seeded holds) did not alter any result; every case was measured against its
+    own product and no shared state was reused after the discarded product.
   - OPEN FOR IMPL-14A-3B: boundary asymmetry — `checkout_start_tx` frees cupo at
     `expires_at <= v_capacity_now` while TX-2 (`0009`) treats a hold as expired
     only at `expires_at < now()`. NO CHANGE TO TX-2 IN 3A.
@@ -104,16 +157,24 @@
     (e.g. `v_expires_at := now() + make_interval(...)`, sales gates) and in TX-2
     may need separate analysis. Out of scope for FIX-2; required before integral
     runtime validation / production.
-  - IMPL-14A-3B…3G: NOT AUTHORIZED
-  - Runtime remote apply / cron / edges: NOT AUTHORIZED
+  - IMPL-14A-3B: NOT AUTHORIZED / NOT STARTED
+  - IMPL-14A-3C…3G: NOT AUTHORIZED
+  - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
-- Next: selective commit/push decision for IMPL-14A-3A;
-  no IMPL-14A-3B+ / remote apply / cron / push until separately authorized
-- InsForge sandbox branches retained:
-  `impl-13b-spectator-wiring` / `4bg9ufz2-rug` (IMPL-13C evidence)
-  `impl-13e-public-press` / `4bg9ufz2-6mq` (IMPL-13E surface)
+- PRODUCTION: NO-GO
+- Next: CTO post-push review of IMPL-14A-3A traceability;
+  no Main apply / IMPL-14A-3B+ / cron until separately authorized
+- InsForge sandbox branches ACTIVE:
+  `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
+  `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
+  `impl-14a-expiry` / `4bg9ufz2-2w7` — Project ID
+  `2921e092-aed6-4abb-93be-946c42eee82a`; mode `schema-only`; migration max 11
+  (IMPL-14A-3A runtime evidence)
+- InsForge sandbox branches RETIRED:
+  `impl-13b-spectator-wiring` / `4bg9ufz2-rug` — Project ID
+  `c4719a08-4709-4bee-9dfb-8539df5b715b`; retired during IMPL-14A-3A-SBX-PROVISION
 - Landing: spectator sandbox wiring + atomic submit (flags default off; prod host blocked)
-- Note: Cursor InsForge MCP targets Main; sandbox ops must use CLI `4bg9ufz2-rug`
+- Note: Cursor InsForge MCP targets Main; current sandbox ops must use CLI `4bg9ufz2-2w7`
 - `.cursor/settings.json`: local Stripe plugin enablement — IGNORED_LOCAL_CONFIG
   (`.git/info/exclude`; do not version)
 
@@ -365,14 +426,17 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_14A_3A_SELECTIVE_PUSH_DECISION`
+`READY_FOR_CTO_POST_PUSH_REVIEW`
 
 Siguiente accion permitida:
 
-1. decidir incorporacion selectiva (push) de IMPL-14A-3A; code review CTO
-   PASSED y validacion local automatizada PASSED; runtime/sandbox NOT RUN;
+1. revisar la trazabilidad post-push de IMPL-14A-3A; code review CTO PASSED,
+   validacion local automatizada PASSED, runtime/sandbox EXECUTED con revision
+   CTO PASSED y correccion del nombre del artefacto COMPLETED; aplicacion en
+   Main NOT AUTHORIZED; produccion NO-GO;
 2. no iniciar IMPL-14A-3B…3G sin autorizacion humana explicita separada;
-3. no aplicar migracion 0011 en InsForge / Main / sandbox en esta unidad;
+3. no aplicar migracion 0011 en Main; v11 permanece solo en el sandbox
+   `impl-14a-expiry`;
 4. no crear schedules/cron, edge functions, dry-run reconciler ni admin recovery;
 5. no persistir EXPIRED de orden/hold/ORDER_HOLDER ni cancelar registrations;
    no agregar NOT NULL a `capacity_holds.expires_at` ni reparar filas historicas;
@@ -464,9 +528,12 @@ HEAD de cierre Y: `9668dfe`. SPEC-040 v0.1.1 Payment Pending Expiry
 Reconciliation fue APPROVED 2026-07-27. IMPL-14A-2 plan v0.2.0 fue
 APPROVED 2026-07-27 por el Project Owner (SHA contenido aprobado
 `04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`)
-tras CTO `READY_FOR_APPROVAL` e IMPL-14A-2V. Runtime IMPL-14A y
-IMPL-14A-3* permanecen NOT AUTHORIZED. Siguiente unidad autorizada:
-IMPL-14A-2C documentary consolidation (sin commit/push hasta autorizacion).
+tras CTO `READY_FOR_APPROVAL` e IMPL-14A-2V. IMPL-14A-2C documentary
+consolidation quedo consolidada, commiteada y pusheada (`e6c812b`), e
+IMPL-14A-3A quedo commiteada y pusheada (`ced7c62`) con validacion runtime
+ejecutada solo en sandbox. IMPL-14A-3B…3G permanecen NOT AUTHORIZED.
+Siguiente unidad autorizada: revision CTO de la correccion de nombre del
+artefacto 0011 (sin commit/push hasta autorizacion).
 
 ```text
 IMPL-4: VALIDATED
@@ -504,9 +571,12 @@ Catalog: 1 event / 3 days / 28 products
 Commercial target prices (landing): APPROVED (OPCIÓN B)
 Main canonical price update: PENDING SEPARATE UNIT
 Event status (Main): CONFIGURADO
-Sandbox branches:
-  impl-13b-spectator-wiring / 4bg9ufz2-rug (IMPL-13C evidence)
-  impl-13e-public-press / 4bg9ufz2-6mq (IMPL-13E surface)
+Sandbox branches ACTIVE:
+  impl-13e-public-press / 4bg9ufz2-6mq / 4227c38d-f6c9-4ee4-aa6f-d05fb4b19693 (full)
+  impl-14a-expiry / 4bg9ufz2-2w7 / 2921e092-aed6-4abb-93be-946c42eee82a (schema-only, v11)
+Sandbox branches RETIRED:
+  impl-13b-spectator-wiring / 4bg9ufz2-rug / c4719a08-4709-4bee-9dfb-8539df5b715b
+  (retired during IMPL-14A-3A-SBX-PROVISION)
 Mercado Pago production webhook: NOT CONFIGURED
 Mercado Pago test webhook: TOPICS NONE / CALLBACK DISABLED (human-confirmed; URL may remain stored)
 TEAM_ROSTER_REMINDERS: DEFERRED / NOT AUTHORIZED
@@ -525,9 +595,17 @@ IMPL_13E_0_VALIDATED_CLOSED
 IMPL_13E_X_TECHNICALLY_VALIDATED
 IMPL_13E_Y_HUMAN_CLOSED
 IMPL_14A_2_PLAN_APPROVED
-IMPL_14A_3A_CODE_REVIEW_PASSED_LOCAL_ONLY
-Next: IMPL-14A-3A selective push decision (no remote apply until authorized)
-Gate: READY_FOR_IMPL_14A_3A_SELECTIVE_PUSH_DECISION
+IMPL_14A_3A_CODE_REVIEW_PASSED
+IMPL_14A_3A_SANDBOX_RUNTIME_VALIDATION_EXECUTED
+IMPL_14A_3A_COMMIT_PUSH_COMPLETED (ced7c62)
+IMPL_14A_3A_CTO_RUNTIME_REVIEW_PASSED
+IMPL_14A_3A_ARTIFACT_FIX_REVIEW_PASSED
+IMPL_14A_3A_ARTIFACT_FILENAME_CORRECTION_COMPLETED
+IMPL_14A_3A_MAIN_APPLY: NOT AUTHORIZED
+IMPL_14A_3B: NOT AUTHORIZED / NOT STARTED
+PRODUCTION: NO-GO
+Next: CTO post-push review of IMPL-14A-3A traceability (no Main apply until authorized)
+Gate: READY_FOR_CTO_POST_PUSH_REVIEW
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -540,9 +618,15 @@ spectator sandbox PUB-VIE (IMPL-13C) y el E2E public/press sandbox
 (IMPL-13E-Y) quedaron validados y cerrados. El Project Owner fijo precios
 comerciales objetivo (landing) bajo OPCIÓN B; la actualizacion canonica de
 Main queda pendiente de unidad separada. SPEC-040 y el plan IMPL-14A-2
-estan APPROVED. IMPL-14A-3A esta IMPLEMENTING local-only para la exclusion
-logica de cupo, con predicado null-safe (FIX-1) evaluado contra un reloj
-canonico capturado tras los locks (FIX-2); 0011 no fue aplicada remotamente.
+estan APPROVED. IMPL-14A-3A implementa la exclusion logica de cupo con
+predicado null-safe (FIX-1) evaluado contra un reloj canonico capturado tras
+los locks (FIX-2); su validacion runtime se ejecuto exclusivamente en el
+sandbox `impl-14a-expiry` (v11), donde I007/R004/AC003 quedaron PASS con
+lock-wait fisico discriminante, y el artefacto se renombro a
+`0011_logical-capacity-expiry-exclusion.sql` sin alterar sus bytes ni su
+SHA-256. La evidencia saneada quedo en
+`docs/implementation/evidence/IMPL-14A-3A-SBX-RUNTIME.md`.
+Main permanece en v1–v10 sin 0011 y su aplicacion no esta autorizada.
 IMPL-14A-3B…3G no estan autorizadas.
 El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
 webhook productivo y conexion de landing a ventas reales no estan

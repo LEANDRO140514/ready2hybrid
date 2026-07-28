@@ -63,7 +63,27 @@ function hold(
 }
 
 const migDir = resolve(process.cwd(), 'insforge/migrations')
-const migPath = resolve(migDir, '0011_logical_capacity_expiry_exclusion.sql')
+const MIGRATION_FILE = '0011_logical-capacity-expiry-exclusion.sql'
+const migPath = resolve(migDir, MIGRATION_FILE)
+
+/** The InsForge migration runner rejects any other filename shape. */
+const CANONICAL_MIGRATION_NAME = /^\d{4}_[a-z0-9]+(?:-[a-z0-9]+)*\.sql$/
+
+/**
+ * Applied remotely before the runner's naming rule was known. Renaming them
+ * would not change what the backend already ran, so the list is frozen here:
+ * any new non-canonical migration breaks the guard instead of joining it.
+ */
+const LEGACY_UNDERSCORE_MIGRATIONS = [
+  '0001_minimal_sales_schema.sql',
+  '0002_sales_constraints_and_indexes.sql',
+  '0003_rls_and_access_limits.sql',
+  '0005_checkout_start_transaction.sql',
+  '0006_webhook_payment_transaction.sql',
+  '0007_team_roster_invitations.sql',
+  '0008_ticket_issuance_credentials.sql',
+  '0009_fix_webhook_payment_verification_order.sql',
+]
 
 function stripSqlComments(source: string): string {
   return source
@@ -210,9 +230,25 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
   it('is the next migration after 0010 and does not recreate the capacity index', () => {
     const names = readdirSync(migDir).filter((n) => /^\d{4}_.+\.sql$/.test(n)).sort()
     expect(names).toContain('0010_spectator-multi-quantity.sql')
-    expect(names).toContain('0011_logical_capacity_expiry_exclusion.sql')
+    expect(names).toContain(MIGRATION_FILE)
     expect(existsSync(migPath)).toBe(true)
     expect(codeSql).not.toMatch(/CREATE\s+INDEX/i)
+  })
+
+  it('names every migration as the InsForge runner accepts', () => {
+    expect(MIGRATION_FILE).toMatch(CANONICAL_MIGRATION_NAME)
+    // The runner rejected the underscore form of this exact file; it must not return.
+    expect(
+      existsSync(resolve(migDir, '0011_logical_capacity_expiry_exclusion.sql')),
+    ).toBe(false)
+
+    const discovered = readdirSync(migDir)
+      .filter((n) => n.endsWith('.sql'))
+      .sort()
+    expect(discovered).toContain(MIGRATION_FILE)
+    expect(discovered.filter((n) => !CANONICAL_MIGRATION_NAME.test(n))).toEqual(
+      LEGACY_UNDERSCORE_MIGRATIONS,
+    )
   })
 
   it('replaces only checkout_start_tx with SECURITY DEFINER and admin execute', () => {
@@ -282,7 +318,7 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(definitions.length).toBeGreaterThan(0)
 
     const canonical = definitions[definitions.length - 1]
-    expect(canonical).toBe('0011_logical_capacity_expiry_exclusion.sql')
+    expect(canonical).toBe(MIGRATION_FILE)
 
     const canonicalCode = stripSqlComments(
       readFileSync(resolve(migDir, canonical), 'utf8'),
