@@ -4,7 +4,8 @@
 unit: IMPL-14A-3A-SBX-RUNTIME
 date: 2026-07-28
 status: EVIDENCE CAPTURED
-human closure: NOT PERFORMED
+human closure: PERFORMED 2026-07-28 (Project Owner)
+closure scope: IMPL-14A-3A implementation + sandbox validation only
 ```
 
 ## 1. Autoridad
@@ -158,12 +159,15 @@ TX-2), required before integral runtime validation or production.
 SANDBOX RUNTIME VALIDATION = EXECUTED
 CTO RUNTIME REVIEW = PASSED
 ARTIFACT FILENAME CORRECTION = COMPLETED
+IMPL-14A-3A = VALIDATED / CLOSED (implementation + sandbox validation scope)
+human closure = PERFORMED 2026-07-28 (Project Owner)
 Main application of 0011 = NOT AUTHORIZED
 IMPL-14A-3B = NOT AUTHORIZED / NOT STARTED
 PRODUCTION = NO-GO
-human closure = NOT PERFORMED
+PAYMENT_PENDING_EXPIRY_RECONCILIATION = OPEN (SPEC-040 not closed by 3A)
 ```
 
-This document records captured evidence only. It does not declare IMPL-14A-3A
-validated, closed or deployed, and it does not authorize applying migration 0011
-to Main.
+The Project Owner closed IMPL-14A-3A on 2026-07-28 for the scope recorded in this
+document only. The closure does not declare the migration deployed, does not
+authorize applying 0011 to Main, does not authorize production and does not
+authorize starting IMPL-14A-3B. The retained findings in §7 remain open.

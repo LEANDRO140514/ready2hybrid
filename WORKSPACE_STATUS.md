@@ -84,8 +84,10 @@
   - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
   - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
   - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
-  - Gate: CTO post-push review of IMPL-14A-3A traceability
+  - Gate: IMPL-14A-3B authorization (3A closed; Main apply and production NOT AUTHORIZED)
   - IMPL-14A-3A: logical capacity expiry exclusion (SPEC-040-I007/R004)
+    VALIDATED / CLOSED for its implementation + sandbox validation scope
+    (human closure 2026-07-28 by Project Owner; traceability commit `a801a14`)
     migration `insforge/migrations/0011_logical-capacity-expiry-exclusion.sql`
     SHA-256 `7C145C0C749CAA7BB27761F03FCC09F727F476C6266148C59B7A51E621F98A22`
     rename similarity 100% / SQL content changes 0
@@ -96,6 +98,10 @@
     CTO RUNTIME REVIEW = PASSED
     ARTIFACT FIX REVIEW = PASSED
     ARTIFACT FILENAME CORRECTION = COMPLETED
+    HUMAN CLOSURE = PERFORMED 2026-07-28 (Project Owner)
+    CLOSURE SCOPE = implementation + sandbox validation only; the closure does
+    not authorize applying 0011 to Main, does not authorize production and does
+    not authorize starting IMPL-14A-3B
   - IMPL-14A-3A runtime evidence (redacted capture in
     `docs/implementation/evidence/IMPL-14A-3A-SBX-RUNTIME.md`):
     SPEC-040-I007 = RUNTIME PASS; SPEC-040-R004 = RUNTIME PASS;
@@ -162,8 +168,8 @@
   - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
 - PRODUCTION: NO-GO
-- Next: CTO post-push review of IMPL-14A-3A traceability;
-  no Main apply / IMPL-14A-3B+ / cron until separately authorized
+- Next: explicit human authorization for IMPL-14A-3B; IMPL-14A-3A is closed for
+  its scope; no Main apply / IMPL-14A-3B+ / cron until separately authorized
 - InsForge sandbox branches ACTIVE:
   `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
   `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
@@ -426,14 +432,14 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_CTO_POST_PUSH_REVIEW`
+`READY_FOR_IMPL_14A_3B_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revisar la trazabilidad post-push de IMPL-14A-3A; code review CTO PASSED,
-   validacion local automatizada PASSED, runtime/sandbox EXECUTED con revision
-   CTO PASSED y correccion del nombre del artefacto COMPLETED; aplicacion en
-   Main NOT AUTHORIZED; produccion NO-GO;
+1. autorizar explicitamente IMPL-14A-3B; IMPL-14A-3A quedo `VALIDATED / CLOSED`
+   el 2026-07-28 por el Project Owner unicamente para su alcance de
+   implementacion y validacion en sandbox; aplicacion de 0011 en Main
+   NOT AUTHORIZED; produccion NO-GO;
 2. no iniciar IMPL-14A-3B…3G sin autorizacion humana explicita separada;
 3. no aplicar migracion 0011 en Main; v11 permanece solo en el sandbox
    `impl-14a-expiry`;
@@ -601,11 +607,12 @@ IMPL_14A_3A_COMMIT_PUSH_COMPLETED (ced7c62)
 IMPL_14A_3A_CTO_RUNTIME_REVIEW_PASSED
 IMPL_14A_3A_ARTIFACT_FIX_REVIEW_PASSED
 IMPL_14A_3A_ARTIFACT_FILENAME_CORRECTION_COMPLETED
+IMPL_14A_3A_HUMAN_CLOSED (2026-07-28; sandbox validation scope only)
 IMPL_14A_3A_MAIN_APPLY: NOT AUTHORIZED
 IMPL_14A_3B: NOT AUTHORIZED / NOT STARTED
 PRODUCTION: NO-GO
-Next: CTO post-push review of IMPL-14A-3A traceability (no Main apply until authorized)
-Gate: READY_FOR_CTO_POST_PUSH_REVIEW
+Next: explicit authorization for IMPL-14A-3B (no Main apply until authorized)
+Gate: READY_FOR_IMPL_14A_3B_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -625,7 +632,9 @@ sandbox `impl-14a-expiry` (v11), donde I007/R004/AC003 quedaron PASS con
 lock-wait fisico discriminante, y el artefacto se renombro a
 `0011_logical-capacity-expiry-exclusion.sql` sin alterar sus bytes ni su
 SHA-256. La evidencia saneada quedo en
-`docs/implementation/evidence/IMPL-14A-3A-SBX-RUNTIME.md`.
+`docs/implementation/evidence/IMPL-14A-3A-SBX-RUNTIME.md`. El Project Owner
+cerro IMPL-14A-3A como `VALIDATED / CLOSED` el 2026-07-28 unicamente para su
+alcance de implementacion y validacion en sandbox.
 Main permanece en v1–v10 sin 0011 y su aplicacion no esta autorizada.
 IMPL-14A-3B…3G no estan autorizadas.
 El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
