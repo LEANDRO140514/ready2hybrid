@@ -84,8 +84,8 @@
   - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
   - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
   - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
-  - Gate: CTO review of IMPL-14A-3B sandbox runtime evidence (CHANGES_REQUIRED);
-    3A closed; Main apply and production NOT AUTHORIZED
+  - Gate: IMPL-14A-3B VALIDATED / CLOSED (sandbox scope); Main apply and
+    production NOT AUTHORIZED; IMPL-14A-3C NOT AUTHORIZED / NOT STARTED
   - IMPL-14A-3A: logical capacity expiry exclusion (SPEC-040-I007/R004)
     VALIDATED / CLOSED for its implementation + sandbox validation scope
     (human closure 2026-07-28 by Project Owner; traceability commit `a801a14`)
@@ -164,7 +164,9 @@
     (e.g. `v_expires_at := now() + make_interval(...)`, sales gates) and in TX-2
     may need separate analysis. Out of scope for FIX-2; required before integral
     runtime validation / production.
-  - IMPL-14A-3B = READY_FOR_HUMAN_VALIDATION_APPROVAL
+  - IMPL-14A-3B = VALIDATED / CLOSED
+    for its implementation + automated tests + sandbox physical validation only
+    (human closure 2026-07-29 by Project Owner; published commit `6068d5b`)
     local implementation = COMPLETED
     sandbox runtime = EXECUTED
     CTO runtime review = PASSED
@@ -172,8 +174,16 @@
     0012 sandbox apply = EXECUTED
     0013 sandbox apply = EXECUTED
     FIX-2 retest = PASSED (29/29; matrix 13/13)
+    suite 316/316 PASS; focused expiry 112/112 PASS
+    dry-run zero-write / batch / SKIP LOCKED / idempotency / ROW_COUNT /
+    no-emission = PASS
     Main application = NOT AUTHORIZED
-    human validation / closure = NOT PERFORMED
+    human validation / closure = PERFORMED 2026-07-29 (Project Owner)
+    CLOSURE SCOPE = implementation + automated tests + sandbox validation only;
+    the closure does not authorize applying 0011/0012/0013 to Main, does not
+    authorize production, does not authorize starting IMPL-14A-3C, and does not
+    close deferred TX-2 / PREFERENCE_PENDING / least-privilege / rate-limiting /
+    outbox findings
     IMPL-14A-3C = NOT AUTHORIZED / NOT STARTED
     PRODUCTION = NO-GO
     decisions D-1 … D-6 = RECORDED (unchanged)
@@ -188,19 +198,18 @@
     dry-run clock = statement_timestamp()
     aggregate/batch clock = clock_timestamp()
     evidence: `docs/implementation/evidence/IMPL-14A-3B-SBX-RUNTIME.md`
-    IMPL-14A-3B = NOT VALIDATED / NOT CLOSED
   - IMPL-14A-3C…3G: NOT AUTHORIZED / NOT STARTED
   - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
 - PRODUCTION: NO-GO
-- Next: human validation / closure of IMPL-14A-3B (NOT PERFORMED); no Main apply /
-  IMPL-14A-3C+ / cron until separately authorized
+- Next: authorize IMPL-14A-3C separately if desired; no Main apply of
+  0011/0012/0013 / cron / edges / production until separately authorized
 - InsForge sandbox branches ACTIVE:
   `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
   `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
   `impl-14a-expiry` / `4bg9ufz2-2w7` — Project ID
   `2921e092-aed6-4abb-93be-946c42eee82a`; mode `schema-only`; migration max 13
-  (IMPL-14A-3A + IMPL-14A-3B + FIX-2 array-fix; Main untouched)
+  (IMPL-14A-3A + IMPL-14A-3B sandbox validation; Main untouched)
 - InsForge sandbox branches RETIRED:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` — Project ID
   `c4719a08-4709-4bee-9dfb-8539df5b715b`; retired during IMPL-14A-3A-SBX-PROVISION
@@ -457,14 +466,12 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_CTO_POST_PUSH_REVIEW`
+`READY_FOR_IMPL_14A_3C_AUTHORIZATION`
 
 Siguiente accion permitida:
 
-1. revision CTO post-push de IMPL-14A-3B (artefactos en origin/main);
-   CTO runtime review = PASSED; B-ARRAY = RESOLVED IN SANDBOX;
-   estado = READY_FOR_HUMAN_VALIDATION_APPROVAL;
-   human closure = NOT PERFORMED; Main sin 0011/0012/0013; produccion NO-GO;
+1. IMPL-14A-3B = VALIDATED / CLOSED (2026-07-29; sandbox scope only;
+   published commit `6068d5b`); Main sin 0011/0012/0013; produccion NO-GO;
 2. no iniciar IMPL-14A-3C…3G sin autorizacion humana explicita separada;
 3. no aplicar `0011`/`0012`/`0013` en Main sin autorizacion humana explicita;
 4. no crear schedules/cron, edge functions, reconciliador desplegado ni admin
@@ -472,7 +479,8 @@ Siguiente accion permitida:
 5. no agregar NOT NULL a `capacity_holds.expires_at` ni reparar filas historicas;
 6. no ejecutar pagos/reembolsos ni Main `EN_VENTA`;
 7. no versionar `.cursor/*`; prohibido `git add -A`;
-8. no declarar VALIDATED/CLOSED sin cierre humano explicito;
+8. no cerrar hallazgos diferidos (TX-2, PREFERENCE_PENDING, least privilege,
+   rate limiting, outbox) sin unidad autorizada;
 9. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
 10. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 
@@ -562,14 +570,14 @@ tras CTO `READY_FOR_APPROVAL` e IMPL-14A-2V. IMPL-14A-2C documentary
 consolidation quedo consolidada, commiteada y pusheada (`e6c812b`), e
 IMPL-14A-3A quedo commiteada y pusheada (`ced7c62`) con validacion runtime
 ejecutada solo en sandbox, y su cierre documental en `dd2873b`. IMPL-14A-3B
-esta IMPLEMENTING / LOCAL ONLY por autorizacion del Project Owner del
-2026-07-28; CTO CODE REVIEW = CHANGES_REQUIRED y B-1 (dry-run volatility)
-quedo FIXED LOCALLY via IMPL-14A-3B-FIX-1 (`statement_timestamp` en dry-run;
-`clock_timestamp` en aggregate/batch). El runtime sandbox aplico 0012 solo en
-`impl-14a-expiry` y dejo CHANGES_REQUIRED por el bug `text[] || literal`.
-IMPL-14A-3C…3G permanecen NOT AUTHORIZED.
-Siguiente unidad autorizada: revision CTO de la evidencia sandbox IMPL-14A-3B
-(sin Main apply, sin commit/push hasta autorizacion).
+quedo implementada localmente, validada en sandbox `impl-14a-expiry` (0012+0013;
+B-ARRAY RESOLVED IN SANDBOX; FIX-2 29/29; matriz 13/13) y publicada en
+`6068d5b`; el Project Owner la cerro como `VALIDATED / CLOSED` el 2026-07-29
+unicamente para implementacion, pruebas automatizadas y validacion fisica en
+sandbox. B-1 (dry-run volatility) quedo FIXED LOCALLY via IMPL-14A-3B-FIX-1.
+Main permanece sin 0011/0012/0013. IMPL-14A-3C…3G permanecen NOT AUTHORIZED.
+Siguiente unidad: autorizacion humana explicita separada de IMPL-14A-3C si se
+desea (sin Main apply, sin schedule/cron/Edge, sin produccion).
 
 ```text
 IMPL-4: VALIDATED
@@ -639,7 +647,7 @@ IMPL_14A_3A_ARTIFACT_FIX_REVIEW_PASSED
 IMPL_14A_3A_ARTIFACT_FILENAME_CORRECTION_COMPLETED
 IMPL_14A_3A_HUMAN_CLOSED (2026-07-28; sandbox validation scope only)
 IMPL_14A_3A_MAIN_APPLY: NOT AUTHORIZED
-IMPL_14A_3B: READY_FOR_HUMAN_VALIDATION_APPROVAL
+IMPL_14A_3B: VALIDATED / CLOSED
 IMPL_14A_3B_LOCAL_IMPLEMENTATION: COMPLETED
 IMPL_14A_3B_SANDBOX_RUNTIME: EXECUTED
 IMPL_14A_3B_CTO_RUNTIME_REVIEW: PASSED
@@ -647,14 +655,14 @@ IMPL_14A_3B_B_ARRAY: RESOLVED IN SANDBOX
 IMPL_14A_3B_0012_SANDBOX_APPLY: EXECUTED
 IMPL_14A_3B_0013_SANDBOX_APPLY: EXECUTED
 IMPL_14A_3B_FIX_2_RETEST: PASSED
+IMPL_14A_3B_PUBLISHED_COMMIT: 6068d5b160169eba81719d3f01c366b419fcb77b
 IMPL_14A_3B_MAIN_APPLY: NOT AUTHORIZED
-IMPL_14A_3B_HUMAN_VALIDATION_CLOSURE: NOT PERFORMED
-IMPL_14A_3B: NOT VALIDATED / NOT CLOSED
+IMPL_14A_3B_HUMAN_CLOSED (2026-07-29; sandbox validation scope only)
 IMPL_14A_3C: NOT AUTHORIZED / NOT STARTED
 PRODUCTION: NO-GO
-Next: human validation / closure of IMPL-14A-3B
-(no Main apply until authorized)
-Gate: READY_FOR_CTO_POST_PUSH_REVIEW
+Next: authorize IMPL-14A-3C separately if desired
+(no Main apply of 0011/0012/0013 until authorized)
+Gate: READY_FOR_IMPL_14A_3C_AUTHORIZATION
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -678,12 +686,15 @@ SHA-256. La evidencia saneada quedo en
 cerro IMPL-14A-3A como `VALIDATED / CLOSED` el 2026-07-28 unicamente para su
 alcance de implementacion y validacion en sandbox.
 Main permanece en v1–v10 sin 0011 y su aplicacion no esta autorizada.
-IMPL-14A-3B quedo listo para cierre humano: implementacion local COMPLETED,
-runtime sandbox EXECUTED, CTO runtime review PASSED, B-ARRAY RESOLVED IN
-SANDBOX (`0012`+`0013` en `impl-14a-expiry`, max 13). Estado =
-READY_FOR_HUMAN_VALIDATION_APPROVAL. Human closure = NOT PERFORMED.
-Main permanece sin 0011/0012/0013. IMPL-14A-3B no esta VALIDATED/CLOSED.
-IMPL-14A-3C = NOT AUTHORIZED / NOT STARTED.
+El Project Owner cerro IMPL-14A-3B como `VALIDATED / CLOSED` el 2026-07-29
+unicamente para implementacion, pruebas automatizadas y validacion fisica en
+sandbox `impl-14a-expiry` (evidencia en
+`docs/implementation/evidence/IMPL-14A-3B-SBX-RUNTIME.md`; commit publicado
+`6068d5b`). B-ARRAY = RESOLVED IN SANDBOX; FIX-2 retest 29/29; matriz 13/13.
+Main permanece sin 0011/0012/0013. El cierre no autoriza Main apply, produccion,
+IMPL-14A-3C ni el cierre de hallazgos diferidos (TX-2, PREFERENCE_PENDING,
+least privilege, rate limiting, outbox). IMPL-14A-3C = NOT AUTHORIZED /
+NOT STARTED.
 El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
 webhook productivo y conexion de landing a ventas reales no estan
 autorizados. Casos A–D PASS; Case E y metodos async quedan diferidos del

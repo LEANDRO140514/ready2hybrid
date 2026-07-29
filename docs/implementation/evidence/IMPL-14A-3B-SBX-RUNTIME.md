@@ -1,13 +1,16 @@
 # IMPL-14A-3B-SBX-RUNTIME — Payment Pending Expiry Transaction — Sandbox Runtime Validation
 
 ```text
-unit: IMPL-14A-3B-SBX-RUNTIME-1 + FIX-2-SBX-RETEST + ARTIFACT FINALIZATION
+unit: IMPL-14A-3B-SBX-RUNTIME-1 + FIX-2-SBX-RETEST + ARTIFACT FINALIZATION + HUMAN CLOSURE
 date: 2026-07-29
-status: EVIDENCE CAPTURED — CTO RUNTIME REVIEW PASSED
-authority: Project Owner authorization for sandbox-only apply + synthetic fixtures
+status: VALIDATED / CLOSED (sandbox implementation + automated tests + physical validation)
+authority: Project Owner human validation approval 2026-07-29
+published commit: 6068d5b160169eba81719d3f01c366b419fcb77b
 ```
 
 ## 1. Autoridad
+
+Baseline at start of SBX-RUNTIME-1 (historical):
 
 ```text
 SPEC-040 v0.1.1 = APPROVED
@@ -18,10 +21,10 @@ HEAD local = dd2873b60a4f92a7fa9e8295e735f0e18fcb7ad4
 0012 SHA-256 = E27EDAD76387F5C73FCC393A1EA2C836E5BA09313C38E1E29B611E37DCF5BBE1
 ```
 
-Scope: compile, apply and physically validate
+Original scope: compile, apply and physically validate
 `insforge/migrations/0012_payment-pending-expiry-transaction.sql` exclusively on
 sandbox `impl-14a-expiry`. Main, commit, push, IMPL-14A-3C and production were
-not authorized.
+not authorized. Current status after human closure: see header and §14.
 
 ## 2. Entornos
 
@@ -185,25 +188,41 @@ No code corrections were made during this unit.
 
 ## 10. Restricciones vigentes
 
+Historical snapshot after SBX-RUNTIME-1 (pre FIX-2 / pre human closure). Current
+closure status is in §13 Remaining and §14 Gate.
+
 ```text
 0012 applied only to impl-14a-expiry
 Main application = NOT AUTHORIZED
-IMPL-14A-3B = NOT VALIDATED / NOT CLOSED
+IMPL-14A-3B (at that time) = NOT VALIDATED / NOT CLOSED
 IMPL-14A-3C = NOT AUTHORIZED
 PRODUCTION = NO-GO
 commit = 0
 push = 0
 ```
 
+Post human closure (2026-07-29):
+
+```text
+0012 + 0013 applied only to impl-14a-expiry
+Main application of 0011/0012/0013 = NOT AUTHORIZED
+IMPL-14A-3B = VALIDATED / CLOSED (implementation + tests + sandbox only)
+IMPL-14A-3C = NOT AUTHORIZED / NOT STARTED
+PRODUCTION = NO-GO
+published commit = 6068d5b160169eba81719d3f01c366b419fcb77b
+```
+
 ## 11. Gate
+
+Historical gate after SBX-RUNTIME-1:
 
 ```text
 CHANGES_REQUIRED
 ```
 
-Ready for CTO review of this sandbox evidence. Next authorized unit should be a
-minimal local FIX for the `text[]` append form, then a focused sandbox retest of
-inconsistent + dry-run findings paths only.
+That gate required the minimal local FIX for the `text[]` append form and the
+focused sandbox retest of inconsistent + dry-run findings paths. Those units
+completed (FIX-2 + retest). Current gate: §14.
 
 ## 12. Runtime finding B-ARRAY
 
@@ -318,20 +337,25 @@ BATCH / SELF-LOCK / SKIP LOCKED = PASS
 ROW_COUNT DURABLE COMPARISON = PASS
 NO-EMISSION = PASS
 
+HUMAN CLOSURE = PERFORMED 2026-07-29 (Project Owner)
+IMPL-14A-3B = VALIDATED / CLOSED
+  (implementation + automated tests + sandbox physical validation only)
+
 Main application = NOT AUTHORIZED
 IMPL-14A-3C = NOT AUTHORIZED / NOT STARTED
 PRODUCTION = NO-GO
-human closure = NOT PERFORMED
-IMPL-14A-3B = READY_FOR_HUMAN_VALIDATION_APPROVAL
-  (NOT VALIDATED / NOT CLOSED)
+deferred still OPEN: TX-2 asymmetry, PREFERENCE_PENDING hold persistence,
+least privilege (OD-040-002), rate limiting, outbox operational runbook
 ```
 
-## 14. Gate (artifact finalization)
+## 14. Gate (human closure)
 
 ```text
-READY_FOR_CTO_POST_PUSH_REVIEW
+IMPL-14A-3B = VALIDATED / CLOSED (sandbox scope)
+READY_FOR_IMPL_14A_3C_AUTHORIZATION
 B-ARRAY = RESOLVED IN SANDBOX
 CTO RUNTIME REVIEW = PASSED
+HUMAN CLOSURE = PERFORMED
 ```
 
 Timeline preserved:
@@ -341,5 +365,11 @@ Timeline preserved:
 B-ARRAY discovered (malformed array literal);
 0012 remains immutable;
 0013 corrected aggregate + dry-run via array_append;
-0013 applied and revalidated on sandbox (v13).
+0013 applied and revalidated on sandbox (v13);
+artifacts published in 6068d5b;
+Project Owner human closure 2026-07-29.
 ```
+
+Closure does **not** authorize Main apply of 0011/0012/0013, IMPL-14A-3C,
+schedules/cron/Edge Functions, production, payments/refunds/sales, or closure
+of the deferred findings listed above.
