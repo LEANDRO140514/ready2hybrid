@@ -81,11 +81,68 @@
   - IMPL-14A-2 plan: PLAN / APPROVED v0.2.0 (PO 2026-07-27 after CTO READY_FOR_APPROVAL + IMPL-14A-2V)
     (`docs/implementation/IMPL-14A-2-PAYMENT-PENDING-EXPIRY-IMPLEMENTATION-PLAN.md`)
     approved content SHA-256: `04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`
-  - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap OPEN; BLOCKS 3C
-  - OD-040-002: OPEN — separate reconciler vs admin actors; `project_admin` ≠ least privilege; BLOCKS 3C and 3D
+  - OD-040-001: cadence/SLA APPROVED (1 min / ≤5 min); anti-overlap APPROVED
+    2026-07-29 by Project Owner (D3C-1): durable global lease in
+    `idempotency_records`, TTL 90s, atomic acquire, `run_id` owner,
+    outcome `overlap_skipped` when busy; NO advisory locks and NO edits to
+    0012/0013 batch/aggregate validated in IMPL-14A-3B
+  - OD-040-002: PARTIAL for sandbox 3C only (D3C-2 APPROVED 2026-07-29):
+    exclusive schedule secret + `actor_ref=system:payment-pending-expiry` +
+    strict RPC allowlist + temporary compensating `project_admin` EXECUTE;
+    true least privilege remains OPEN and continues to BLOCK Main, production,
+    and IMPL-14A-3D admin scope
   - OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK (refund task markers only in IMPL-14A)
-  - Gate: IMPL-14A-3B VALIDATED / CLOSED (sandbox scope); Main apply and
-    production NOT AUTHORIZED; IMPL-14A-3C NOT AUTHORIZED / NOT STARTED
+  - Gate: IMPL-14A-3B VALIDATED / CLOSED (sandbox scope); D3C-1/D3C-2 decided;
+    IMPL-14A-3C = VALIDATED / CLOSED for its local implementation + automated
+    tests + sandbox physical runtime scope (human closure 2026-07-29
+    America/Merida by Project Owner; FIX-1 sandbox retest executed 2026-07-29
+    America/Merida / VALIDATION_FAILED and preserved as evidence; FIX-2 sandbox
+    retest executed 2026-07-29 America/Merida = 2026-07-30 UTC / PASS).
+    Closure does NOT cover Main apply, production, schedule activation or
+    IMPL-14A-3D
+  - IMPL-14A-3C runtime shape: max 25 orders/run; successive
+    `expire_payment_pending_batch_tx(limit:1)`; sandbox Edge budget = 20s
+    measured from `startedMs`; future cadence 1 minute
+  - IMPL-14A-3C migration 0014 = APPLIED ONLY TO SANDBOX / actual 64-char SHA
+    RATIFIED BY PROJECT OWNER (`MIGRATION-SHA-001`)
+  - IMPL-14A-3C Edge = FIX-2 REDEPLOYED ONLY TO SANDBOX
+    (bundle SHA-256 F45A0FB4F4C31738B8C50F2C0825262F61FE1B8B2AC73C8ABB2818913E908EEC;
+    deployment `sjpyyrc0etaf`; RUN_BUDGET_MS 20_000; environment sandbox)
+  - IMPL-14A-3C schedule = VALIDATED 4 FIRES / INACTIVE AFTER TEST
+  - IMPL-14A-3C schedule secret = SANDBOX CONFIGURED / VALUE NOT RECORDED
+  - IMPL-14A-3C SLA = PASS / 51.152927 seconds
+  - IMPL-14A-3C MIGRATION-SHA-001 = RATIFIED BY PROJECT OWNER
+  - IMPL-14A-3C BUDGET-GATEWAY-001 = RESOLVED IN SANDBOX SCOPE / CLOSED WITH
+    IMPL-14A-3C (Project Owner 2026-07-29 America/Merida; FIX-2 external HTTP
+    200 `partial`,
+    `budget_exhausted=true`, gateway 504 = 0, client 22098.605 ms,
+    internal 21408.765834 ms, margin 8397.4 ms vs the 30496 ms FIX-1 cut)
+  - IMPL-14A-3C IN-FLIGHT BATCH RESIDUAL RISK = OPEN
+    (worst-case duration of a batch already started is not bounded by the
+    deadline; must be re-evaluated before Main apply and production)
+  - IMPL-14A-3C FIX-1 sandbox retest = EXECUTED / VALIDATION_FAILED
+  - IMPL-14A-3C FIX-1 local automated validation = 348/348 + 144/144 PASS;
+    typecheck/lint/diff-check PASS
+  - IMPL-14A-3C FIX-2 sandbox retest = EXECUTED / PASS / CTO RUNTIME REVIEW PASS /
+    HUMAN VALIDATED 2026-07-29 America/Merida (5 limited remote regressions PASS; fixtures,
+    harness, triggers and grants cleaned; schedule INACTIVE; Main writes 0)
+  - IMPL-14A-3C FIX-2 local automated validation = 352/352 + 148/148 PASS;
+    typecheck/lint/diff-check PASS
+  - IMPL-14A-3C SBX-CREDENTIAL-001 = REMEDIATED / recovery metadata PASS /
+    new credential disclosure 0
+  - IMPL-14A-3C SBX-CREDENTIAL-003 = OPEN / NON-BLOCKING
+    (`branch list --json` emits encrypted credential envelopes; values not
+    reproduced; no rotation performed)
+  - IMPL-14A-3C OBS-3C-CRONVIEW-001 = OPEN / NON-BLOCKING
+    (schema `cron` not readable and Main's schedule store not reachable without
+    linking/switching the CLI; Main has no `payment-pending-expiry` function)
+  - IMPL-14A-3C OBS-3C-ENV-001 = RESOLVED IN SANDBOX /
+    response environment `sandbox`
+  - IMPL-14A-3C Main = UNTOUCHED / WRITES 0; PRODUCTION = NO-GO
+  - IMPL-14A-3C human validation/closure = PERFORMED 2026-07-29 America/Merida
+    by Project Owner for the local implementation + automated tests + sandbox
+    runtime scope only
+  - True least privilege = OPEN; BLOCKS Main, production and IMPL-14A-3D
   - IMPL-14A-3A: logical capacity expiry exclusion (SPEC-040-I007/R004)
     VALIDATED / CLOSED for its implementation + sandbox validation scope
     (human closure 2026-07-28 by Project Owner; traceability commit `a801a14`)
@@ -198,18 +255,29 @@
     dry-run clock = statement_timestamp()
     aggregate/batch clock = clock_timestamp()
     evidence: `docs/implementation/evidence/IMPL-14A-3B-SBX-RUNTIME.md`
-  - IMPL-14A-3C…3G: NOT AUTHORIZED / NOT STARTED
+  - IMPL-14A-3C = VALIDATED / CLOSED (local implementation + automated tests +
+    sandbox physical runtime scope only; human closure 2026-07-29
+    America/Merida)
+    (D3C-1/D3C-2 APPROVED 2026-07-29; 0014 SHA ratified; 0014 applied and Edge
+    FIX-2 redeployed only in `impl-14a-expiry`; schedule inactive; FIX-1 30s
+    physical retest returned gateway 504 and VALIDATION_FAILED, preserved as
+    evidence; FIX-2 20s physical retest returned external HTTP 200 partial with
+    gateway 504 = 0; Main writes 0; Main apply, production, schedule activation
+    and IMPL-14A-3D remain NOT AUTHORIZED)
+  - IMPL-14A-3D…3G: NOT AUTHORIZED / NOT STARTED
   - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
 - PRODUCTION: NO-GO
-- Next: authorize IMPL-14A-3C separately if desired; no Main apply of
-  0011/0012/0013 / cron / edges / production until separately authorized
+- Next: CTO review of the IMPL-14A-3C documentary closure; no Main apply of
+  0011/0012/0013/0014 / cron / Edge / production until separately authorized;
+  no 0012/0013/0014 SQL edits
 - InsForge sandbox branches ACTIVE:
   `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
   `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
   `impl-14a-expiry` / `4bg9ufz2-2w7` — Project ID
-  `2921e092-aed6-4abb-93be-946c42eee82a`; mode `schema-only`; migration max 13
-  (IMPL-14A-3A + IMPL-14A-3B sandbox validation; Main untouched)
+  `2921e092-aed6-4abb-93be-946c42eee82a`; mode `schema-only`; migration max 14
+  (IMPL-14A-3A + 3B validation; IMPL-14A-3C runtime executed; schedule
+  inactive; Main untouched)
 - InsForge sandbox branches RETIRED:
   `impl-13b-spectator-wiring` / `4bg9ufz2-rug` — Project ID
   `c4719a08-4709-4bee-9dfb-8539df5b715b`; retired during IMPL-14A-3A-SBX-PROVISION
@@ -466,23 +534,43 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_IMPL_14A_3C_AUTHORIZATION`
+`READY_FOR_CTO_IMPL_14A_3C_DATE_NORMALIZATION_REVIEW`
+
+Zona horaria canonica de gobierno: `America/Merida`. Las fechas humanas y de
+gobierno se expresan en esa zona; los timestamps de ejecucion se conservan en
+UTC con sufijo `Z` tal como fueron capturados.
 
 Siguiente accion permitida:
 
-1. IMPL-14A-3B = VALIDATED / CLOSED (2026-07-29; sandbox scope only;
-   published commit `6068d5b`); Main sin 0011/0012/0013; produccion NO-GO;
-2. no iniciar IMPL-14A-3C…3G sin autorizacion humana explicita separada;
-3. no aplicar `0011`/`0012`/`0013` en Main sin autorizacion humana explicita;
-4. no crear schedules/cron, edge functions, reconciliador desplegado ni admin
-   recovery;
-5. no agregar NOT NULL a `capacity_holds.expires_at` ni reparar filas historicas;
-6. no ejecutar pagos/reembolsos ni Main `EN_VENTA`;
-7. no versionar `.cursor/*`; prohibido `git add -A`;
-8. no cerrar hallazgos diferidos (TX-2, PREFERENCE_PENDING, least privilege,
+1. IMPL-14A-3C = VALIDATED / CLOSED unicamente para implementacion local,
+   pruebas automatizadas y runtime fisico validado en sandbox (cierre humano
+   2026-07-29 America/Merida); FIX-1 sandbox retest = EXECUTED /
+   VALIDATION_FAILED, conservado como evidencia; FIX-2 sandbox retest =
+   EXECUTED / PASS. El cierre no autoriza Main, produccion, schedule
+   permanente ni IMPL-14A-3D;
+2. `MIGRATION-SHA-001` = RATIFIED BY PROJECT OWNER;
+3. `BUDGET-GATEWAY-001` = RESOLVED IN SANDBOX SCOPE / CLOSED con IMPL-14A-3C:
+   HTTP externo 200 `partial` / `budget_exhausted=true` / lease liberado a
+   21408.765834 ms internos y 22098.605 ms observados por el cliente,
+   gateway 504 = 0; queda ABIERTO el riesgo residual del batch en vuelo, cuya
+   duracion no esta acotada por el deadline y debe reevaluarse antes de Main y
+   produccion;
+4. API key sandbox recuperada/verificada; nueva credencial no divulgada;
+   `SBX-CREDENTIAL-003` y `OBS-3C-CRONVIEW-001` permanecen ABIERTOS y no
+   bloqueantes;
+5. schedule sandbox debe permanecer inactivo;
+6. no modificar SQL de `0012`/`0013`/`0014` ni anadir advisory locks al batch 3B;
+7. no aplicar `0011`/`0012`/`0013`/`0014` en Main; true least privilege sigue bloqueando
+   Main, produccion y alcance admin 3D;
+8. no crear nuevos schedules/cron, desplegar en Main ni implementar admin recovery;
+9. no agregar NOT NULL a `capacity_holds.expires_at` ni reparar filas historicas;
+10. no ejecutar pagos/reembolsos ni Main `EN_VENTA`;
+11. no versionar `.cursor/*`; prohibido `git add -A`; no commit/push de este
+   registro documental hasta autorizacion separada;
+12. no cerrar hallazgos diferidos (TX-2, PREFERENCE_PENDING, true least privilege,
    rate limiting, outbox) sin unidad autorizada;
-9. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
-10. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
+13. no abrir PUB-3D / FOT-3D hasta resolver OD-020;
+14. no cerrar produccion sin `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 
 ## Ultimo cierre
 
@@ -575,9 +663,26 @@ B-ARRAY RESOLVED IN SANDBOX; FIX-2 29/29; matriz 13/13) y publicada en
 `6068d5b`; el Project Owner la cerro como `VALIDATED / CLOSED` el 2026-07-29
 unicamente para implementacion, pruebas automatizadas y validacion fisica en
 sandbox. B-1 (dry-run volatility) quedo FIXED LOCALLY via IMPL-14A-3B-FIX-1.
-Main permanece sin 0011/0012/0013. IMPL-14A-3C…3G permanecen NOT AUTHORIZED.
-Siguiente unidad: autorizacion humana explicita separada de IMPL-14A-3C si se
-desea (sin Main apply, sin schedule/cron/Edge, sin produccion).
+Main permanece sin 0011/0012/0013/0014. D3C-1/D3C-2 quedaron APPROVED el
+2026-07-29. IMPL-14A-3C ejecuto runtime solo en `impl-14a-expiry`: 0014
+aplicada, Edge desplegada, lease/concurrencia/dry-run/cap/fallos/SLA probados,
+schedule observado cuatro fires y desactivado. El token de SHA autorizado para
+0014 tenia 63 caracteres por error documental; el Project Owner ratifico el
+SHA canonico de 64 caracteres (`MIGRATION-SHA-001` = RATIFIED).
+`BUDGET-GATEWAY-001` fallo primero con FIX-1 (budget 30s redeployado solo al
+sandbox, gateway HTTP 504 pese al `partial` interno con budget agotado y lease
+liberado) y quedo resuelto con FIX-2 (budget 20s medido desde `startedMs` y gate
+previo a cada batch: HTTP externo 200 `partial`, gateway 504 = 0). El Project
+Owner cerro IMPL-14A-3C como `VALIDATED / CLOSED` el 2026-07-29
+(`America/Merida`) unicamente para
+implementacion local, pruebas automatizadas y runtime fisico validado en
+sandbox; Main apply, produccion, schedule permanente e IMPL-14A-3D siguen NOT
+AUTHORIZED, y permanecen abiertos `OD-040-002`, `OBS-3C-CRONVIEW-001`,
+`SBX-CREDENTIAL-003` y el riesgo residual del batch en vuelo.
+`SBX-CREDENTIAL-001` fue remediado con recuperacion/verificacion humana sin
+divulgacion de la nueva key. Main writes = 0.
+IMPL-14A-3D…3G permanecen NOT AUTHORIZED. Gate:
+`READY_FOR_CTO_IMPL_14A_3C_DATE_NORMALIZATION_REVIEW`.
 
 ```text
 IMPL-4: VALIDATED
@@ -595,6 +700,9 @@ IMPL-13D-H: APPROVED / CLOSED
 IMPL-13E-0: VALIDATED / CLOSED
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 IMPL-13E-Y: VALIDATED / CLOSED
+IMPL-14A-3A: VALIDATED / CLOSED (sandbox validation scope only)
+IMPL-14A-3B: VALIDATED / CLOSED (sandbox validation scope only)
+IMPL-14A-3C: VALIDATED / CLOSED (local + automated tests + sandbox runtime only)
 SPEC-040 v0.1.1: APPROVED
 IMPL-14A-2 plan v0.2.0: PLAN / APPROVED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
@@ -608,8 +716,9 @@ InsForge spectator qty migration 0010 / v10: APPLIED ON MAIN
 OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
-OD-040-001: cadence/SLA APPROVED; anti-overlap OPEN (BLOCKS 3C)
-OD-040-002: OPEN (BLOCKS 3C + 3D)
+OD-040-001: cadence/SLA APPROVED; anti-overlap APPROVED (D3C-1 2026-07-29; lease)
+OD-040-002: PARTIAL sandbox 3C (D3C-2 2026-07-29); true least privilege OPEN
+  (BLOCKS Main + production + 3D admin)
 OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK
 Catalog: 1 event / 3 days / 28 products
 Commercial target prices (landing): APPROVED (OPCIÓN B)
@@ -658,11 +767,62 @@ IMPL_14A_3B_FIX_2_RETEST: PASSED
 IMPL_14A_3B_PUBLISHED_COMMIT: 6068d5b160169eba81719d3f01c366b419fcb77b
 IMPL_14A_3B_MAIN_APPLY: NOT AUTHORIZED
 IMPL_14A_3B_HUMAN_CLOSED (2026-07-29; sandbox validation scope only)
-IMPL_14A_3C: NOT AUTHORIZED / NOT STARTED
+IMPL_14A_3C: VALIDATED / CLOSED
+IMPL_14A_3C_CLOSURE_SCOPE: local implementation + automated tests +
+sandbox physical runtime ONLY
+IMPL_14A_3C_HUMAN_CLOSED (2026-07-29 America/Merida; sandbox validation scope only)
+IMPL_14A_3C_D3C_1: APPROVED (2026-07-29; durable lease; no 0012/0013 edits)
+IMPL_14A_3C_D3C_2: APPROVED sandbox compensating controls (2026-07-29)
+IMPL_14A_3C_RUNTIME_SHAPE: batch_tx(limit:1); max 25/run; sandbox budget 20s
+from startedMs; 1 min
+IMPL_14A_3C_0014_SANDBOX_APPLY: EXECUTED / ACTUAL 64-CHAR SHA RECORDED
+IMPL_14A_3C_EDGE_SANDBOX_DEPLOY: EXECUTED
+IMPL_14A_3C_SCHEDULE: EXECUTED / 4 FIRES / INACTIVE AFTER TEST
+IMPL_14A_3C_SECRET: SANDBOX CONFIGURED / VALUE NOT RECORDED
+IMPL_14A_3C_SLA: PASS / 51.152927 SECONDS
+IMPL_14A_3C_MIGRATION_SHA_001: RATIFIED BY PROJECT OWNER
+IMPL_14A_3C_CANONICAL_0014_SHA: 92068A6524DCFDFDCBF6DF6B353E7785D8A55050D0D8275E1B69F8CC169DE000
+IMPL_14A_3C_BUDGET_GATEWAY_001: RESOLVED IN SANDBOX SCOPE /
+CLOSED 2026-07-29 AMERICA/MERIDA
+IMPL_14A_3C_IN_FLIGHT_BATCH_RESIDUAL_RISK: OPEN / RE-EVALUATE BEFORE MAIN
+IMPL_14A_3C_FIX_1_RUN_BUDGET_MS: 30000 DEPLOYED ONLY TO SANDBOX
+IMPL_14A_3C_FIX_1_SANDBOX_RETEST: EXECUTED / VALIDATION_FAILED
+IMPL_14A_3C_FIX_1_INTERNAL_RESULT: PARTIAL / BUDGET_EXHAUSTED / LEASE RELEASED
+IMPL_14A_3C_FIX_1_PUBLIC_HTTP: 504 / CLIENT DURATION 30496 MS
+IMPL_14A_3C_FIX_1_LOCAL_AUTOMATED_VALIDATION: 348/348 + 144/144 PASS
+IMPL_14A_3C_FIX_2_SCOPE_AMENDMENT_1: APPROVED (2026-07-29; scheduler test authorized)
+IMPL_14A_3C_FIX_2_RUN_BUDGET_MS: 20000 DEPLOYED ONLY TO SANDBOX
+IMPL_14A_3C_FIX_2_DEADLINE_ORIGIN: startedMs (budgetStartedMs REMOVED)
+IMPL_14A_3C_FIX_2_PRE_BATCH_GATE: elapsed >= RUN_BUDGET_MS -> NO NEW BATCH
+IMPL_14A_3C_FIX_2_LOCAL_AUTOMATED_VALIDATION: 352/352 + 148/148 PASS
+IMPL_14A_3C_FIX_2_LOCAL: IMPLEMENTED / CTO REVIEW PASS
+IMPL_14A_3C_FIX_2_SANDBOX_RETEST: EXECUTED / PASS / CTO RUNTIME REVIEW PASS
+IMPL_14A_3C_FIX_2_SANDBOX_DEPLOY: payment-pending-expiry ONLY / sjpyyrc0etaf
+IMPL_14A_3C_FIX_2_EXTERNAL_HTTP: 200 partial / budget_exhausted true /
+lease_released true / gateway_504 0 / client 22098.605 ms /
+internal 21408.765834 ms / margin 8397.4 ms vs 30496 ms
+IMPL_14A_3C_FIX_2_REMOTE_REGRESSIONS: 5/5 PASS (max_items, overlap, fatal batch,
+fatal release, no candidates)
+IMPL_14A_3C_FIX_2_CLEANUP: fixtures 0 / harness fns 0 / triggers 0 /
+grants restored / retained leases 0 / schedule INACTIVE
+IMPL_14A_3C_SBX_CREDENTIAL_001: REMEDIATED / METADATA PASS / DISCLOSURE 0
+IMPL_14A_3C_SBX_CREDENTIAL_003: OPEN / NON-BLOCKING / DISCLOSURE 0
+IMPL_14A_3C_OBS_3C_CRONVIEW_001: OPEN / NON-BLOCKING
+IMPL_14A_3C_OBS_3C_ENV_001: RESOLVED IN SANDBOX / ENVIRONMENT SANDBOX
+IMPL_14A_3C_LOCAL_AUTOMATED_VALIDATION: PASSED
+IMPL_14A_3C_MAIN: UNTOUCHED / WRITES 0 / MIGRATION MAX 10
+IMPL_14A_3C_HUMAN_VALIDATION_CLOSURE: PERFORMED 2026-07-29 AMERICA/MERIDA /
+SANDBOX SCOPE ONLY
+IMPL_14A_3C_GOVERNANCE_TIMEZONE: America/Merida (execution timestamps stay UTC Z)
+IMPL_14A_3C_MAIN_APPLY: NOT AUTHORIZED
+IMPL_14A_3C_SCHEDULE_ACTIVATION: NOT AUTHORIZED
+IMPL_14A_3C_TRUE_LEAST_PRIVILEGE: OPEN / BLOCKS MAIN + PRODUCTION + 3D
+IMPL_14A_3C_EVIDENCE: docs/implementation/evidence/IMPL-14A-3C-SBX-RUNTIME.md
 PRODUCTION: NO-GO
-Next: authorize IMPL-14A-3C separately if desired
-(no Main apply of 0011/0012/0013 until authorized)
-Gate: READY_FOR_IMPL_14A_3C_AUTHORIZATION
+Next: CTO review of the IMPL-14A-3C closure date normalization
+(no Main apply of 0011/0012/0013/0014; no Main deploy/schedule/secret;
+IMPL-14A-3D still NOT AUTHORIZED)
+Gate: READY_FOR_CTO_IMPL_14A_3C_DATE_NORMALIZATION_REVIEW
 LANDING_READY_FOR_READY2HYBRID_MATCH
 ```
 
@@ -691,10 +851,75 @@ unicamente para implementacion, pruebas automatizadas y validacion fisica en
 sandbox `impl-14a-expiry` (evidencia en
 `docs/implementation/evidence/IMPL-14A-3B-SBX-RUNTIME.md`; commit publicado
 `6068d5b`). B-ARRAY = RESOLVED IN SANDBOX; FIX-2 retest 29/29; matriz 13/13.
-Main permanece sin 0011/0012/0013. El cierre no autoriza Main apply, produccion,
-IMPL-14A-3C ni el cierre de hallazgos diferidos (TX-2, PREFERENCE_PENDING,
-least privilege, rate limiting, outbox). IMPL-14A-3C = NOT AUTHORIZED /
-NOT STARTED.
+Main permanece sin 0011/0012/0013/0014. El cierre no autoriza Main apply, produccion,
+ni el cierre de hallazgos diferidos (TX-2, PREFERENCE_PENDING, rate limiting,
+outbox). El Project Owner aprobo el 2026-07-29 D3C-1 (lease durable global en
+`idempotency_records`, TTL 90s, `overlap_skipped`; sin modificar 0012/0013 ni
+advisory locks) y D3C-2 sandbox (schedule secret exclusivo, actor_ref
+`system:payment-pending-expiry`, allowlist RPC, `project_admin` compensatorio
+temporal). True least privilege sigue OPEN y bloquea Main, produccion y 3D.
+Forma runtime aprobada: max 25/run, `batch_tx(limit:1)` sucesivo, budget 45s,
+cadencia 1 min. La validacion runtime de IMPL-14A-3C se ejecuto unicamente en
+`impl-14a-expiry`: 0014 aplicada; su SHA real de 64 caracteres fue registrado,
+el Project Owner ratifico ese SHA como canonico y confirmo que el token previo
+de 63 caracteres fue un error documental (`MIGRATION-SHA-001` = RATIFIED);
+lease L1-L10 PASS con
+concurrencia real, Edge desplegada, dry-run zero-write, fatal batch/release 503,
+cap 25 y commit por orden probados, schedule observado cuatro fires y desactivado,
+y SLA de 51.152927s PASS. El contrato de budget 45s no pudo devolver HTTP 200
+antes del 504 del gateway (`BUDGET-GATEWAY-001` = CONFIRMED). FIX-1 cambia
+unicamente el budget a 30s y fue redeployado solo en sandbox. El retest fisico
+termino internamente `partial`, `budget_exhausted=true`, lease liberado y cuatro
+agregados durablemente expirados a 30997.408915 ms, pero el gateway devolvio
+HTTP 504 a 30496 ms; `BUDGET-GATEWAY-001` sigue fallando. La API key sandbox
+fue recuperada y verificada sin divulgar la nueva credencial; el secret del
+schedule no fue revelado. `INSFORGE_ENVIRONMENT=sandbox`. Evidencia:
+`docs/implementation/evidence/IMPL-14A-3C-SBX-RUNTIME.md`.
+FIX-2 se implemento y valido unicamente en local, bajo Scope Amendment-1: el
+deadline operativo baja de 30s a 20s y se mide desde `startedMs` (inicio total
+de la ejecucion) en lugar de un reloj posterior al lease, con comprobacion
+obligatoria inmediatamente anterior a cada `runBatch`
+(`elapsed >= RUN_BUDGET_MS` -> sin nuevo batch, `partial`,
+`budget_exhausted=true`, lease liberado, HTTP 200). Contadores, contrato HTTP,
+lease TTL 90s, cap 25/50, batch limit 1, cadencia 1 min y dry-run permanecen
+intactos; migraciones 0012/0013/0014 no fueron tocadas. Local: 352/352 y
+148/148 PASS, typecheck y lint PASS, `git diff --check` PASS, interaccion
+remota 0.
+El 2026-07-29 (`America/Merida`; 2026-07-30 UTC) se ejecuto el retest fisico de
+FIX-2 en `impl-14a-expiry`: se
+redesplego unicamente `payment-pending-expiry` (bundle con `RUN_BUDGET_MS`
+20_000 y medicion desde `startedMs`), el contrato HTTP volvio a dar
+405/401/403/400/200 con `environment=sandbox`, y el harness de cinco agregados
+sinteticos con retardo de 7 s por item atraveso el deadline: HTTP externo 200,
+`outcome=partial`, `budget_exhausted=true`, `lease_released=true`, gateway 504 =
+0, 3 batches iniciados y completados, el cuarto bloqueado por el gate, 3
+agregados durablemente expirados con exactamente un audit cada uno, 22098.605 ms
+observados por el cliente frente al corte anterior de 30496 ms. Las cinco
+regresiones remotas autorizadas pasaron y toda la instrumentacion temporal
+(fixtures, funcion y trigger de retardo, grants, leases y bundle) fue eliminada;
+el schedule sigue inactivo sin ejecuciones futuras. Main volvio a inspeccionarse
+en solo lectura antes y despues: v1-v10, sin 0011-0014, sin funcion, sin
+fixtures y con writes 0. Quedan abiertos, sin bloquear, `SBX-CREDENTIAL-003`
+(`branch list --json` expone envolturas cifradas de credenciales, no
+reproducidas) y `OBS-3C-CRONVIEW-001` (el schedule store de Main no es legible
+sin enlazar o cambiar de rama). `BUDGET-GATEWAY-001` = PHYSICALLY SATISFIED IN
+SANDBOX. El riesgo residual continua ABIERTO: un batch en vuelo mas lento que
+~10 s podria volver a acercarse al corte porque el contrato deja terminar el
+batch ya iniciado, y debe reevaluarse antes de Main y produccion.
+El 2026-07-29 (`America/Merida`) el propietario humano reviso la recomendacion
+CTO y cerro
+IMPL-14A-3C como `VALIDATED / CLOSED` exclusivamente para implementacion local,
+pruebas automatizadas y runtime fisico validado en sandbox, conservando intactas
+las evidencias de FIX-1 y FIX-2. El cierre no autoriza escrituras en Main,
+produccion, activacion del schedule, nuevos deploys, migraciones, Mercado Pago,
+IMPL-14A-3D, staging, commit ni push, y deja abiertos `OD-040-002`,
+`OBS-3C-CRONVIEW-001`, `SBX-CREDENTIAL-003`, el riesgo residual del batch en
+vuelo, la aplicacion a Main, produccion, IMPL-14A-3D, rate limiting y los
+diferidos documentados (outbox incluido). Las fechas humanas y de gobierno de
+IMPL-14A-3C quedaron normalizadas a la zona canonica `America/Merida`
+(validacion y cierre humano = 2026-07-29); los timestamps de ejecucion siguen
+registrados en UTC con sufijo `Z` en la evidencia, sin alteracion.
+Gate `READY_FOR_CTO_IMPL_14A_3C_DATE_NORMALIZATION_REVIEW`.
 El evento canonico Main permanece en `CONFIGURADO`. Ventas productivas,
 webhook productivo y conexion de landing a ventas reales no estan
 autorizados. Casos A–D PASS; Case E y metodos async quedan diferidos del

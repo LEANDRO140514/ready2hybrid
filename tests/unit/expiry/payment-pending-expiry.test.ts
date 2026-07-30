@@ -853,6 +853,7 @@ describe('IMPL-14A-3B batch selection (SPEC-040 R019, plan §11.4)', () => {
 const migDir = resolve(process.cwd(), 'insforge/migrations')
 const MIGRATION_0012 = '0012_payment-pending-expiry-transaction.sql'
 const MIGRATION_0013 = '0013_payment-pending-expiry-array-fix.sql'
+const MIGRATION_0014 = '0014_payment-pending-expiry-run-lease.sql'
 const AUTHORIZED_0012_SHA =
   'E27EDAD76387F5C73FCC393A1EA2C836E5BA09313C38E1E29B611E37DCF5BBE1'
 const CANONICAL_MIGRATION_NAME = /^\d{4}_[a-z0-9]+(?:-[a-z0-9]+)*\.sql$/
@@ -974,7 +975,8 @@ describe('0013 array-fix effective SQL contract', () => {
     const names = readdirSync(migDir).filter((n) => n.endsWith('.sql')).sort()
     expect(names).toContain(MIGRATION_0013)
     expect(MIGRATION_0013).toMatch(CANONICAL_MIGRATION_NAME)
-    expect(names[names.length - 1]).toBe(MIGRATION_0013)
+    expect(names).toContain(MIGRATION_0014)
+    expect(names.indexOf(MIGRATION_0013)).toBeLessThan(names.indexOf(MIGRATION_0014))
   })
 
   it('replaces only aggregate and dry-run; never batch; no foreign DDL', () => {
