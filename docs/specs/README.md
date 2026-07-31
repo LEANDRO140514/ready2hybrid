@@ -38,9 +38,15 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-031 | Public Sales API and Backend Contract | APPROVED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
 | SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | APPROVED | 0.1.0 | SALE-3 | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031; compatible with SPEC-011 | `SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md` |
 | SPEC-040 | Payment Pending Expiry Reconciliation | APPROVED | 0.1.1 | IMPL-14A | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031, SPEC-032; compatible with SPEC-011 | `SPEC-040-PAYMENT-PENDING-EXPIRY-RECONCILIATION.md` |
+| SPEC-060 | Event Entry Operations | APPROVED | 0.1.0 | R2H-T2 | SPEC-000 v0.2.0, SPEC-001, SPEC-011, SPEC-030, SPEC-031, SPEC-032; compatible with SPEC-040 | `SPEC-060-EVENT-ENTRY-OPERATIONS.md` |
 
 Future specifications are created only when their implementation phase is near.
 Do not create the full functional catalog in advance.
+
+SPEC-060 v0.1.0 is `APPROVED` by the Project Owner on 2026-07-31. It authorizes
+Tramo 2 implementation traceability preparation. It does not by itself
+authorize runtime implementation, migrations, InsForge writes, Main,
+production, commit, or push. Each Tramo 2 unit requires separate authorization.
 
 SPEC-000 v0.2.0 is the approved and effective governance contract after
 explicit human authorization on 2026-07-23. Version 0.1.0 is historically
@@ -51,20 +57,27 @@ SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_IMPL_14A_2C_DOCUMENTARY_CONSOLIDATION`
+`READY_FOR_R2H_T2_1_UNIT_DEFINITION`
 
-SPEC-040 v0.1.1 remains `APPROVED`. IMPL-14A-2 plan v0.2.0 is
-`PLAN / APPROVED` (Project Owner 2026-07-27 after CTO `READY_FOR_APPROVAL`
-and IMPL-14A-2V). Approved plan content SHA-256:
-`04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`.
+SPEC-060 v0.1.0 Event Entry Operations is `APPROVED` (Project Owner
+2026-07-31). Tramo 2 implementation traceability is prepared in
+`docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`.
+Runtime F0-E / R2H-T2-1…T2-6 implementation, migrations, InsForge writes,
+Main, production, commit, and push remain **NOT AUTHORIZED** until a separate
+human unit authorization.
 
-Runtime implementation is **NOT STARTED** and not authorized. Do not set
-`IMPLEMENTING`, `READY FOR 3A`, or `VALIDATED` without a new human decision.
-Do not start IMPL-14A-3* without separate authorization.
+Historical payment-expiry authority remains unchanged:
 
-Open: OD-040-001 anti-overlap (cadence/SLA approved; blocks 3C),
-OD-040-002 (actor/auth OPEN; blocks 3C+3D), OD-040-003 (runbook deferred).
-SPEC-032-R042 unchanged. F0-E unauthorized.
+- SPEC-040 v0.1.1 remains `APPROVED`.
+- IMPL-14A-2 plan v0.2.0 remains `PLAN / APPROVED` (Project Owner 2026-07-27
+  after CTO `READY_FOR_APPROVAL` and IMPL-14A-2V). Approved plan content
+  SHA-256:
+  `04BAC5D62D6E3A75F0826AEAE0839D31340369D0156AC1DA09EB9D565D56EC0D`.
+- IMPL-14A-3C remains `VALIDATED / CLOSED` in its documented sandbox scope.
+- OD-040-002 remains `OPEN`; TRUE LEAST PRIVILEGE remains
+  `BLOCKED_BY_PLATFORM_CAPABILITY`.
+- F0-E remains unauthorized until separately approved.
+- InsForge Main and production remain `NOT AUTHORIZED`.
 
 ## Lifecycle
 

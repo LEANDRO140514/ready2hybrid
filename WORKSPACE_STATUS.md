@@ -44,6 +44,21 @@
 - EMAIL_PROVIDER / TICKET_EMAIL_DELIVERY: DEFERRED / NOT AUTHORIZED
 - PUBLIC_TICKET_RETRIEVAL: DEFERRED / NOT AUTHORIZED
 - Check-in / offline manifest: NOT IMPLEMENTED / NOT AUTHORIZED
+  (SPEC-060 v0.1.0 APPROVED; runtime units still require separate auth)
+- R2H-T2-0A Staff + Check-in readiness audit: EXECUTED / CLOSED (READ_ONLY)
+  gate `READY_FOR_R2H_TRAMO2_SPEC_DRAFT` (2026-07-31)
+- R2H-T2-0B Event Entry Operations specification draft: DRAFT CREATED /
+  PENDING REVIEW (2026-07-31)
+  `docs/specs/SPEC-060-EVENT-ENTRY-OPERATIONS.md` status `DRAFT` v0.1.0
+  (historical; later APPROVED under R2H-T2-0D)
+- R2H-T2-0C SPEC-060 approval-readiness review: COMPLETED (2026-07-31)
+  scoped draft corrections; recommendation `READY_FOR_APPROVAL`
+- R2H-T2-0D SPEC-060 approval + Tramo 2 traceability: COMPLETED (2026-07-31)
+  SPEC-060 v0.1.0 = APPROVED by Project Owner (Leandro Espinosa);
+  traceability `docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`
+  documentary only; runtime implementation / migrations / InsForge /
+  commit / push = NOT AUTHORIZED;
+  gate `READY_FOR_R2H_T2_1_UNIT_DEFINITION`
 - IMPL-12 sandbox E2E: VALIDATED / CLOSED
   (A–D PASS; E deferred; OD-001 spectator qty ≥ 1; human closure 2026-07-26 on `9cca6b4`)
 - InsForge sandbox branches R1–R4 + remaining-cases + case-c-quantity: DELETED
@@ -276,9 +291,12 @@
   - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
 - PRODUCTION: NO-GO
-- Next: CTO review of the IMPL-14A-3C documentary closure; no Main apply of
-  0011/0012/0013/0014 / cron / Edge / production until separately authorized;
-  no 0012/0013/0014 SQL edits
+- Next: define/authorize first Tramo 2 implementation unit
+  (`READY_FOR_R2H_T2_1_UNIT_DEFINITION`); SPEC-060 APPROVED but runtime
+  F0-E / T2-1…T2-6 NOT AUTHORIZED until a separate unit; no Main apply of
+  0011/0012/0013/0014 / cron / Edge / production until separately
+  authorized; no 0012/0013/0014 SQL edits; commit/push NOT AUTHORIZED by
+  the approval unit
 - InsForge sandbox branches ACTIVE:
   `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
   `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
@@ -329,6 +347,11 @@ Las specs traducen la autoridad a contratos verificables; no reemplazan
 - `docs/specs/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md`
   - v0.1.0 `APPROVED`
   - modelo logico minimo, transacciones, concurrencia y trazabilidad
+- `docs/specs/SPEC-060-EVENT-ENTRY-OPERATIONS.md`
+  - v0.1.0 `APPROVED` 2026-07-31 by Project Owner (Leandro Espinosa)
+  - authorizes Tramo 2 traceability; runtime units require separate auth
+- `docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`
+  - v0.1.0 DOCUMENTARY ONLY; commit/push/runtime NOT AUTHORIZED
 - `docs/implementation/IMPL-0-SALES-IMPLEMENTATION-TRACEABILITY.md`
   - plan trazable IMPL-1..13E; IMPL-2..12, IMPL-13B/C `VALIDATED / CLOSED`;
     IMPL-13D-H `APPROVED / CLOSED`; IMPL-13E prepared
@@ -712,7 +735,15 @@ R2H-LANDING-SBX-1B: VALIDATED / CLOSED (PREVIEW + SANDBOX FUNCTIONAL)
 IMPL-14A-3A: VALIDATED / CLOSED (sandbox validation scope only)
 IMPL-14A-3B: VALIDATED / CLOSED (sandbox validation scope only)
 IMPL-14A-3C: VALIDATED / CLOSED (local + automated tests + sandbox runtime only)
+R2H-T2-0A: EXECUTED / CLOSED → READY_FOR_R2H_TRAMO2_SPEC_DRAFT
+R2H-T2-0B: SPEC-060 v0.1.0 DRAFT created
+R2H-T2-0C: SPEC-060 approval-readiness review completed
+R2H-T2-0D: SPEC-060 v0.1.0 APPROVED + T2 traceability prepared
+  → READY_FOR_R2H_T2_1_UNIT_DEFINITION
+  (runtime implementation / migrations / InsForge / commit / push
+  NOT AUTHORIZED)
 SPEC-040 v0.1.1: APPROVED
+SPEC-060 v0.1.0: APPROVED (2026-07-31 Project Owner)
 IMPL-14A-2 plan v0.2.0: PLAN / APPROVED
 InsForge schema 0001-0003: DEPLOYED AND VALIDATED
 InsForge catalog migration 0004: APPLIED AND VALIDATED
@@ -1088,7 +1119,13 @@ webhook productivo y conexion de landing a ventas reales no estan
 autorizados. Casos A–D PASS; Case E y metodos async quedan diferidos del
 lanzamiento inicial. Recordatorios, correo y recuperacion publica de QR
 permanecen diferidos. Productos multiday permanecen fail-closed. Check-in
-y manifiesto no fueron implementados. Antes de produccion permanecen
+y manifiesto no fueron implementados. R2H-T2-0A cerro con
+`READY_FOR_R2H_TRAMO2_SPEC_DRAFT`. R2H-T2-0B/0C prepararon SPEC-060.
+El 2026-07-31 el Project Owner aprobo SPEC-060 v0.1.0 (`APPROVED`) y se
+preparo la trazabilidad documental
+`docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`
+sin autorizar implementacion runtime, migraciones, InsForge, commit ni push
+(gate `READY_FOR_R2H_T2_1_UNIT_DEFINITION`). Antes de produccion permanecen
 abiertos `PAYMENT_PENDING_EXPIRY_RECONCILIATION` y
 `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 La landing publica existente permanece protegida (checkout off por defecto):
