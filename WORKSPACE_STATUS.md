@@ -69,6 +69,14 @@
   (PUB-VIE/SAB/DOM + FOT-VIE/SAB/DOM sandbox; no payments; flags default off)
 - IMPL-13E-Y public/press sandbox E2E: VALIDATED / CLOSED
   (human closure 2026-07-27; PUB-SAB×2 + FOT-VIE×1 + FOT-SAB×1; R2B `435c9d5`; sandbox CONFIGURADO)
+- R2H-LANDING-SBX-1B minimal preview checkout E2E: VALIDATED / CLOSED
+  PREVIEW + SANDBOX FUNCTIONAL SCOPE (PO closure 2026-07-31 America/Merida;
+  sandbox `impl-13e-public-press` / `4bg9ufz2-6mq`; product `PUB-VIE` qty 1;
+  `AWAITING_PAYMENT` / `terminal=false`; redirect non-authoritative;
+  HEX-2026 restored `CONFIGURADO`; hold `RELEASED`; payments 0; tickets 0;
+  synthetic order retained `PAYMENT_PENDING` as sandbox evidence only;
+  not hardening evidence; Main/production/`impl-14a-expiry` writes = 0;
+  evidence `docs/implementation/evidence/R2H-LANDING-SBX-1B.md`)
 - IMPL-13E-Y-R1 residual forensics: VALIDATED / CLOSED (ORDER_HOLDER expected; unpaid invariants PASS)
 - IMPL-13E-Y-R2A HTTPS preview + confirming: EXECUTED / CLOSED into R2B
 - IMPL-13E-Y-R2B single HTTPS auto-return payment: EXECUTED / HUMAN-ACCEPTED into Y closure
@@ -700,6 +708,7 @@ IMPL-13D-H: APPROVED / CLOSED
 IMPL-13E-0: VALIDATED / CLOSED
 IMPL-13E-X: IMPLEMENTED / TECHNICALLY VALIDATED
 IMPL-13E-Y: VALIDATED / CLOSED
+R2H-LANDING-SBX-1B: VALIDATED / CLOSED (PREVIEW + SANDBOX FUNCTIONAL)
 IMPL-14A-3A: VALIDATED / CLOSED (sandbox validation scope only)
 IMPL-14A-3B: VALIDATED / CLOSED (sandbox validation scope only)
 IMPL-14A-3C: VALIDATED / CLOSED (local + automated tests + sandbox runtime only)
@@ -726,8 +735,15 @@ OD-040-002: OPEN — PARTIAL sandbox 3C (D3C-2 2026-07-29); compensating
   MIGRATION CHAIN = NO KNOWN STATIC RUNNER BLOCKERS / PENDING CTO REVIEW
 OD-040-002 COMPENSATING HARDENING: VALIDATED / CLOSED
   LOCAL + SANDBOX SCOPE (human B4 2026-07-30; B5-FIX1 does not reopen)
-landing sandbox integration: ELIGIBLE FOR A SEPARATE AUTHORIZED UNIT
-  (not authorized by B4; landing productive still NOT AUTHORIZED)
+R2H-LANDING-SBX-1B: VALIDATED / CLOSED
+  PREVIEW + SANDBOX FUNCTIONAL SCOPE (2026-07-31 America/Merida)
+  sandbox `impl-13e-public-press`; `PUB-VIE` → `AWAITING_PAYMENT`
+  (`terminal=false`); redirect non-authoritative; event restored
+  `CONFIGURADO`; hold `RELEASED`; payments 0; tickets 0; synthetic
+  `PAYMENT_PENDING` order retained as sandbox evidence only; evidence
+  separated from compensating hardening / true least privilege;
+  evidence `docs/implementation/evidence/R2H-LANDING-SBX-1B.md`
+landing productive: NOT AUTHORIZED
 OD-040-002-A: ANALYZING / NOT RESOLVED (2026-07-30) — read-only proposal in
   docs/implementation/evidence/OD-040-002-TRUE-LEAST-PRIVILEGE.md; gate
   READY_FOR_CTO_OD_040_002_DESIGN_REVIEW; no code/SQL/grant/deploy changes;
@@ -893,6 +909,7 @@ IMPL_13D_H_APPROVED_CLOSED
 IMPL_13E_0_VALIDATED_CLOSED
 IMPL_13E_X_TECHNICALLY_VALIDATED
 IMPL_13E_Y_HUMAN_CLOSED
+R2H_LANDING_SBX_1B_VALIDATED_CLOSED
 IMPL_14A_2_PLAN_APPROVED
 IMPL_14A_3A_CODE_REVIEW_PASSED
 IMPL_14A_3A_SANDBOX_RUNTIME_VALIDATION_EXECUTED
