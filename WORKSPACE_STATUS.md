@@ -717,8 +717,154 @@ OD-001: APPROVED
 OD-PENDING: D (async methods deferred from initial launch)
 OD-022: APPROVED
 OD-040-001: cadence/SLA APPROVED; anti-overlap APPROVED (D3C-1 2026-07-29; lease)
-OD-040-002: PARTIAL sandbox 3C (D3C-2 2026-07-29); true least privilege OPEN
-  (BLOCKS Main + production + 3D admin)
+OD-040-002: OPEN — PARTIAL sandbox 3C (D3C-2 2026-07-29); compensating
+  privilege hardening VALIDATED/CLOSED local+sandbox (B4 2026-07-30);
+  TRUE LEAST PRIVILEGE = BLOCKED_BY_PLATFORM_CAPABILITY
+  (BLOCKS Main + production + IMPL-14A-3D admin);
+  OD-040-002-B5 = MIGRATION CHAIN REVIEW COMPLETE / BLOCKED AT 0015 PRE-FIX
+  OD-040-002-B5-FIX1 = LOCAL CORRECTION COMPLETE / PENDING CTO REVIEW
+  MIGRATION CHAIN = NO KNOWN STATIC RUNNER BLOCKERS / PENDING CTO REVIEW
+OD-040-002 COMPENSATING HARDENING: VALIDATED / CLOSED
+  LOCAL + SANDBOX SCOPE (human B4 2026-07-30; B5-FIX1 does not reopen)
+landing sandbox integration: ELIGIBLE FOR A SEPARATE AUTHORIZED UNIT
+  (not authorized by B4; landing productive still NOT AUTHORIZED)
+OD-040-002-A: ANALYZING / NOT RESOLVED (2026-07-30) — read-only proposal in
+  docs/implementation/evidence/OD-040-002-TRUE-LEAST-PRIVILEGE.md; gate
+  READY_FOR_CTO_OD_040_002_DESIGN_REVIEW; no code/SQL/grant/deploy changes;
+  OD-040-002 remains OPEN
+OD-040-002-B1: ANALYZING / NOT RESOLVED (2026-07-30) — complete read-only
+  inventory of all 24 domain tables, 0 sequences, and 20 sensitive
+  functions/RPCs on Main + impl-14a-expiry sandbox, R1/R2/R3 revocation
+  candidates, T1-T7 re-evaluation, compensating-hardening contract, and
+  OD-040-002-B2/B3 implementation plans, appended to
+  docs/implementation/evidence/OD-040-002-TRUE-LEAST-PRIVILEGE.md; gate
+  READY_FOR_CTO_OD_040_002_B1_REVIEW; no GRANT/REVOKE/ALTER
+  ROLE/migration/code/test/deploy changes; OD-040-002 remains OPEN
+OD-040-002-B2: LOCAL IMPLEMENTATION COMPLETE / PENDING CTO REVIEW
+  (2026-07-30) — local-only compensating privilege hardening migration
+  insforge/migrations/0015_compensating-privilege-hardening.sql
+  (Group R1 from B1: anon/authenticated full-DML revoke on 24 tables;
+  project_admin revoke on events/products/event_days/
+  participant_sensitive_profiles/activity_log) plus static contract
+  test tests/unit/security/compensating-privilege-hardening.test.ts
+  (16/16 PASS); full suite 368/368 PASS, expiry 148/148 PASS, typecheck
+  PASS, lint PASS, git diff --check PASS; evidence appended to
+  docs/implementation/evidence/OD-040-002-TRUE-LEAST-PRIVILEGE.md; gate
+  READY_FOR_CTO_OD_040_002_B2_LOCAL_REVIEW; ZERO remote application
+  (no sandbox apply, no Main apply, no production apply, no deploy, no
+  schedule change); TRUE LEAST PRIVILEGE remains
+  BLOCKED_BY_PLATFORM_CAPABILITY; OD-040-002 remains OPEN; Main,
+  production, IMPL-14A-3D, and landing sandbox integration remain NOT
+  AUTHORIZED by this unit; next step OD-040-002-B3 sandbox validation
+OD-040-002-B3: VALIDATION_FAILED / PENDING CTO REVIEW (2026-07-30) —
+  sandbox-only: 0015 REVOKE DCL re-applied and privilege matrix 336/336
+  false confirmed; anon REST SELECT/INSERT/UPDATE/DELETE → 42501;
+  project_admin R1 effective; THEN checkout_start_tx FAILED with
+  permission denied for table products because SELECT FOR UPDATE on
+  products/events requires UPDATE (revoked by R1). Documented GRANT
+  rollback executed; privileges restored to pre-hardening baseline;
+  migration history still records version 15 (inconsistency). Main
+  untouched (max migration 10). Local suites still 368/368 PASS.
+  TRUE LEAST PRIVILEGE remains BLOCKED_BY_PLATFORM_CAPABILITY;
+  OD-040-002 remains OPEN; Main/production/IMPL-14A-3D/landing NOT
+  AUTHORIZED; do not re-apply 0015 as written — R1 must be redesigned
+OD-040-002-B2-FIX1: LOCAL IMPLEMENTATION COMPLETE / CTO REVIEW PASS
+  (2026-07-30) — local-only correction migration
+  insforge/migrations/0016_compensating-privilege-hardening-checkout-
+  compatibility.sql; 0015 immutable
+  (A0E43B4FA12AD6BD36FD71947FC07142904FD6AA2EDF35F9A544BFA7B3A0C80B);
+  project_admin UPDATE on events/products reclassified
+  REQUIRED_ONLY_BEHIND_RPC (GRANT UPDATE + REVOKE INSERT/DELETE/
+  TRUNCATE); anon/authenticated deny-all on 24 tables reasserted;
+  event_days / participant_sensitive_profiles / activity_log R1
+  retained; security tests 33/33 PASS; checkout 43/43; capacity 24/24;
+  expiry 148/148; full suite 385/385; typecheck/lint/diff-check PASS;
+  ZERO remote writes; gate
+  READY_FOR_CTO_OD_040_002_B2_FIX1_LOCAL_REVIEW (passed); OD-040-002
+  remains OPEN; TRUE LEAST PRIVILEGE remains
+  BLOCKED_BY_PLATFORM_CAPABILITY; Main/production/IMPL-14A-3D/landing
+  NOT AUTHORIZED; next step was sandbox revalidation of 0016
+OD-040-002-B3-RETEST: VALIDATION_FAILED / RUNNER TCL INCOMPATIBILITY
+  (2026-07-30) — sandbox-only attempt to apply 0016 via
+  `npx @insforge/cli db migrations up
+  0016_compensating-privilege-hardening-checkout-compatibility.sql`
+  failed with: "Transaction control statements are not allowed"
+  because pre-FIX2 0016 contained BEGIN/COMMIT (InsForge runner wraps
+  each migration in its own transaction). Atomicity confirmed:
+  migration max remains 15; privileges remain pre-hardening baseline;
+  0016 not registered; Main untouched (max 10). Local suites still
+  385/385 PASS at retest time. Per B3-RETEST failure protocol: no
+  improvised DCL apply, no new migration in that unit. OD-040-002
+  remains OPEN; TRUE LEAST PRIVILEGE remains
+  BLOCKED_BY_PLATFORM_CAPABILITY; Main/production/IMPL-14A-3D/landing
+  NOT AUTHORIZED
+OD-040-002-B2-FIX2: LOCAL CORRECTION COMPLETE / CTO REVIEW PASS
+  (2026-07-30) — local-only runner-compatible correction of 0016:
+  removed executable BEGIN/COMMIT; DCL GRANT/REVOKE contract unchanged;
+  0015 immutable
+  (A0E43B4FA12AD6BD36FD71947FC07142904FD6AA2EDF35F9A544BFA7B3A0C80B);
+  0016 pre-FIX2
+  8A407FA5A59FF250FB7C2AC9C36D157DC637A11995FC2753835B8FD4014031B2 →
+  post-FIX2
+  F81C8021E77270DA915137275738ED741912F8C4F32DB47F8EB4D2BD7A1A346A;
+  remote read-only confirmed migration 16 absent (max=15) so 0016 may
+  be edited locally (no 0017); RCF1–RCF14 security 47/47; checkout
+  43/43; logical-capacity 24/24; expiry 148/148; full suite 399/399;
+  typecheck/lint/diff-check PASS; remote writes = 0; gate
+  READY_FOR_CTO_OD_040_002_B2_FIX2_LOCAL_REVIEW; OD-040-002 remains
+  OPEN; TRUE LEAST PRIVILEGE remains BLOCKED_BY_PLATFORM_CAPABILITY;
+  Main/production/IMPL-14A-3D/landing NOT AUTHORIZED; next step is a
+  separately authorized sandbox retest of runner-compatible 0016
+OD-040-002-B3-RETEST2: PRIVILEGE AND CORE FUNCTIONAL CRITERIA MET
+  (2026-07-30) — applied runner-compatible 0016 on impl-14a-expiry via
+  normal migrations up (hash
+  F81C8021E77270DA915137275738ED741912F8C4F32DB47F8EB4D2BD7A1A346A);
+  migration max=16; public_true_336=0; project_admin events/products
+  SELECT+UPDATE kept / INSERT DELETE TRUNCATE revoked; other R1 active;
+  R2/R3 intact; checkout_start_tx PASS; webhook_apply_payment_tx PASS +
+  idempotent replay; expiry batch processed=0 + lease acquire/release
+  PASS; activity_log direct UPDATE DENIED; get-order-status Edge then
+  deferred to FIX1 (CONFIGURATION_ERROR CORS); transactional
+  BEGIN/ROLLBACK probe NOT OBSERVABLE; local 399/399 PASS;
+  OD-040-002 remains OPEN; TRUE LEAST PRIVILEGE remains
+  BLOCKED_BY_PLATFORM_CAPABILITY; Main/production/IMPL-14A-3D/landing
+  NOT AUTHORIZED
+OD-040-002-B3-RETEST2-FIX1: SANDBOX FUNCTIONAL CLOSEOUT / CTO REVIEW PASS
+  (2026-07-30) — sandbox closeout on impl-14a-expiry only: added secret
+  ORDER_STATUS_CORS_ORIGIN = https://3e9sriq7.insforge.site (documented
+  landing preview from IMPL-13E-Y-R2A/R2B); no redeploy required;
+  get-order-status GET ?reference= → HTTP 200 AWAITING_PAYMENT for
+  PREFERENCE_PENDING order; unauthorized Origin → 403 ORIGIN_NOT_ALLOWED;
+  RETEST2 participant + orphan event residuals = 0; 0016 hardening still
+  active (max=16); schedule inactive; leases=0; local 399/399 +
+  origin-guard 13/13 PASS; OD-040-002 remains OPEN; TRUE LEAST PRIVILEGE
+  remains BLOCKED_BY_PLATFORM_CAPABILITY; Main/production/IMPL-14A-3D/
+  landing NOT AUTHORIZED
+OD-040-002-B4: HUMAN VALIDATED / CLOSED LOCAL + SANDBOX SCOPE
+  (2026-07-30) — documentation-only human closure of compensating
+  privilege hardening track; 0015 historical + 0016 runner/checkout-
+  compatible active on sandbox; privileges and functional regressions
+  accepted; OD-040-002 remains OPEN; TRUE LEAST PRIVILEGE remains
+  BLOCKED_BY_PLATFORM_CAPABILITY; Main apply / production /
+  IMPL-14A-3D / landing productiva NOT AUTHORIZED; landing sandbox
+  integration ELIGIBLE FOR A SEPARATE AUTHORIZED UNIT only; gate
+  READY_FOR_CTO_OD_040_002_COMPENSATING_CLOSURE_REVIEW
+OD-040-002-B5: MIGRATION CHAIN REVIEW COMPLETE / BLOCKED AT 0015 PRE-FIX
+  (2026-07-30) — analyze+docs: clean Main path 10→16 was
+  NO — BLOCKED AT 0015 (executable BEGIN;/COMMIT;). Alt A recommended.
+  CTO REVIEW PASS. Hardening closure B4 unchanged.
+OD-040-002-B5-FIX1: LOCAL CORRECTION COMPLETE / PENDING CTO REVIEW
+  (2026-07-31) — local-only: removed executable BEGIN;/COMMIT; from
+  0015; DCL 29 REVOKEs semantically identical (normalized DCL hash
+  5E98DBC2…949A unchanged); historical hash
+  A0E43B4FA12AD6BD36FD71947FC07142904FD6AA2EDF35F9A544BFA7B3A0C80B
+  retained as lineage; canonical
+  0F6484819A0DCA8B00C12FD1729BEFA9B45DEBAA8B3F2A61B96578CF50159E4C;
+  0011–0014 and 0016 hashes unchanged; chain static
+  NO KNOWN STATIC RUNNER BLOCKERS; security MCF suite + full local
+  regressions; remote writes = 0; commit/push NOT AUTHORIZED;
+  Main/production/IMPL-14A-3D/landing NOT AUTHORIZED; gate
+  READY_FOR_CTO_OD_040_002_B5_FIX1_LOCAL_REVIEW
 OD-040-003: DEFERRED_TO_OPERATIONAL_RUNBOOK
 Catalog: 1 event / 3 days / 28 products
 Commercial target prices (landing): APPROVED (OPCIÓN B)
