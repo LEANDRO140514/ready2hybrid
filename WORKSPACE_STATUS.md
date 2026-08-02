@@ -58,7 +58,19 @@
   traceability `docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`
   documentary only; runtime implementation / migrations / InsForge /
   commit / push = NOT AUTHORIZED;
-  gate `READY_FOR_R2H_T2_1_UNIT_DEFINITION`
+  gate `READY_FOR_R2H_T2_1_UNIT_DEFINITION` (superseded for T2-1 path by T2-1B)
+- R2H-T2-1B PWA operational shell + access guards: VALIDATED / CLOSED
+  (Project Owner 2026-08-01 America/Merida; LOCAL IMPLEMENTATION +
+  AUTOMATED AND MANUAL VALIDATION SCOPE) after T2-1C CHANGES_REQUIRED →
+  T2-1D remediation → T2-1E READY_FOR_HUMAN_VALIDATION_APPROVAL;
+  local frontend only; fixture hard-fail in production builds; ErrorBoundary;
+  prod SW/offline/installability/update/logout automated; gates PASS
+  (typecheck, 434 unit tests, build+SW, Playwright 10/10); deferred R014/R015
+  → T2-2, R003 HTTPS → deploy, AC005 domain IDB → later, manifest/QR/check-in
+  → T2-3, offline queue/sync/conflicts → T2-4; no migrations/SQL/RLS; no
+  Main/prod; commit/push still NOT AUTHORIZED (separate unit required);
+  evidence `docs/implementation/evidence/R2H-T2-1B-PWA-OPERATIONAL-SHELL.md`;
+  gate `READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`
 - IMPL-12 sandbox E2E: VALIDATED / CLOSED
   (A–D PASS; E deferred; OD-001 spectator qty ≥ 1; human closure 2026-07-26 on `9cca6b4`)
 - InsForge sandbox branches R1–R4 + remaining-cases + case-c-quantity: DELETED
@@ -291,12 +303,12 @@
   - Main remote apply / cron / edges: NOT AUTHORIZED
 - PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING: OPEN / REQUIRED BEFORE PRODUCTION
 - PRODUCTION: NO-GO
-- Next: define/authorize first Tramo 2 implementation unit
-  (`READY_FOR_R2H_T2_1_UNIT_DEFINITION`); SPEC-060 APPROVED but runtime
-  F0-E / T2-1…T2-6 NOT AUTHORIZED until a separate unit; no Main apply of
+- Next: review exact local commit inventory for T2-1B closure
+  (`READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`); T2-2…T2-6 execution and
+  F0-E remain NOT AUTHORIZED until separate units; no Main apply of
   0011/0012/0013/0014 / cron / Edge / production until separately
-  authorized; no 0012/0013/0014 SQL edits; commit/push NOT AUTHORIZED by
-  the approval unit
+  authorized; no 0012/0013/0014 SQL edits; T2-1B local tree commit/push
+  NOT AUTHORIZED until a separate commit unit
 - InsForge sandbox branches ACTIVE:
   `impl-13e-public-press` / `4bg9ufz2-6mq` — Project ID
   `4227c38d-f6c9-4ee4-aa6f-d05fb4b19693`; mode `full` (IMPL-13E surface)
@@ -740,8 +752,12 @@ R2H-T2-0B: SPEC-060 v0.1.0 DRAFT created
 R2H-T2-0C: SPEC-060 approval-readiness review completed
 R2H-T2-0D: SPEC-060 v0.1.0 APPROVED + T2 traceability prepared
   → READY_FOR_R2H_T2_1_UNIT_DEFINITION
-  (runtime implementation / migrations / InsForge / commit / push
-  NOT AUTHORIZED)
+R2H-T2-1B: VALIDATED / CLOSED (local + automated + manual validation)
+  → READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW
+  (migrations / InsForge Main / production / commit / push NOT AUTHORIZED)
+R2H-T2-1C: CHANGES_REQUIRED (historical; remediated)
+R2H-T2-1D: REMEDIATION IMPLEMENTED / ABSORBED INTO T2-1B CLOSURE
+R2H-T2-1E: CTO REVALIDATION → READY_FOR_HUMAN_VALIDATION_APPROVAL (closed)
 SPEC-040 v0.1.1: APPROVED
 SPEC-060 v0.1.0: APPROVED (2026-07-31 Project Owner)
 IMPL-14A-2 plan v0.2.0: PLAN / APPROVED
@@ -1123,10 +1139,21 @@ y manifiesto no fueron implementados. R2H-T2-0A cerro con
 `READY_FOR_R2H_TRAMO2_SPEC_DRAFT`. R2H-T2-0B/0C prepararon SPEC-060.
 El 2026-07-31 el Project Owner aprobo SPEC-060 v0.1.0 (`APPROVED`) y se
 preparo la trazabilidad documental
-`docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`
-sin autorizar implementacion runtime, migraciones, InsForge, commit ni push
-(gate `READY_FOR_R2H_T2_1_UNIT_DEFINITION`). Antes de produccion permanecen
-abiertos `PAYMENT_PENDING_EXPIRY_RECONCILIATION` y
+`docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`.
+El 2026-07-31 se ejecuto `R2H-T2-1B` (shell PWA operativo + guards) en
+alcance local frontend; `R2H-T2-1C` devolvio `CHANGES_REQUIRED`;
+`R2H-T2-1D` remedio; `R2H-T2-1E` revalido con
+`READY_FOR_HUMAN_VALIDATION_APPROVAL`. El 2026-08-01 (`America/Merida`) el
+Project Owner cerro `R2H-T2-1B` como `VALIDATED / CLOSED` en alcance
+LOCAL IMPLEMENTATION + AUTOMATED AND MANUAL VALIDATION (2026-08-01;
+formalizacion documental 2026-08-02); evidencia
+`docs/implementation/evidence/R2H-T2-1B-PWA-OPERATIONAL-SHELL.md`; gate
+`READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`. Diferidos: R014/R015→T2-2,
+R003 HTTPS prod, AC005 IDB dominio, manifiesto/QR/check-in→T2-3, cola
+offline/sync/conflictos→T2-4. No hubo migraciones, Main, produccion,
+commit ni push. T2-2…T2-6 execution y el commit del arbol local siguen
+sin autorizar. Antes de produccion permanecen abiertos
+`PAYMENT_PENDING_EXPIRY_RECONCILIATION` y
 `PUBLIC_ENDPOINT_ABUSE_AND_RATE_LIMITING`.
 La landing publica existente permanece protegida (checkout off por defecto):
 

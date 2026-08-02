@@ -88,9 +88,9 @@ Shared non-goals for all units unless a later SPEC expands scope:
 | Expected evidence | Unit evidence under `docs/implementation/evidence/` when authorized |
 | Rollback | Revert shell-only changes; no canonical data mutations |
 | Entry gate | Separate human authorization after this traceability review |
-| Exit gate | `READY_FOR_T2_2_MIN_STAFF` (or equivalent) |
+| Exit gate | `READY_FOR_T2_2_MIN_STAFF` (or equivalent) after human closure |
 | Separate human authorization | Required |
-| Current state | `NOT AUTHORIZED / NOT STARTED` |
+| Current state | `R2H-T2-1B = VALIDATED / CLOSED` (Project Owner 2026-08-01 America/Merida; documentary formalization 2026-08-02; local + automated + manual validation scope) after T2-1C/T2-1D/T2-1E; evidence `docs/implementation/evidence/R2H-T2-1B-PWA-OPERATIONAL-SHELL.md`; gate `READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`; commit/push/Main/production/T2-2 runtime still NOT AUTHORIZED |
 
 ### R2H-T2-2 — Minimum staff identity and assignments
 
@@ -234,23 +234,32 @@ git push
 InsForge Main writes
 production writes
 sandbox schema/function deploys
-F0-E / R2H-T2-1…T2-6 runtime work
+F0-E / R2H-T2-2…T2-6 runtime work
 Mercado Pago changes
 opening sales
 activating schedules
+git commit / git push of the local T2-1B tree (needs separate commit unit)
 ```
 
 ## I. Recommended next human gate
 
 ```text
-READY_FOR_R2H_T2_1_UNIT_DEFINITION
+READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW
 ```
 
-or an owner-chosen first implementation unit authorization that names exactly
-one of `R2H-T2-1` / F0-E pairing.
+`R2H-T2-1B` is `VALIDATED / CLOSED` in local validation scope. The next
+authorized documentary step is review of the exact commit inventory. A
+separate human unit is required before `git commit` / `git push` and before
+starting `R2H-T2-2`. Deferred by closure: R014/R015 → T2-2; manifest/QR/
+check-in → T2-3; offline queue / sync / conflicts → T2-4; HTTPS prod and
+domain IndexedDB → later units.
 
 ## J. Change log
 
 | Version | Date | Notes |
 |---|---|---|
 | 0.1.0 | 2026-07-31 | Created after Project Owner approval of SPEC-060 v0.1.0. Documentary only. |
+| 0.1.1 | 2026-07-31 | Recorded R2H-T2-1B local implementation pending CTO review. |
+| 0.1.2 | 2026-07-31 | T2-1C CHANGES_REQUIRED; T2-1D remediation implemented; gate `READY_FOR_R2H_T2_1B_REVALIDATION`. |
+| 0.1.3 | 2026-08-01 | Project Owner closed R2H-T2-1B as VALIDATED / CLOSED (local validation scope). |
+| 0.1.4 | 2026-08-02 | Formalized closure docs; gate `READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`. |

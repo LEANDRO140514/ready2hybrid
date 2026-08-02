@@ -57,14 +57,23 @@ SPEC-000 v0.2.0.
 
 ## Current review gate
 
-`READY_FOR_R2H_T2_1_UNIT_DEFINITION`
+`READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`
 
 SPEC-060 v0.1.0 Event Entry Operations is `APPROVED` (Project Owner
 2026-07-31). Tramo 2 implementation traceability is prepared in
 `docs/implementation/R2H-T2-0-EVENT-ENTRY-IMPLEMENTATION-TRACEABILITY.md`.
-Runtime F0-E / R2H-T2-1…T2-6 implementation, migrations, InsForge writes,
-Main, production, commit, and push remain **NOT AUTHORIZED** until a separate
-human unit authorization.
+`R2H-T2-1B` (PWA operational shell + access guards) is
+`VALIDATED / CLOSED` for local implementation + automated and manual
+validation scope (Project Owner 2026-08-01 America/Merida; documentary
+formalization 2026-08-02) after T2-1C → T2-1D → T2-1E. Evidence
+`docs/implementation/evidence/R2H-T2-1B-PWA-OPERATIONAL-SHELL.md`.
+Deferred by closure: R014/R015 → T2-2; R003 HTTPS prod → deploy; AC005
+domain IndexedDB → later; manifest/QR/check-in → T2-3; offline queue /
+sync / conflicts → T2-4.
+T2-2…T2-6 execution, F0-E, migrations, InsForge Main writes, production,
+commit, and push remain **NOT AUTHORIZED** until separate human unit
+authorization. The immediate next documentary step is review of the exact
+local commit inventory for T2-1B closure.
 
 Historical payment-expiry authority remains unchanged:
 
