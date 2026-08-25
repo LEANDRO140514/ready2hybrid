@@ -104,6 +104,7 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
       parseCheckoutRequest({
         product_code: 'IND-H',
         idempotency_key: 'idem-key-12345678',
+        buyer: { email: 'buyer@example.com', name: 'Buyer Example' },
         installments: 12,
       } as never),
     ).toThrow()
@@ -112,6 +113,7 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
       parseCheckoutRequest({
         product_code: 'IND-H',
         idempotency_key: 'idem-key-12345678',
+        buyer: { email: 'buyer@example.com', name: 'Buyer Example' },
         payment_methods: { installments: 3 },
       } as never),
     ).toThrow()
@@ -119,6 +121,7 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
       parseCheckoutRequest({
         product_code: 'IND-H',
         idempotency_key: 'idem-key-12345678',
+        buyer: { email: 'buyer@example.com', name: 'Buyer Example' },
         msi_eligible: true,
       }),
     ).toThrow()
@@ -126,6 +129,7 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
       parseCheckoutRequest({
         product_code: 'IND-H',
         idempotency_key: 'idem-key-12345678',
+        buyer: { email: 'buyer@example.com', name: 'Buyer Example' },
         unit_price: 1,
       }),
     ).toThrow()

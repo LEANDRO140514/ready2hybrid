@@ -100,6 +100,10 @@ function body(product_code: string, quantity = 1) {
     quantity,
     selected_provider: 'MERCADO_PAGO',
     idempotency_key: `impl13e0-${product_code}-${quantity}-xxxxxxxx`,
+    buyer: {
+      email: 'buyer@example.com',
+      name: 'Buyer Example',
+    },
   }
 }
 
@@ -287,7 +291,11 @@ describe('orchestrate multiday sellable under open sales (SPEC-030 v0.4)', () =>
       throw new Error('MP should not be called')
     })
     const result = await orchestrateCheckoutStart(
-      { product_code: 'PUB-3D', quantity: 1 },
+      {
+        product_code: 'PUB-3D',
+        quantity: 1,
+        buyer: { email: 'buyer@example.com', name: 'Buyer Example' },
+      },
       { env: envMap(requiredEnv), catalog, repo, mp },
     )
     expect(result.status).toBe(400)

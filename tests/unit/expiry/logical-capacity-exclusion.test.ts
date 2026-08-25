@@ -306,7 +306,7 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(clockCapture).toBeLessThan(inventorySum)
   })
 
-  it('keeps the canonical checkout_start_tx as 0020 (v0.4) without cupo SOLD_OUT', () => {
+  it('keeps the canonical checkout_start_tx as 0023 (buyer contact write) without cupo SOLD_OUT', () => {
     const definitions = readdirSync(migDir)
       .filter((n) => /^\d{4}_.+\.sql$/.test(n))
       .sort()
@@ -317,11 +317,11 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
       )
     expect(definitions.length).toBeGreaterThan(0)
 
-    // 0011 introduced the null-safe predicate; 0020 is the live commercial REPLACE.
+    // 0011 introduced the null-safe predicate; 0020 v0.4 commercial; 0023 buyer contact.
     expect(definitions).toContain(MIGRATION_FILE)
     expect(definitions).not.toContain('0018_staged-commercial-pricing.sql')
     const canonical = definitions[definitions.length - 1]
-    expect(canonical).toBe('0020_v04-commercial-authority-successor.sql')
+    expect(canonical).toBe('0023_buyer-contact-checkout-write.sql')
 
     const canonicalCode = stripSqlComments(
       readFileSync(resolve(migDir, canonical), 'utf8'),
@@ -334,6 +334,8 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
       /IF v_active_holds\s*\+\s*v_units\s*>\s*v_product\.cupo/i,
     )
     expect(canonicalCode).toMatch(/cupo\/holds are not commercial SOLD_OUT/i)
+    expect(canonicalCode).toContain('CONTACT_REQUIRED')
+    expect(canonicalCode).toContain('contact_consent_at')
 
     // Historical 0011 still encodes the null-safe inventory predicate.
     const baselineCode = stripSqlComments(

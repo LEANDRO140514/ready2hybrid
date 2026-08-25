@@ -34,6 +34,17 @@ const FORBIDDEN_CLIENT_MONEY_KEYS = [
   'excluded_payment_methods',
 ] as const
 
+const buyerContactSchema = z
+  .object({
+    public_ref: z.string().min(1).max(128).optional(),
+    email: z.string().min(1).max(320),
+    name: z.string().min(1).max(200),
+    phone: z.string().min(1).max(40).optional(),
+    /** Opt-in marketing/contact consent. False/omitted → no consent timestamp. */
+    contact_consent: z.boolean().optional(),
+  })
+  .strict()
+
 export const checkoutRequestSchema = z
   .object({
     product_code: z.string().min(1).max(64),
@@ -44,12 +55,7 @@ export const checkoutRequestSchema = z
      * Never commercial authority.
      */
     expected_unit_price_cents: z.number().int().nonnegative().optional(),
-    buyer: z
-      .object({
-        public_ref: z.string().min(1).max(128).optional(),
-      })
-      .strict()
-      .optional(),
+    buyer: buyerContactSchema,
     participant: z
       .object({
         public_ref: z.string().min(1).max(128).optional(),
@@ -83,8 +89,29 @@ export function assertNoClientMoneyAuthority(raw: unknown): void {
   }
 }
 
+/** Missing/empty email or name, or email without '@' → CONTACT_REQUIRED (not INVALID_REQUEST). */
+export function assertBuyerContactRequired(raw: unknown): void {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new CheckoutError('CONTACT_REQUIRED')
+  }
+  const buyer = (raw as Record<string, unknown>).buyer
+  if (!buyer || typeof buyer !== 'object' || Array.isArray(buyer)) {
+    throw new CheckoutError('CONTACT_REQUIRED')
+  }
+  const record = buyer as Record<string, unknown>
+  const email = typeof record.email === 'string' ? record.email.trim() : ''
+  const name = typeof record.name === 'string' ? record.name.trim() : ''
+  if (!email || !name) {
+    throw new CheckoutError('CONTACT_REQUIRED')
+  }
+  if (email.indexOf('@') < 1) {
+    throw new CheckoutError('CONTACT_REQUIRED')
+  }
+}
+
 export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity: number } {
   assertNoClientMoneyAuthority(raw)
+  assertBuyerContactRequired(raw)
   const parsed = checkoutRequestSchema.safeParse(raw)
   if (!parsed.success) {
     throw new CheckoutError('INVALID_REQUEST')

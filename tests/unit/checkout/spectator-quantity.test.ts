@@ -97,6 +97,10 @@ function body(product_code: string, quantity?: unknown, extras: Record<string, u
     product_code,
     idempotency_key: `idem-${product_code}-${Date.now()}-xxxxxxxx`,
     selected_provider: 'MERCADO_PAGO',
+    buyer: {
+      email: 'buyer@example.com',
+      name: 'Buyer Example',
+    },
     ...extras,
   }
   if (quantity !== undefined) payload.quantity = quantity

@@ -21,6 +21,11 @@ var MESSAGES = {
   SOLD_OUT: { message: "Product is sold out.", retry: "AFTER_STATE_CHANGE", status: 409 },
   PRICE_CHANGED: { message: "Product price changed.", retry: "AFTER_STATE_CHANGE", status: 409 },
   WAIVER_REQUIRED: { message: "Waiver acceptance is required.", retry: "NO", status: 409 },
+  CONTACT_REQUIRED: {
+    message: "Buyer contact email and name are required.",
+    retry: "NO",
+    status: 409
+  },
   ORIGIN_NOT_ALLOWED: { message: "Request origin is not allowed.", retry: "NO", status: 403 },
   CONFIGURATION_ERROR: { message: "Checkout is not configured.", retry: "NO", status: 503 },
   CHECKOUT_CREATION_FAILED: { message: "Checkout could not be created.", retry: "OPTIONAL", status: 502 },
@@ -387,10 +392,10 @@ function meridaWallToUtcMs(y, m, d, hh = 0, mm = 0, ss = 0) {
 var STAGE_WINDOWS = {
   LAUNCH: {
     startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 9, 1, 0, 0, 0)
+    endMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0)
   },
   PRESALE: {
-    startMs: meridaWallToUtcMs(2026, 9, 1, 0, 0, 0),
+    startMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0),
     endMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0)
   },
   REGULAR: {
@@ -11727,6 +11732,14 @@ var FORBIDDEN_CLIENT_MONEY_KEYS = [
   "excluded_payment_types",
   "excluded_payment_methods"
 ];
+var buyerContactSchema = external_exports.object({
+  public_ref: external_exports.string().min(1).max(128).optional(),
+  email: external_exports.string().min(1).max(320),
+  name: external_exports.string().min(1).max(200),
+  phone: external_exports.string().min(1).max(40).optional(),
+  /** Opt-in marketing/contact consent. False/omitted → no consent timestamp. */
+  contact_consent: external_exports.boolean().optional()
+}).strict();
 var checkoutRequestSchema = external_exports.object({
   product_code: external_exports.string().min(1).max(64),
   quantity: external_exports.number().int().positive().optional(),
@@ -11736,9 +11749,7 @@ var checkoutRequestSchema = external_exports.object({
    * Never commercial authority.
    */
   expected_unit_price_cents: external_exports.number().int().nonnegative().optional(),
-  buyer: external_exports.object({
-    public_ref: external_exports.string().min(1).max(128).optional()
-  }).strict().optional(),
+  buyer: buyerContactSchema,
   participant: external_exports.object({
     public_ref: external_exports.string().min(1).max(128).optional()
   }).strict().optional(),
@@ -11761,8 +11772,27 @@ function assertNoClientMoneyAuthority(raw) {
     }
   }
 }
+function assertBuyerContactRequired(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new CheckoutError("CONTACT_REQUIRED");
+  }
+  const buyer = raw.buyer;
+  if (!buyer || typeof buyer !== "object" || Array.isArray(buyer)) {
+    throw new CheckoutError("CONTACT_REQUIRED");
+  }
+  const record2 = buyer;
+  const email3 = typeof record2.email === "string" ? record2.email.trim() : "";
+  const name = typeof record2.name === "string" ? record2.name.trim() : "";
+  if (!email3 || !name) {
+    throw new CheckoutError("CONTACT_REQUIRED");
+  }
+  if (email3.indexOf("@") < 1) {
+    throw new CheckoutError("CONTACT_REQUIRED");
+  }
+}
 function parseCheckoutRequest(raw) {
   assertNoClientMoneyAuthority(raw);
+  assertBuyerContactRequired(raw);
   const parsed = checkoutRequestSchema.safeParse(raw);
   if (!parsed.success) {
     throw new CheckoutError("INVALID_REQUEST");
@@ -11881,7 +11911,11 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       requestFingerprint,
       idempotencyTtlSeconds: config2.idempotencyTtlSeconds,
       correlationId,
-      buyerPublicRef: req.buyer?.public_ref ?? null,
+      buyerPublicRef: req.buyer.public_ref ?? null,
+      buyerEmail: req.buyer.email.trim(),
+      buyerName: req.buyer.name.trim(),
+      buyerPhone: req.buyer.phone?.trim() ? req.buyer.phone.trim() : null,
+      buyerContactConsent: req.buyer.contact_consent === true,
       participantPublicRef: req.participant?.public_ref ?? null,
       invitationTtlSeconds: config2.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,
@@ -12133,6 +12167,10 @@ function createPorts() {
           idempotency_ttl_seconds: input.idempotencyTtlSeconds,
           correlation_id: input.correlationId,
           buyer_public_ref: input.buyerPublicRef,
+          buyer_email: input.buyerEmail,
+          buyer_name: input.buyerName,
+          buyer_phone: input.buyerPhone,
+          buyer_contact_consent: input.buyerContactConsent,
           participant_public_ref: input.participantPublicRef,
           commercial_snapshot: input.commercialSnapshot,
           invitation_ttl_seconds: input.invitationTtlSeconds,

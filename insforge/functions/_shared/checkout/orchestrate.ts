@@ -53,6 +53,10 @@ export type CheckoutTxInput = {
   idempotencyTtlSeconds: number
   correlationId: string
   buyerPublicRef: string | null
+  buyerEmail: string
+  buyerName: string
+  buyerPhone: string | null
+  buyerContactConsent: boolean
   participantPublicRef: string | null
   commercialSnapshot: Record<string, unknown>
   invitationTtlSeconds: number | null
@@ -209,7 +213,11 @@ export async function orchestrateCheckoutStart(
       requestFingerprint,
       idempotencyTtlSeconds: config.idempotencyTtlSeconds,
       correlationId,
-      buyerPublicRef: req.buyer?.public_ref ?? null,
+      buyerPublicRef: req.buyer.public_ref ?? null,
+      buyerEmail: req.buyer.email.trim(),
+      buyerName: req.buyer.name.trim(),
+      buyerPhone: req.buyer.phone?.trim() ? req.buyer.phone.trim() : null,
+      buyerContactConsent: req.buyer.contact_consent === true,
       participantPublicRef: req.participant?.public_ref ?? null,
       invitationTtlSeconds: config.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,

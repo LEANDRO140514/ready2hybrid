@@ -6,6 +6,10 @@ function base() {
   return {
     product_code: 'IND-H',
     idempotency_key: 'idem-key-12345678',
+    buyer: {
+      email: 'buyer@example.com',
+      name: 'Buyer Example',
+    },
   }
 }
 

@@ -72,6 +72,10 @@ function validBody(overrides: Record<string, unknown> = {}) {
     product_code: 'IND-H',
     idempotency_key: 'idem-key-12345678',
     selected_provider: 'MERCADO_PAGO',
+    buyer: {
+      email: 'buyer@example.com',
+      name: 'Buyer Example',
+    },
     waiver: {
       document_type: 'SPORTS_WAIVER',
       version: '2026.1',
@@ -133,6 +137,38 @@ describe('checkout validate', () => {
 
   it('rejects client currency authority', () => {
     expect(() => parseCheckoutRequest(validBody({ currency: 'USD' }))).toThrow(CheckoutError)
+  })
+
+  it('requires buyer email and name (CONTACT_REQUIRED)', () => {
+    try {
+      parseCheckoutRequest(validBody({ buyer: { name: 'Only Name' } }))
+      expect.unreachable('expected CONTACT_REQUIRED')
+    } catch (e) {
+      expect(e).toBeInstanceOf(CheckoutError)
+      expect((e as CheckoutError).code).toBe('CONTACT_REQUIRED')
+    }
+    try {
+      parseCheckoutRequest(validBody({ buyer: { email: 'a@b.co' } }))
+      expect.unreachable('expected CONTACT_REQUIRED')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('CONTACT_REQUIRED')
+    }
+    try {
+      parseCheckoutRequest({
+        product_code: 'IND-H',
+        idempotency_key: 'idem-key-12345678',
+        selected_provider: 'MERCADO_PAGO',
+      })
+      expect.unreachable('expected CONTACT_REQUIRED')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('CONTACT_REQUIRED')
+    }
+    try {
+      parseCheckoutRequest(validBody({ buyer: { email: 'not-an-email', name: 'X' } }))
+      expect.unreachable('expected CONTACT_REQUIRED')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('CONTACT_REQUIRED')
+    }
   })
 })
 

@@ -51,6 +51,10 @@ export function checkoutBody(overrides: Record<string, unknown> = {}) {
     product_code: 'IND-H',
     idempotency_key: 'idem-key-12345678',
     selected_provider: 'MERCADO_PAGO',
+    buyer: {
+      email: 'buyer@example.com',
+      name: 'Buyer Example',
+    },
     waiver: {
       document_type: 'SPORTS_WAIVER',
       version: '2026.1',
