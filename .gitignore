@@ -27,6 +27,7 @@ logs
 # Cursor local dumps / secrets (never commit)
 .cursor/*
 !.cursor/mcp.json
+!.cursor/rules/
 # InsForge & AI agent skills
 .insforge
 .agent

@@ -1,0 +1,40 @@
+---
+description: Gobierno de especificaciones
+globs: docs/specs/**,docs/implementation/**
+---
+
+# Specs
+
+## Autoridad
+
+`docs/00-05` = producto y arquitectura. Las specs traducen esa autoridad a
+contratos verificables. **Solo el propietario aprueba.** El agente nunca
+aprueba su propio trabajo ni inventa decisiones de producto.
+
+## Versionado
+
+- Una spec `APPROVED` no se edita: se propone una revisión nueva.
+- La versión anterior va a `archive/` con su número.
+- `docs/specs/README.md` es el registro y debe reflejar el estado real.
+- **Commitea cada cambio de versión.** Las specs saltaron de v0.1.0 a v0.4.0
+  sin un solo commit; el historial de decisiones se perdió.
+
+## Vigente
+
+| Spec | Versión |
+|---|---|
+| SPEC-030 / 031 / 032 | v0.4.0 |
+| SPEC-040 (expiry) | degradada a higiene — el cupo no es limitante |
+| SPEC-041 (multi-pasarela) | aparcada en `wip/multi-gateway` |
+| SPEC-060 (check-in) | aprobada, runtime no implementado |
+
+## Ceremonia en fase GO-LIVE
+
+Spec formal solo para la **capa de dinero**. Operación e interno: unidad
+declarada y tests bastan. Escribir una spec para algo que no mueve dinero,
+en esta fase, es deuda de tiempo.
+
+## Evidencia
+
+Registra lo que un tercero necesitaría para reproducir la validación:
+comandos, resultados, hashes, IDs de sandbox. **Nunca secretos.**

@@ -1,0 +1,34 @@
+---
+description: Migraciones InsForge — aplicación y bloqueo
+globs: insforge/migrations/**,insforge/seeds/**
+---
+
+# Migraciones
+
+`insforge/migrations/` contiene **solo migraciones aplicables**.
+Lo bloqueado vive en `docs/specs/holding/migrations-blocked/` con su `BLOCKED.md`.
+
+## Reglas
+
+- Nunca apliques a Main sin autorización explícita del propietario.
+- Antes de aplicar: verifica que el **runtime desplegado** sea compatible con
+  el nuevo contrato SQL. Si la función exige un campo que el webhook vivo no
+  envía, los pagos se cobran y los tickets no se emiten.
+- Nunca modifiques una migración ya aplicada. Escribe una nueva.
+- La numeración no implica dependencia: lee el predecesor declarado en la
+  cabecera del archivo.
+- Un hueco en la secuencia aplicada (ej. Main tiene 0016 y 0020) es normal si
+  fue deliberado, pero verifica supuestos antes de aplicar las intermedias.
+
+## Bloqueadas actualmente — NO aplicar
+
+| Migración | Riesgo |
+|---|---|
+| `0021_multi_provider_canonical_tx_neutralization` | Exige `p->>'provider'`; el `mp-webhook` desplegado no lo envía → `MISSING_PROVIDER` → pagos cobrados sin ticket |
+| `0018_staged-commercial-pricing` | Reintroduce precio por cuota y `SOLD_OUT` por cupo; contradice SPEC-030 v0.4.0 |
+
+## Estado de Main
+
+Aplicadas: `0001–0016` + `0020`. Pendientes locales: `0017` (sin autorizar).
+`products.cupo` sigue poblado como dato operativo — **no es autoridad comercial**
+(ver `30-invariantes-comerciales`).

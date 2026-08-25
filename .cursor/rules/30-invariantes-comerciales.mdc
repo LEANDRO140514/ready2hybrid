@@ -1,0 +1,38 @@
+---
+description: Invariantes comerciales del organizador — no reinterpretar
+alwaysApply: true
+---
+
+# Invariantes comerciales
+
+Decisiones del organizador, **no supuestos técnicos**. Ya se invirtieron una vez
+por inferencia del agente y costaron semanas de trabajo.
+
+## El cupo NO es autoridad comercial
+
+- `products.cupo` es dato **operativo de planeación**, editable desde panel.
+  El seed original lo declara: *"Cupos: provisionales, editables desde el panel."*
+- Las inscripciones son **abiertas**. Cada categoría se ajusta a los inscritos.
+- `capacity_holds` = TTL de checkout e integridad de pago. **Nunca inventario.**
+- `SOLD_OUT` solo como **switch manual del organizador** (`sale_state`).
+
+**Prohibido:** `SOLD_OUT` automático por cupo · bloquear checkout por cupo ·
+contar holds contra un tope comercial · publicar un cupo como límite de venta.
+
+## El precio cambia por FECHA, nunca por cantidad vendida
+
+- Etapas `LAUNCH` → `PRESALE` → `REGULAR`, por ventana de calendario
+  (America/Mérida), en `staged-pricing.ts`.
+- Autoridad: SPEC-030 v0.4.0, R203 / R214–R217.
+
+**Prohibido:** reparto 30/45/25 · high-water mark · umbrales por unidades
+vendidas · cualquier avance de etapa disparado por volumen.
+
+## Regla de seguridad semántica
+
+Si un requisito, test, spec antigua o migración **parece exigir escasez**:
+no lo implementes. **Pregunta.** El organizador ya declaró que no hay escasez.
+
+Artefactos históricos que aún describen el modelo viejo y no son autoridad:
+`0018_staged-commercial-pricing.sql`, `stage-monotonicity.test.ts`,
+SPEC-030 v0.3.0 y anteriores (archive).

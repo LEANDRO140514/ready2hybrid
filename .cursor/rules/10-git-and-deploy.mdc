@@ -1,0 +1,50 @@
+---
+description: Disciplina de git y despliegue
+alwaysApply: true
+---
+
+# Git y despliegue
+
+Corrige el fallo más costoso del proyecto: la regla anterior exigía
+autorización para commitear, y el resultado fueron 371 archivos sin versionar
+y producción desplegada desde un bundle temporal.
+
+## Commit local: OBLIGATORIO, sin pedir permiso
+
+- Commitea al cerrar cada unidad coherente.
+- Nunca termines una sesión con el árbol sucio.
+- Trabajo a medias → commit en rama `wip/*`.
+- Un commit local es reversible y gratis. **No es una acción de riesgo.**
+
+## Requiere autorización explícita
+
+`git push` · desplegar edge functions · aplicar SQL a Main ·
+cambiar `SALES_STATUS` · rotar o crear secretos
+
+## Prohibido siempre
+
+- `git add .`, `git add -A`, `git commit -a` → **solo rutas explícitas**
+- `git push --force` sobre `main`
+- Reescribir historia publicada
+- Commitear cualquier cosa bajo `.cursor/`
+
+## Antes de commitear
+
+```bash
+git status && npm run typecheck && npm test && npm run build
+```
+
+Si un gate falla: reporta el error. No lo arregles a ciegas.
+
+## Despliegue: la fuente es el repo
+
+**Nunca despliegues desde `/tmp`, un bundle temporal, o un archivo generado
+fuera del árbol.**
+
+1. Regenerar con el script del repo (`npm run bundle:*`)
+2. Commitear el bundle regenerado
+3. Desplegar **ese** archivo
+4. Verificar que lo vivo coincide (hash/diff)
+5. Registrar en `WORKSPACE_STATUS.md`
+
+Si lo desplegado no coincide con el repo, es un **incidente**: detente y reporta.

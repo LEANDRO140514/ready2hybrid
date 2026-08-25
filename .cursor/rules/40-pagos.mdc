@@ -1,0 +1,35 @@
+---
+description: Capa de dinero — checkout, webhook, emisión de tickets
+globs: insforge/functions/**
+---
+
+# Capa de dinero
+
+Máxima ceremonia. Aquí un error cobra sin entregar.
+
+## Reglas
+
+- Pasarela activa: **solo Mercado Pago**. Clip y Openpay están aparcados en
+  `wip/multi-gateway`. No los recables.
+- `payments/ids.ts` y `payments/errors.ts` **se quedan** — los importa
+  `validate.ts`. No los muevas a la rama aparcada.
+- Los redirects de pago **no son autoridad**. El backend verifica firma,
+  idempotencia y estado real contra Mercado Pago.
+- Toda mutación de orden/pago/ticket es idempotente y auditada.
+- El precio final lo resuelve el backend. Nunca el navegador.
+
+## Antes de tocar `handler.deploy.js`
+
+Nunca lo edites a mano. Se regenera con `npm run bundle:*` y se commitea.
+Si difiere de lo desplegado en Main, es un incidente: detente y reporta.
+
+## Cambios en el contrato del webhook
+
+Si modificas la firma o el payload de `webhook_apply_payment_tx` u otra RPC:
+**primero despliega el runtime compatible, después aplica el SQL.**
+Al revés, los pagos entran y los tickets no se emiten.
+
+## Gates obligatorios
+
+`npm run typecheck` · `npm test` · `npm run build` antes de commitear.
+Sandbox antes de producción, siempre.

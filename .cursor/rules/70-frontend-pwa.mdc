@@ -1,0 +1,52 @@
+---
+description: PWA operativa — shell, auth, offline, roles
+globs: src/**
+---
+
+# PWA operativa (`src/`)
+
+App offline-first para staff del evento: check-in, desk, operación.
+No es la landing pública (repo aparte).
+
+## Stack cerrado
+
+Vite + React 19 + TS strict · TanStack Router / Query / Table ·
+Zustand · Zod · Vitest · Playwright · IndexedDB.
+No introduzcas librerías nuevas sin autorización.
+
+## Fixtures: nunca en producción
+
+`src/auth/fixture-ports.ts` es solo para tests y e2e.
+
+- **Prohibido** importarlo desde `main.tsx` o `ports.ts`.
+- Se cablea exclusivamente vía `main.e2e.tsx` y tests que inyectan ports.
+- El build de producción debe fallar duro si un fixture entra al grafo.
+
+Si necesitas datos de prueba en dev, usa los ports inyectados, no atajos.
+
+## Roles y acceso: deny-by-default
+
+- `ROUTE_ROLE_POLICY` en `src/auth/roles.ts` es la autoridad de rutas `/ops/*`.
+- Un rol desconocido **no** obtiene acceso. Nunca añadas fallback permisivo.
+- `CHECKIN_STAFF` no debe ver superficies financieras ni médicas completas.
+- Ampliar el acceso de un rol es decisión del propietario, no del agente.
+
+## Offline
+
+- IndexedDB y las copias offline **nunca sustituyen a InsForge**.
+  InsForge es la autoridad canónica de órdenes, pagos, tickets, QR y check-in.
+- Lo offline es caché y cola de operación, no fuente de verdad.
+- La actualización del service worker no debe forzarse a mitad de una
+  operación (check-in en curso). Prompt, no recarga sorpresa.
+
+## Seguridad en cliente
+
+- Nunca Access Tokens ni claves admin en el frontend ni en el bundle.
+- El precio, el cupo y el estado del pedido los resuelve el backend.
+  El navegador nunca es autoridad.
+- Los QR contienen solo identificadores o tokens opacos.
+
+## Gates
+
+`npm run typecheck` · `npm test` · `npm run build` · `npm run test:e2e`
+antes de commitear cambios de shell, rutas o guards.

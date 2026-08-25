@@ -1,0 +1,42 @@
+---
+description: Contexto base y límites de Ready2Hybrid
+alwaysApply: true
+---
+
+# Ready2Hybrid — núcleo
+
+Evento Hybrid Experience, **13–15 nov 2026**. Cierre de ventas **8 nov 2026**.
+Vite + React 19 + TS strict · PWA offline-first · InsForge · Mercado Pago.
+Autoridad de producto: el propietario (Leandro). Nadie más decide producto.
+
+**Fase actual: GO-LIVE.** Prioridad: abrir ventas.
+Lo que no acerca la venta va a backlog, no al carril de entrega.
+
+## Preflight corto (por defecto)
+
+1. Estado git: rama, HEAD, divergencia, árbol de trabajo
+2. `AGENTS.md`
+3. Solo la sección `## Estado` de `WORKSPACE_STATUS.md` — **no el log completo**
+   (68 KB append-only; leerlo entero quema el contexto)
+4. La spec del archivo que vas a tocar — solo esa
+
+Preflight completo (`docs/00-05`, SPEC-000, registro) solo al redactar specs
+o si el propietario lo pide.
+
+## Ceremonia proporcional
+
+| Capa | Proceso |
+|---|---|
+| Dinero (checkout, webhook, tickets, SQL de órdenes/pagos) | Spec + evidencia + validación humana |
+| Operación (PWA, check-in, roster, heats) | Unidad declarada + tests |
+| Interno (limpieza, tests, docs, config) | Ejecutar y commitear |
+
+## Detente y pregunta si
+
+- Un requisito implica escasez de cupo o precio por volumen
+- Lo desplegado no coincide con el repo
+- Una migración exige un contrato que el runtime no cumple
+- Aparece un secreto versionado
+- El trabajo se sale de la unidad declarada
+
+Una pregunta cuesta minutos. Un pago cobrado sin ticket emitido cuesta un cliente.
