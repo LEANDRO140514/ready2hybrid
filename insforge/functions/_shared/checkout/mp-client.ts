@@ -1,5 +1,9 @@
 import { CheckoutError } from './errors'
 import type { PriceSnapshot } from './pricing'
+import {
+  assertCheckoutPaymentPolicy,
+  type CheckoutPaymentPolicy,
+} from './payment-policy'
 
 export type CreatePreferenceInput = {
   accessToken: string
@@ -8,6 +12,8 @@ export type CreatePreferenceInput = {
   productCode: string
   productName: string
   price: PriceSnapshot
+  /** Canonical policy from commercial_snapshot.msi_eligible — never client-supplied. */
+  paymentPolicy: CheckoutPaymentPolicy
   backUrls: { success: string; failure: string; pending: string }
   notificationUrl: string
   expiresAt?: string | null
@@ -23,9 +29,22 @@ export type MercadoPagoClient = {
   createCheckoutProPreference: (input: CreatePreferenceInput) => Promise<CreatePreferenceResult>
 }
 
+function serializePaymentMethods(policy: CheckoutPaymentPolicy) {
+  assertCheckoutPaymentPolicy(policy)
+  return {
+    installments: policy.maximumInstallments,
+    excluded_payment_types: [{ id: 'ticket' }],
+  }
+}
+
 export function createHttpMercadoPagoClient(fetchImpl: typeof fetch = fetch): MercadoPagoClient {
   return {
     async createCheckoutProPreference(input) {
+      if (!input.paymentPolicy) {
+        throw new CheckoutError('CONFIGURATION_ERROR', 'paymentPolicy required')
+      }
+      const payment_methods = serializePaymentMethods(input.paymentPolicy)
+
       const body = {
         external_reference: input.orderId,
         notification_url: input.notificationUrl,
@@ -40,6 +59,7 @@ export function createHttpMercadoPagoClient(fetchImpl: typeof fetch = fetch): Me
             unit_price: input.price.unit_price_cents / 100,
           },
         ],
+        payment_methods,
         metadata: {
           product_code: input.productCode,
           journey: input.price.journey,

@@ -13,6 +13,7 @@ export type PublicErrorCode =
   | 'CONFLICT'
   | 'RATE_LIMITED'
   | 'INTERNAL_ERROR'
+  | 'UNSUPPORTED_PROVIDER'
 
 export type PublicErrorBody = {
   error: {
@@ -41,6 +42,11 @@ const MESSAGES: Record<PublicErrorCode, { message: string; retry: PublicErrorBod
   CONFLICT: { message: 'Request conflicts with an existing operation.', retry: 'AFTER_STATE_CHANGE', status: 409 },
   RATE_LIMITED: { message: 'Too many requests.', retry: 'OPTIONAL', status: 429 },
   INTERNAL_ERROR: { message: 'Unexpected checkout error.', retry: 'OPTIONAL', status: 500 },
+  UNSUPPORTED_PROVIDER: {
+    message: 'Selected payment provider is not available.',
+    retry: 'AFTER_STATE_CHANGE',
+    status: 409,
+  },
 }
 
 export class CheckoutError extends Error {

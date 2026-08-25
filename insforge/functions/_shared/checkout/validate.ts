@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { CheckoutError } from './errors'
 import { journeyForProductCode } from './journeys'
+import {
+  resolveSelectableProvider,
+  type ProviderEnablement,
+} from '../payments/ids'
+import { isPaymentContractError } from '../payments/errors'
 
 const FORBIDDEN_CLIENT_MONEY_KEYS = [
   'price',
@@ -14,6 +19,19 @@ const FORBIDDEN_CLIENT_MONEY_KEYS = [
   'item_total_cents',
   'subtotal_cents',
   'total_cents',
+  'commercial_stage',
+  'stage',
+  'msi_eligible',
+  'msi',
+  'cupo',
+  'quota',
+  'quota_percent',
+  'pricing_rules_version',
+  'installments',
+  'default_installments',
+  'payment_methods',
+  'excluded_payment_types',
+  'excluded_payment_methods',
 ] as const
 
 export const checkoutRequestSchema = z
@@ -21,6 +39,11 @@ export const checkoutRequestSchema = z
     product_code: z.string().min(1).max(64),
     quantity: z.number().int().positive().optional(),
     idempotency_key: z.string().min(8).max(128),
+    /**
+     * Optional optimistic display price for PRICE_CHANGED detection only.
+     * Never commercial authority.
+     */
+    expected_unit_price_cents: z.number().int().nonnegative().optional(),
     buyer: z
       .object({
         public_ref: z.string().min(1).max(128).optional(),
@@ -42,6 +65,7 @@ export const checkoutRequestSchema = z
       .strict()
       .optional(),
     correlation_id: z.string().min(1).max(128).optional(),
+    selected_provider: z.enum(['MERCADO_PAGO', 'CLIP', 'OPENPAY']).optional(),
   })
   .strict()
 
@@ -72,4 +96,38 @@ export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity
     throw new CheckoutError('PRODUCT_NOT_FOUND')
   }
   return { ...parsed.data, quantity }
+}
+
+/** Default go-live enablement: Mercado Pago only. No silent customer fallback. */
+export function loadRuntimeProviderEnablement(
+  env: (key: string) => string | undefined,
+): ProviderEnablement {
+  const raw = env('PAYMENTS_RUNTIME_ENABLED_PROVIDERS')?.trim()
+  const tokens = raw
+    ? raw.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['MERCADO_PAGO']
+  const enablement: ProviderEnablement = {}
+  for (const token of tokens) {
+    if (token === 'MERCADO_PAGO' || token === 'CLIP' || token === 'OPENPAY') {
+      enablement[token] = true
+    }
+  }
+  return enablement
+}
+
+export function assertSelectedProvider(
+  selected: string | undefined,
+  enablement: ProviderEnablement,
+): 'MERCADO_PAGO' | 'CLIP' | 'OPENPAY' {
+  if (selected == null || selected === '') {
+    throw new CheckoutError('UNSUPPORTED_PROVIDER')
+  }
+  try {
+    return resolveSelectableProvider(selected, enablement)
+  } catch (error) {
+    if (isPaymentContractError(error) && error.code === 'UNSUPPORTED_PROVIDER') {
+      throw new CheckoutError('UNSUPPORTED_PROVIDER')
+    }
+    throw new CheckoutError('UNSUPPORTED_PROVIDER')
+  }
 }

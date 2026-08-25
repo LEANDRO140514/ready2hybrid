@@ -343,12 +343,14 @@ describe('0016 checkout-compatible compensating privilege hardening (OD-040-002-
     expect(sha256Upper(migration15Path)).not.toBe(HASH_0015_HISTORICAL)
   })
 
-  it('F2: 0016 is the next migration number; 0015 remains; no collision', () => {
+  it('F2: 0016 remains unique; 0015 remains; authorized 0017 is next', () => {
     const names = readdirSync(migrationsDir)
     expect(names).toContain('0016_compensating-privilege-hardening-checkout-compatibility.sql')
     expect(names).toContain('0015_compensating-privilege-hardening.sql')
     expect(names.filter((n) => n.startsWith('0016')).length).toBe(1)
-    expect(names.some((n) => n.startsWith('0017'))).toBe(false)
+    expect(names.filter((n) => n.startsWith('0017'))).toEqual([
+      '0017_operational-identity-assignments.sql',
+    ])
   })
 
   it('F3: covers exactly the same 24 B1 tables for anon/authenticated', () => {
@@ -514,10 +516,13 @@ describe('0016 runner-compatible correction (OD-040-002-B2-FIX2)', () => {
     // Static evidence of the remote check performed in OD-040-002-B2-FIX2 /
     // B3-RETEST: max remote version was 15, name compensating-privilege-
     // hardening. This unit does not call the remote API from tests.
+    // R2H-T2-2B1 later authored exactly one authorized 0017 locally.
     expect(sql16).toContain('OD-040-002-B2-FIX2')
     expect(sql16).toContain('Transaction control statements are not allowed')
     expect(existsSync(migration16Path)).toBe(true)
-    expect(readdirSync(migrationsDir).some((n) => n.startsWith('0017'))).toBe(false)
+    expect(readdirSync(migrationsDir).filter((n) => n.startsWith('0017'))).toEqual([
+      '0017_operational-identity-assignments.sql',
+    ])
   })
 
   it('RCF3: executable body contains no TCL statements', () => {
@@ -725,7 +730,9 @@ describe('0015 runner-compatible canonicalization and chain reproducibility (OD-
       expect(executableTclLines(sql)).toEqual([])
     }
     expect(names.filter((n) => /^001[1-6]_/.test(n)).sort()).toEqual([...CHAIN_MIGRATIONS])
-    expect(names.some((n) => n.startsWith('0017'))).toBe(false)
+    expect(names.filter((n) => n.startsWith('0017'))).toEqual([
+      '0017_operational-identity-assignments.sql',
+    ])
   })
 
   it('MCF13: historical hash constant is not deleted; canonical supersedes file bytes only', () => {

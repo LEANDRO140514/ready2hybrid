@@ -26,7 +26,12 @@ var MESSAGES = {
   CHECKOUT_CREATION_FAILED: { message: "Checkout could not be created.", retry: "OPTIONAL", status: 502 },
   CONFLICT: { message: "Request conflicts with an existing operation.", retry: "AFTER_STATE_CHANGE", status: 409 },
   RATE_LIMITED: { message: "Too many requests.", retry: "OPTIONAL", status: 429 },
-  INTERNAL_ERROR: { message: "Unexpected checkout error.", retry: "OPTIONAL", status: 500 }
+  INTERNAL_ERROR: { message: "Unexpected checkout error.", retry: "OPTIONAL", status: 500 },
+  UNSUPPORTED_PROVIDER: {
+    message: "Selected payment provider is not available.",
+    retry: "AFTER_STATE_CHANGE",
+    status: 409
+  }
 };
 var CheckoutError = class extends Error {
   code;
@@ -53,10 +58,42 @@ function isCheckoutError(error40) {
   return error40 instanceof CheckoutError;
 }
 
+// insforge/functions/_shared/checkout/payment-policy.ts
+function toCheckoutPaymentPolicy(msiEligible) {
+  if (msiEligible === true) {
+    return { maximumInstallments: 3, excludeTicketPayments: true };
+  }
+  if (msiEligible === false) {
+    return { maximumInstallments: 1, excludeTicketPayments: true };
+  }
+  throw new CheckoutError("CONFIGURATION_ERROR", "msi_eligible must be boolean");
+}
+function assertCanonicalMsiEligible(value) {
+  if (typeof value !== "boolean") {
+    throw new CheckoutError("CONFIGURATION_ERROR", "msi_eligible must be boolean");
+  }
+}
+function assertCheckoutPaymentPolicy(policy) {
+  if (policy.maximumInstallments !== 1 && policy.maximumInstallments !== 3 || policy.excludeTicketPayments !== true) {
+    throw new CheckoutError("CONFIGURATION_ERROR", "invalid checkout payment policy");
+  }
+}
+
 // insforge/functions/_shared/checkout/mp-client.ts
+function serializePaymentMethods(policy) {
+  assertCheckoutPaymentPolicy(policy);
+  return {
+    installments: policy.maximumInstallments,
+    excluded_payment_types: [{ id: "ticket" }]
+  };
+}
 function createHttpMercadoPagoClient(fetchImpl = fetch) {
   return {
     async createCheckoutProPreference(input) {
+      if (!input.paymentPolicy) {
+        throw new CheckoutError("CONFIGURATION_ERROR", "paymentPolicy required");
+      }
+      const payment_methods = serializePaymentMethods(input.paymentPolicy);
       const body = {
         external_reference: input.orderId,
         notification_url: input.notificationUrl,
@@ -71,6 +108,7 @@ function createHttpMercadoPagoClient(fetchImpl = fetch) {
             unit_price: input.price.unit_price_cents / 100
           }
         ],
+        payment_methods,
         metadata: {
           product_code: input.productCode,
           journey: input.price.journey
@@ -169,11 +207,15 @@ async function fingerprintRequest(normalized) {
 }
 
 // insforge/functions/_shared/checkout/journeys.ts
+var HISTORICAL_CODES = /* @__PURE__ */ new Set([
+  "IND-PRO-H",
+  "IND-PRO-M",
+  "DOB-VIE-HH",
+  "DOB-VIE-MH",
+  "DOB-SAB-MM"
+]);
 var JOURNEY_BY_CODE = {
   "DOB-VIE-MM": "J2",
-  "DOB-VIE-HH": "J2",
-  "DOB-VIE-MH": "J2",
-  "DOB-SAB-MM": "J2",
   "DOB-SAB-HH": "J2",
   "DOB-SAB-MH": "J2",
   "REL-4H": "J3",
@@ -181,8 +223,6 @@ var JOURNEY_BY_CODE = {
   "REL-2H2M": "J3",
   "IND-H": "J1",
   "IND-M": "J1",
-  "IND-PRO-H": "J1",
-  "IND-PRO-M": "J1",
   "HALF-IND-M": "J1",
   "HALF-IND-H": "J1",
   "HALF-DOB-MM": "J2",
@@ -200,6 +240,7 @@ var JOURNEY_BY_CODE = {
   "FOT-3D": "J5"
 };
 function journeyForProductCode(code) {
+  if (HISTORICAL_CODES.has(code)) return null;
   return JOURNEY_BY_CODE[code] ?? null;
 }
 function economicUnitForJourney(journey, teamSize) {
@@ -212,8 +253,8 @@ function capacityUnitForJourney(journey, teamSize) {
 }
 
 // insforge/functions/_shared/checkout/pricing.ts
-function buildPriceSnapshot(product, journey, quantity) {
-  const unit = product.price_cents;
+function buildPriceSnapshot(product, journey, quantity, commercial) {
+  const unit = commercial?.unit_price_cents ?? product.price_cents;
   const itemTotal = unit * quantity;
   return {
     currency: "MXN",
@@ -228,12 +269,21 @@ function buildPriceSnapshot(product, journey, quantity) {
     has_chip: product.has_chip,
     has_insurance: product.has_insurance,
     chip_extra_cents: 0,
-    insurance_extra_cents: 0
+    insurance_extra_cents: 0,
+    commercial_stage: commercial?.commercial_stage,
+    msi_eligible: commercial?.msi_eligible,
+    pricing_rules_version: commercial?.pricing_rules_version,
+    stage_resolved_at: commercial?.stage_resolved_at
   };
 }
 
 // insforge/functions/_shared/checkout/eligibility.ts
+var MULTIDAY_PRODUCT_CODES = ["PUB-3D", "FOT-3D"];
+function isMultidayProductCode(code) {
+  return MULTIDAY_PRODUCT_CODES.includes(code);
+}
 function isMultidayCheckoutBlocked(product) {
+  if (isMultidayProductCode(product.code)) return false;
   if (product.kind !== "spectator" && product.kind !== "press") return false;
   return product.day == null || product.day === "";
 }
@@ -249,9 +299,6 @@ function assertQuantityForProduct(product, quantity) {
     throw new CheckoutError("INVALID_REQUEST", "quantity must be a positive integer");
   }
   if (product.kind === "spectator") {
-    if (quantity > product.cupo) {
-      throw new CheckoutError("SOLD_OUT");
-    }
     return;
   }
   if (quantity !== 1) {
@@ -269,8 +316,26 @@ var CLOSED_PRODUCT_STATES = /* @__PURE__ */ new Set([
   "SALES_CLOSED",
   "CANCELLED",
   "INACTIVE",
-  "HIDDEN"
+  "HIDDEN",
+  "RETIRED_PRODUCT",
+  "SUPERSEDED_SCHEDULE_VARIANT"
 ]);
+function isOrganizerSoldOutState(value) {
+  return value === "SOLD_OUT";
+}
+function resolveEffectiveSoldOut(input) {
+  return input.skuSoldOut || input.categoryOfferSoldOut || input.eventSoldOut;
+}
+function assertEffectiveSoldOut(input) {
+  const soldOut = resolveEffectiveSoldOut({
+    skuSoldOut: isOrganizerSoldOutState(input.product.sale_state),
+    categoryOfferSoldOut: isOrganizerSoldOutState(input.categoryOfferSaleState),
+    eventSoldOut: isOrganizerSoldOutState(input.event?.sale_state)
+  });
+  if (soldOut) {
+    throw new CheckoutError("SOLD_OUT");
+  }
+}
 function assertSalesOpen(event, now = /* @__PURE__ */ new Date()) {
   if (event.status === "CONFIGURADO") {
     throw new CheckoutError("SALES_NOT_OPEN");
@@ -293,8 +358,13 @@ function assertSalesOpen(event, now = /* @__PURE__ */ new Date()) {
     throw new CheckoutError("SALES_NOT_OPEN");
   }
 }
-function assertProductSellable(product) {
-  if (product.sale_state && CLOSED_PRODUCT_STATES.has(product.sale_state)) {
+function assertProductSellable(product, scope) {
+  assertEffectiveSoldOut({
+    product,
+    event: scope?.event,
+    categoryOfferSaleState: scope?.categoryOfferSaleState
+  });
+  if (product.sale_state && CLOSED_PRODUCT_STATES.has(product.sale_state) && product.sale_state !== "SOLD_OUT") {
     throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
   }
   if (product.visibility === "HIDDEN") {
@@ -305,6 +375,154 @@ function assertProductSellable(product) {
   }
   if (!Number.isInteger(product.price_cents) || product.price_cents < 0) {
     throw new CheckoutError("CONFIGURATION_ERROR");
+  }
+}
+
+// insforge/functions/_shared/checkout/staged-pricing.ts
+var PRICING_RULES_VERSION = "r2h-commercial-2026.1";
+var MERIDA_OFFSET_MS = -6 * 60 * 60 * 1e3;
+function meridaWallToUtcMs(y, m, d, hh = 0, mm = 0, ss = 0) {
+  return Date.UTC(y, m - 1, d, hh, mm, ss) - MERIDA_OFFSET_MS;
+}
+var STAGE_WINDOWS = {
+  LAUNCH: {
+    startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 9, 1, 0, 0, 0)
+  },
+  PRESALE: {
+    startMs: meridaWallToUtcMs(2026, 9, 1, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0)
+  },
+  REGULAR: {
+    startMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 8, 0, 0, 0)
+  }
+};
+var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
+function resolveCalendarStage(now) {
+  const t = now.getTime();
+  if (t < STAGE_WINDOWS.LAUNCH.startMs) return null;
+  if (t >= SALES_CLOSED_AT_MS) return null;
+  if (t < STAGE_WINDOWS.LAUNCH.endMs) return "LAUNCH";
+  if (t < STAGE_WINDOWS.PRESALE.endMs) return "PRESALE";
+  return "REGULAR";
+}
+function normalizePersistedStage(value) {
+  if (value === "PRESALE" || value === "REGULAR" || value === "LAUNCH") return value;
+  return "LAUNCH";
+}
+function resolveEffectiveStage(now, _totalCupo, _consumedUnits, _persistedStage = "LAUNCH") {
+  const t = now.getTime();
+  if (t >= SALES_CLOSED_AT_MS) return "SALES_CLOSED";
+  const calendar = resolveCalendarStage(now);
+  if (calendar == null) return "SALES_NOT_OPEN";
+  return calendar;
+}
+function row(launch, presale, regular, msi, checkoutEnabled = true, multidayFailClosed = false) {
+  return {
+    launch_cents: launch,
+    presale_cents: presale,
+    regular_cents: regular,
+    msi_eligible: msi,
+    checkout_enabled: checkoutEnabled && !multidayFailClosed,
+    multiday_fail_closed: multidayFailClosed
+  };
+}
+var PRODUCT_STAGE_PRICES = Object.freeze({
+  "DOB-VIE-MM": row(25e4, 275e3, 3e5, true),
+  "DOB-VIE-HH": row(25e4, 275e3, 3e5, true, false),
+  "DOB-VIE-MH": row(25e4, 275e3, 3e5, true, false),
+  "DOB-SAB-MM": row(25e4, 275e3, 3e5, true, false),
+  "DOB-SAB-HH": row(25e4, 275e3, 3e5, true),
+  "DOB-SAB-MH": row(25e4, 275e3, 3e5, true),
+  "REL-4H": row(32e4, 35e4, 38e4, true),
+  "REL-4M": row(32e4, 35e4, 38e4, true),
+  "REL-2H2M": row(32e4, 35e4, 38e4, true),
+  "IND-H": row(15e4, 165e3, 18e4, true),
+  "IND-M": row(15e4, 165e3, 18e4, true),
+  "IND-PRO-H": row(15e4, 165e3, 18e4, true, false),
+  "IND-PRO-M": row(15e4, 165e3, 18e4, true, false),
+  "HALF-IND-M": row(8e4, 9e4, 1e5, true),
+  "HALF-IND-H": row(8e4, 9e4, 1e5, true),
+  "HALF-DOB-MM": row(16e4, 18e4, 2e5, true),
+  "HALF-DOB-HH": row(16e4, 18e4, 2e5, true),
+  "HALF-DOB-MH": row(16e4, 18e4, 2e5, true),
+  "WOD-M": row(35e3, 35e3, 35e3, false),
+  "WOD-H": row(35e3, 35e3, 35e3, false),
+  "PUB-VIE": row(25e3, 25e3, 25e3, false),
+  "PUB-SAB": row(25e3, 25e3, 25e3, false),
+  "PUB-DOM": row(25e3, 25e3, 25e3, false),
+  "PUB-3D": row(6e4, 6e4, 6e4, false, true, false),
+  "FOT-VIE": row(35e3, 35e3, 35e3, false),
+  "FOT-SAB": row(35e3, 35e3, 35e3, false),
+  "FOT-DOM": row(35e3, 35e3, 35e3, false),
+  "FOT-3D": row(8e4, 8e4, 8e4, false, true, false)
+});
+function getProductStagePriceRow(productCode) {
+  return PRODUCT_STAGE_PRICES[productCode] ?? null;
+}
+function priceCentsForStage(priceRow, stage) {
+  switch (stage) {
+    case "LAUNCH":
+      return priceRow.launch_cents;
+    case "PRESALE":
+      return priceRow.presale_cents;
+    case "REGULAR":
+      return priceRow.regular_cents;
+  }
+}
+function resolveCommercialOffer(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const priceRow = getProductStagePriceRow(input.productCode);
+  if (!priceRow) {
+    return { error: "PRODUCT_DISABLED" };
+  }
+  if (priceRow.multiday_fail_closed || input.multidayBlocked) {
+    return { error: "MULTIDAY_FAIL_CLOSED" };
+  }
+  if (input.productDisabled || !priceRow.checkout_enabled) {
+    return { error: "PRODUCT_DISABLED" };
+  }
+  const persisted = normalizePersistedStage(input.persistedStage);
+  const effective = resolveEffectiveStage(
+    now,
+    input.totalCupo,
+    input.consumedUnits,
+    persisted
+  );
+  if (effective === "SALES_CLOSED") return { error: "SALES_CLOSED" };
+  if (effective === "SALES_NOT_OPEN") return { error: "SALES_NOT_OPEN" };
+  return {
+    product_code: input.productCode,
+    commercial_stage: effective,
+    unit_price_cents: priceCentsForStage(priceRow, effective),
+    currency: "MXN",
+    msi_eligible: priceRow.msi_eligible,
+    pricing_rules_version: PRICING_RULES_VERSION,
+    stage_resolved_at: now.toISOString(),
+    sale_state: "AVAILABLE",
+    consumed_units: input.consumedUnits
+  };
+}
+function buildOrderCommercialSnapshot(input) {
+  const qty = input.quantity;
+  return {
+    product_code: input.resolution.product_code,
+    commercial_stage: input.resolution.commercial_stage,
+    unit_price_cents: input.resolution.unit_price_cents,
+    quantity: qty,
+    total_price_cents: input.resolution.unit_price_cents * qty,
+    currency: "MXN",
+    msi_eligible: input.resolution.msi_eligible,
+    pricing_rules_version: input.resolution.pricing_rules_version,
+    stage_resolved_at: input.resolution.stage_resolved_at,
+    hold_expires_at: input.holdExpiresAt ?? null
+  };
+}
+function assertClientExpectedPrice(expectedUnitPriceCents, canonicalUnitPriceCents) {
+  if (expectedUnitPriceCents === void 0) return;
+  if (expectedUnitPriceCents !== canonicalUnitPriceCents) {
+    throw new Error("PRICE_CHANGED");
   }
 }
 
@@ -11451,6 +11669,37 @@ function date4(params) {
 // node_modules/zod/v4/classic/external.js
 config(en_default());
 
+// insforge/functions/_shared/payments/errors.ts
+var PaymentContractError = class extends Error {
+  code;
+  constructor(code, detail) {
+    super(detail ?? code);
+    this.code = code;
+  }
+};
+function isPaymentContractError(error40) {
+  return error40 instanceof PaymentContractError;
+}
+
+// insforge/functions/_shared/payments/ids.ts
+var ACTIVE_PAYMENT_PROVIDER_IDS = ["MERCADO_PAGO", "CLIP", "OPENPAY"];
+function isActivePaymentProviderId(value) {
+  return ACTIVE_PAYMENT_PROVIDER_IDS.includes(value);
+}
+function parseActivePaymentProviderId(raw) {
+  if (typeof raw !== "string" || !isActivePaymentProviderId(raw)) {
+    throw new PaymentContractError("UNSUPPORTED_PROVIDER");
+  }
+  return raw;
+}
+function resolveSelectableProvider(raw, enablement) {
+  const id = parseActivePaymentProviderId(raw);
+  if (enablement[id] !== true) {
+    throw new PaymentContractError("UNSUPPORTED_PROVIDER");
+  }
+  return id;
+}
+
 // insforge/functions/_shared/checkout/validate.ts
 var FORBIDDEN_CLIENT_MONEY_KEYS = [
   "price",
@@ -11463,12 +11712,30 @@ var FORBIDDEN_CLIENT_MONEY_KEYS = [
   "unit_price_cents",
   "item_total_cents",
   "subtotal_cents",
-  "total_cents"
+  "total_cents",
+  "commercial_stage",
+  "stage",
+  "msi_eligible",
+  "msi",
+  "cupo",
+  "quota",
+  "quota_percent",
+  "pricing_rules_version",
+  "installments",
+  "default_installments",
+  "payment_methods",
+  "excluded_payment_types",
+  "excluded_payment_methods"
 ];
 var checkoutRequestSchema = external_exports.object({
   product_code: external_exports.string().min(1).max(64),
   quantity: external_exports.number().int().positive().optional(),
   idempotency_key: external_exports.string().min(8).max(128),
+  /**
+   * Optional optimistic display price for PRICE_CHANGED detection only.
+   * Never commercial authority.
+   */
+  expected_unit_price_cents: external_exports.number().int().nonnegative().optional(),
   buyer: external_exports.object({
     public_ref: external_exports.string().min(1).max(128).optional()
   }).strict().optional(),
@@ -11480,7 +11747,8 @@ var checkoutRequestSchema = external_exports.object({
     version: external_exports.string().min(1).max(64).optional(),
     accepted: external_exports.boolean().optional()
   }).strict().optional(),
-  correlation_id: external_exports.string().min(1).max(128).optional()
+  correlation_id: external_exports.string().min(1).max(128).optional(),
+  selected_provider: external_exports.enum(["MERCADO_PAGO", "CLIP", "OPENPAY"]).optional()
 }).strict();
 function assertNoClientMoneyAuthority(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -11505,6 +11773,30 @@ function parseCheckoutRequest(raw) {
   }
   return { ...parsed.data, quantity };
 }
+function loadRuntimeProviderEnablement(env2) {
+  const raw = env2("PAYMENTS_RUNTIME_ENABLED_PROVIDERS")?.trim();
+  const tokens = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : ["MERCADO_PAGO"];
+  const enablement = {};
+  for (const token of tokens) {
+    if (token === "MERCADO_PAGO" || token === "CLIP" || token === "OPENPAY") {
+      enablement[token] = true;
+    }
+  }
+  return enablement;
+}
+function assertSelectedProvider(selected, enablement) {
+  if (selected == null || selected === "") {
+    throw new CheckoutError("UNSUPPORTED_PROVIDER");
+  }
+  try {
+    return resolveSelectableProvider(selected, enablement);
+  } catch (error40) {
+    if (isPaymentContractError(error40) && error40.code === "UNSUPPORTED_PROVIDER") {
+      throw new CheckoutError("UNSUPPORTED_PROVIDER");
+    }
+    throw new CheckoutError("UNSUPPORTED_PROVIDER");
+  }
+}
 
 // insforge/functions/_shared/checkout/orchestrate.ts
 function publicSuccess(body) {
@@ -11519,14 +11811,46 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     if (!found) throw new CheckoutError("PRODUCT_NOT_FOUND");
     assertCheckoutProductAvailable(found.product);
     assertSalesOpen(found.event, deps.now?.() ?? /* @__PURE__ */ new Date());
-    assertProductSellable(found.product);
+    const categoryOfferSaleState = await deps.catalog.getCategoryOfferSaleState?.(found.event.code, found.product.block) ?? null;
+    assertProductSellable(found.product, {
+      event: found.event,
+      categoryOfferSaleState
+    });
     assertQuantityForProduct(found.product, req.quantity);
+    const enablement = loadRuntimeProviderEnablement(deps.env);
+    const selectedProvider = assertSelectedProvider(req.selected_provider, enablement);
+    if (selectedProvider !== "MERCADO_PAGO") {
+      throw new CheckoutError("UNSUPPORTED_PROVIDER");
+    }
     const config2 = loadCheckoutRuntimeConfig(deps.env);
     assertWaiverConfig(config2, journey, req.waiver);
     if ((journey === "J2" || journey === "J3") && !config2.invitationTtlSeconds) {
       throw new CheckoutError("CONFIGURATION_ERROR", "TEAM_INVITATION_TTL_SECONDS missing");
     }
-    const price = buildPriceSnapshot(found.product, journey, req.quantity);
+    const now = deps.now?.() ?? /* @__PURE__ */ new Date();
+    const consumed = await deps.catalog.getConsumedCapacityUnits?.(found.product.id) ?? 0;
+    const commercial = resolveCommercialOffer({
+      productCode: found.product.code,
+      totalCupo: found.product.cupo,
+      consumedUnits: consumed,
+      persistedStage: found.product.commercial_stage_high_water,
+      now,
+      productDisabled: found.product.visibility === "HIDDEN" || found.product.sale_state === "CANCELLED" || found.product.sale_state === "INACTIVE",
+      multidayBlocked: isMultidayCheckoutBlocked(found.product)
+    });
+    if ("error" in commercial) {
+      if (commercial.error === "MULTIDAY_FAIL_CLOSED" || commercial.error === "PRODUCT_DISABLED") {
+        throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
+      }
+      throw new CheckoutError(commercial.error);
+    }
+    assertCanonicalMsiEligible(commercial.msi_eligible);
+    try {
+      assertClientExpectedPrice(req.expected_unit_price_cents, commercial.unit_price_cents);
+    } catch {
+      throw new CheckoutError("PRICE_CHANGED");
+    }
+    const price = buildPriceSnapshot(found.product, journey, req.quantity, commercial);
     const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity);
     const normalized = {
       product_code: req.product_code,
@@ -11538,6 +11862,10 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key);
     const requestFingerprint = await fingerprintRequest(normalized);
     const correlationId = req.correlation_id ?? deps.randomId?.() ?? crypto.randomUUID();
+    const orderSnap = buildOrderCommercialSnapshot({
+      resolution: commercial,
+      quantity: req.quantity
+    });
     const tx = await deps.repo.startCheckoutTx({
       productCode: found.product.code,
       quantity: req.quantity,
@@ -11571,15 +11899,22 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         capacity_unit: price.capacity_unit,
         chip_extra_cents: 0,
         insurance_extra_cents: 0,
-        unit_price_cents: price.unit_price_cents,
-        quantity: req.quantity,
-        currency: "MXN"
+        unit_price_cents: orderSnap.unit_price_cents,
+        quantity: orderSnap.quantity,
+        total_price_cents: orderSnap.total_price_cents,
+        currency: "MXN",
+        commercial_stage: orderSnap.commercial_stage,
+        msi_eligible: orderSnap.msi_eligible,
+        pricing_rules_version: orderSnap.pricing_rules_version,
+        stage_resolved_at: orderSnap.stage_resolved_at
       }
     });
     if (tx.replay && tx.priorResponse) {
       return publicSuccess(tx.priorResponse);
     }
     try {
+      assertCanonicalMsiEligible(orderSnap.msi_eligible);
+      const paymentPolicy = toCheckoutPaymentPolicy(orderSnap.msi_eligible);
       const preference = await deps.mp.createCheckoutProPreference({
         accessToken: config2.mpAccessToken,
         siteId: config2.mpSiteId,
@@ -11587,6 +11922,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         productCode: found.product.code,
         productName: found.product.name,
         price,
+        paymentPolicy,
         backUrls: {
           success: config2.backUrlSuccess,
           failure: config2.backUrlFailure,
@@ -11760,15 +12096,23 @@ function createPorts() {
           event_code: String(product.event_code),
           has_chip: Boolean(product.has_chip),
           has_insurance: Boolean(product.has_insurance),
-          day: product.day == null || product.day === "" ? null : String(product.day)
+          day: product.day == null || product.day === "" ? null : String(product.day),
+          commercial_stage_high_water: product.commercial_stage_high_water == null || product.commercial_stage_high_water === "" ? "LAUNCH" : String(product.commercial_stage_high_water)
         },
         event: {
           code: String(event.code),
           status: String(event.status),
           sales_open_at: event.sales_open_at ?? null,
-          sales_close_at: event.sales_close_at ?? null
+          sales_close_at: event.sales_close_at ?? null,
+          sale_state: event.sale_state ?? null
         }
       };
+    },
+    async getCategoryOfferSaleState(eventCode, block) {
+      const { data, error: error40 } = await admin.database.from("event_category_sale_states").select("sale_state").eq("event_code", eventCode).eq("block", block).limit(1);
+      if (error40 || !data?.length) return null;
+      const saleState = data[0].sale_state;
+      return saleState == null || saleState === "" ? null : String(saleState);
     }
   };
   const repo = {
@@ -11798,11 +12142,11 @@ function createPorts() {
         }
       });
       if (error40) throw new CheckoutError("INTERNAL_ERROR");
-      const row = data;
-      if (!row?.ok) {
-        throw new CheckoutError(row?.error_code || "INTERNAL_ERROR");
+      const row2 = data;
+      if (!row2?.ok) {
+        throw new CheckoutError(row2?.error_code || "INTERNAL_ERROR");
       }
-      if (row.replay) {
+      if (row2.replay) {
         return {
           orderId: "",
           trackingRef: "",
@@ -11810,17 +12154,17 @@ function createPorts() {
           holdId: "",
           expiresAt: "",
           replay: true,
-          priorResponse: row.prior_response,
+          priorResponse: row2.prior_response,
           invitationTokens: []
         };
       }
-      const tokens = Array.isArray(row.invitation_tokens) ? row.invitation_tokens.filter((t) => typeof t?.token === "string").map((t) => ({ token: String(t.token) })) : [];
+      const tokens = Array.isArray(row2.invitation_tokens) ? row2.invitation_tokens.filter((t) => typeof t?.token === "string").map((t) => ({ token: String(t.token) })) : [];
       return {
-        orderId: String(row.order_id),
-        trackingRef: String(row.tracking_ref),
-        orderItemId: String(row.order_item_id),
-        holdId: String(row.hold_id),
-        expiresAt: String(row.expires_at),
+        orderId: String(row2.order_id),
+        trackingRef: String(row2.tracking_ref),
+        orderItemId: String(row2.order_item_id),
+        holdId: String(row2.hold_id),
+        expiresAt: String(row2.expires_at),
         replay: false,
         priorResponse: null,
         invitationTokens: tokens
@@ -11849,7 +12193,28 @@ function createPorts() {
       });
     }
   };
-  return { catalog, repo };
+  const catalogWithCapacity = {
+    ...catalog,
+    async getConsumedCapacityUnits(productId) {
+      const { data: holds, error: error40 } = await admin.database.from("capacity_holds").select("capacity_units,state,expires_at").eq("product_id", productId);
+      if (error40 || !holds) return 0;
+      const nowMs = Date.now();
+      let sum = 0;
+      for (const h of holds) {
+        if (h.state === "CONVERTED") {
+          sum += Number(h.capacity_units) || 0;
+          continue;
+        }
+        if (h.state === "ACTIVE") {
+          if (h.expires_at == null || new Date(h.expires_at).getTime() > nowMs) {
+            sum += Number(h.capacity_units) || 0;
+          }
+        }
+      }
+      return sum;
+    }
+  };
+  return { catalog: catalogWithCapacity, repo };
 }
 async function handler(req) {
   if (req.method === "OPTIONS") {

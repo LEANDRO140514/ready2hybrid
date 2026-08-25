@@ -10,9 +10,6 @@ export function assertQuantityForProduct(product: ProductSalesRow, quantity: num
     throw new CheckoutError('INVALID_REQUEST', 'quantity must be a positive integer')
   }
   if (product.kind === 'spectator') {
-    if (quantity > product.cupo) {
-      throw new CheckoutError('SOLD_OUT')
-    }
     return
   }
   if (quantity !== 1) {

@@ -9,14 +9,64 @@
 - Aplicacion: PWA offline-first
 - Backend: InsForge
 - Pagos: Mercado Pago Checkout Pro
-- Evento: viernes 9 de octubre de 2026
+- Evento (contrato efectivo SPEC-030 v0.3.0): 2026-11-13 → 2026-11-15
+  America/Merida. Last clean committed historical baseline remains
+  “viernes 9 de octubre de 2026” in git HEAD / docs/02 (stale; later
+  documentary migration).
 - F0-D: CLOSED - Playwright Foundation implementada, validada y publicada
 - R1: CLOSED - migracion documental publicada en `b6e64c2`
 - R2: CLOSED - revision formal terminada en `CHANGES_REQUIRED`
 - R3: CLOSED - correcciones publicadas en `9d9bbb9`
-- SALE-1: CLOSED - SPEC-030 v0.1.0 aprobada por el propietario
-- SALE-2: CLOSED - SPEC-031 v0.1.0 aprobada por el propietario
-- SALE-3: CLOSED - contrato documental; SPEC-032 v0.1.0 APPROVED
+- SALE-1: CLOSED - SPEC-030 v0.1.0 aprobada (ahora SUPERSEDED por v0.2.0)
+- SALE-2: CLOSED - SPEC-031 v0.1.0 aprobada (ahora SUPERSEDED por v0.2.0)
+- SALE-3: CLOSED - contrato documental; SPEC-032 v0.1.0 (ahora SUPERSEDED por v0.2.0)
+- SALES-GO-LIVE-0C-SPEC: CLOSED - SPEC-030/031/032 v0.2.0 APPROVED
+  (Leandro Espinosa, CEO / Project Owner, 2026-08-04); v0.1.0 archivadas
+  SUPERSEDED; sin autorizacion de codigo/SQL/Main/landing/MP/deploy/pagos/
+  commit/push/`SALES_STATUS=OPEN`
+- SALES-GO-LIVE-0C-PRICING-A: VALIDATED (local foundation only)
+  (Leandro Espinosa, CEO / Project Owner, 2026-08-05; basis
+  `SALES-GO-LIVE-0C-PRICING-A-REVALIDATION.md`; recording
+  `SALES-GO-LIVE-0C-PRICING-A-HUMAN-VALIDATION-APPROVAL.md`;
+  historical `VALIDATION_FAILED` retained intact; FIX-1 remediations accepted;
+  covers staged prices, per-SKU quotas 30/45/25, monotonic HWM, hold expiry
+  stamp, immutable commercial snapshot, last-seat concurrency, webhook vs
+  snapshot, local migration `0018`; does NOT authorize Main, remote sandbox
+  apply, landing, Mercado Pago productivo, secrets, deploy, pagos reales,
+  commit, push, ni `SALES_STATUS=OPEN`)
+- SALES-GO-LIVE-0C-MP-MSI-IMPLEMENTATION-A: VALIDATED (local TypeScript source only)
+  (Leandro Espinosa, CEO / Project Owner, 2026-08-05; basis
+  `SALES-GO-LIVE-0C-MP-MSI-IMPLEMENTATION-A-VALIDATION.md`; recording
+  `SALES-GO-LIVE-0C-MP-MSI-IMPLEMENTATION-A-HUMAN-VALIDATION-APPROVAL.md`;
+  covers `msi_eligible` → `payment_methods` 3|1 + ticket exclusion, snapshot
+  authority, client forbidden keys, fail-closed, compensation, webhook
+  non-regression; `handler.deploy.js` remains STALE and blocks sandbox E2E /
+  deploy until a separate regenerate/redeploy unit; does NOT authorize Main,
+  sandbox remoto, panel MP, secrets, deploy, preferencias/pagos, commit, push,
+  ni `SALES_STATUS=OPEN`)
+- SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN: FROZEN_BY_RELAUNCH_CONTRACT_CHANGE
+  (Leandro Espinosa, 2026-08-21 America/Merida; freeze administrativo, NO
+  validacion). Bundle local regenerado contra el contrato octubre / 28 SKUs
+  (evidence `docs/implementation/evidence/SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN.md`
+  preservada intacta). Gate anterior: `READY_FOR_MP_MSI_BUNDLE_VALIDATION`.
+  Validacion independiente: NO ejecutada. `handler.deploy.js` regenerado
+  PRESERVADO; no continuar a validacion porque ese contrato sera supersedido
+  por relaunch landing `hybrid-event-landing@5fc0acb` (13-15 nov 2026 / 23 SKUs
+  / ventanas hasta 7 nov). Pricing-A / MSI-A / bundle regen NO se reinterpreta
+  como valida para el contrato nuevo. `0018` NO APLICADO. `SALES_STATUS`
+  cerrado. `PRICING-B-SANDBOX-APPLY` NOT AUTHORIZED.
+  `MP-MSI-SANDBOX-E2E` NOT AUTHORIZED. Siguiente unidad propuesta:
+  `RELAUNCH-DELTA-SPEC-DRAFT` (no iniciada)
+- RELAUNCH-DELTA-SPEC-DRAFT: SPEC-030/031/032 v0.3.0 APPROVED / EFFECTIVE
+  (Leandro Espinosa, CEO / Project Owner, 2026-08-21 America/Merida;
+  independent review `READY_FOR_APPROVAL`; Option 3 historical exception).
+  Event 13–15 Nov 2026; 23 vendible SKUs; 5 RETIRED_FROM_SALE historically
+  preserved; sales windows v0.3.0; `SALES_STATUS` CLOSED. v0.2.0 was
+  operationally APPROVED but never committed as a clean artifact; evidence
+  in `docs/specs/holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE).
+  Last clean committed baseline: v0.1.0. `0018` NOT APPLIED. Bundle
+  `FROZEN_BY_RELAUNCH_CONTRACT_CHANGE`. Implementation NOT STARTED.
+  Gate: `READY_FOR_IMPLEMENTATION_PLAN`
 - F0-E: NOT STARTED - sin autorizacion de implementacion
 - InsForge schema 0001-0003: DEPLOYED AND VALIDATED on `ready2hybrid` / `4bg9ufz2.us-east`
 - Catalog seed: ALIGNED AND LOCALLY VALIDATED (OD-022 APPROVED 2026-07-24)
@@ -577,13 +627,52 @@ Zod, InsForge, Mercado Pago, SQL, deployment ni logica funcional.
 
 ## Proximo gate
 
-`READY_FOR_CTO_IMPL_14A_3C_DATE_NORMALIZATION_REVIEW`
+`READY_FOR_IMPLEMENTATION_PLAN`
+
+RELAUNCH SPEC CONTRACT = v0.3.0 APPROVED / EFFECTIVE (2026-08-21
+America/Merida). SPEC-030/031/032 v0.3.0 = `APPROVED`. Event
+`2026-11-13 → 2026-11-15`. Sellable catalog = 23. Retired SKUs = 5
+(historically preserved). Sales windows = v0.3.0. `SALES_STATUS` = CLOSED.
+HISTORICAL NOTE: v0.2.0 was operationally approved but never committed as a
+clean standalone artifact; evidence preserved under the 0C non-authoritative
+holding. LAST CLEAN COMMITTED HISTORICAL BASELINE = v0.1.0.
+`SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN` = `FROZEN_BY_RELAUNCH_CONTRACT_CHANGE`.
+`0018` NOT APPLIED. IMPLEMENTATION NOT STARTED BY THIS APPROVAL UNIT.
+MULTI-PAYMENT PROVIDER WORK = SEPARATE LANE / NOT IMPLEMENTED BY THIS UNIT.
+
+Esta unidad no autoriza codigo, SQL, Main, landing, Mercado Pago, secrets,
+deploy, pagos, commit, push ni `SALES_STATUS=OPEN`.
+
+Sales Go-Live legado: SPEC-030/031/032 v0.2.0 = `APPROVED` (Leandro Espinosa,
+2026-08-04). `SALES-GO-LIVE-0C-PRICING-A` = `VALIDATED` solo contra octubre /
+28 SKUs. `SALES-GO-LIVE-0C-MP-MSI-IMPLEMENTATION-A` = `VALIDATED` local
+TypeScript source (mismo contrato). `SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN` =
+`FROZEN_BY_RELAUNCH_CONTRACT_CHANGE`. Ninguna evidencia 0C se reinterpreta
+como valida para el contrato de relaunch. `0018` NO APLICADO.
+`PRICING-B-SANDBOX-APPLY` NOT AUTHORIZED. `MP-MSI-SANDBOX-E2E` NOT AUTHORIZED.
+
+Paralelo Tramo 2 (sin mezclar con Sales Go-Live ni con relaunch):
+
+`READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW` permanece como gate documental
+de cierre de commit local T2-1B cuando se autorice por separado.
 
 Zona horaria canonica de gobierno: `America/Merida`. Las fechas humanas y de
 gobierno se expresan en esa zona; los timestamps de ejecucion se conservan en
 UTC con sufijo `Z` tal como fueron capturados.
 
-Siguiente accion permitida:
+Siguiente accion permitida (relaunch specs):
+
+1. Unidad posterior de **implementation plan** contra SPEC-030/031/032 v0.3.0
+   `APPROVED`. Esta approval no inicia implementacion;
+2. No SQL; no bundle regen; no apply `0018`;
+3. `SALES-GO-LIVE-0C-PRICING-B-SANDBOX-APPLY` = NOT AUTHORIZED;
+4. `SALES-GO-LIVE-0C-MP-MSI-SANDBOX-E2E` = NOT AUTHORIZED;
+5. No Main / landing / MP productivo / secrets / deploy / pagos /
+   `SALES_STATUS=OPEN` / commit / push sin autorizacion explicita;
+6. No mutar `handler.deploy.js`, `staged-pricing.ts`, `0018`, `journeys.ts`,
+   tests, 0C holding snapshots, landing, InsForge ni Mercado Pago.
+
+Siguiente accion permitida (legado IMPL-14A / sandbox — sin ampliar):
 
 1. IMPL-14A-3C = VALIDATED / CLOSED unicamente para implementacion local,
    pruebas automatizadas y runtime fisico validado en sandbox (cierre humano
@@ -1163,3 +1252,162 @@ LANDING_READY_FOR_READY2HYBRID_MATCH
 
 La sustitucion de imagenes de template por imagenes propias es una tarea visual
 independiente y no bloqueante.
+
+### SALES-GO-LIVE-0C-SPEC (2026-08-04)
+
+El CEO / Project Owner (Leandro Espinosa) aprobo SPEC-030, SPEC-031 y
+SPEC-032 v0.2.0 (`IN_REVIEW` → `APPROVED`). Las v0.1.0 pasaron a
+`SUPERSEDED` y se conservan en `docs/specs/archive/`. Evidencia:
+`docs/implementation/evidence/SALES-GO-LIVE-0C-SPEC-DRAFTS.md`.
+Gate: `READY_FOR_SALES_GO_LIVE_IMPLEMENTATION_UNIT_AUTHORIZATION`.
+Sin autorizacion de implementacion, Main, landing, Mercado Pago, secrets,
+deploy, pagos, commit, push ni `SALES_STATUS=OPEN`.
+
+### SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN FREEZE (2026-08-21)
+
+Freeze administrativo (NO validacion) autorizado por Leandro Espinosa.
+
+```text
+Unit: SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN
+State: FROZEN_BY_RELAUNCH_CONTRACT_CHANGE
+Prior gate: READY_FOR_MP_MSI_BUNDLE_VALIDATION
+Independent validation: NOT EXECUTED
+Bundle: PRESERVED (handler.deploy.js not modified by this freeze)
+0018: NOT APPLIED
+SALES_STATUS: CLOSED
+PRICING-B-SANDBOX-APPLY: NOT AUTHORIZED
+MP-MSI-SANDBOX-E2E: NOT AUTHORIZED
+Proposed next unit: RELAUNCH-DELTA-SPEC-DRAFT (not started)
+```
+
+Motivo: durante la unidad aparecio cambio de autoridad comercial desde
+`hybrid-event-landing@5fc0acb` (13-15 noviembre 2026 / 23 SKUs / ventanas
+hasta 7 noviembre / redistribucion de sesiones). El bundle fue regenerado
+correctamente contra el contrato anterior (octubre / 28 SKUs) y se
+conserva para trazabilidad; no debe seguir a validacion porque ese
+contrato sera supersedido. WIP y evidencia de regen
+(`docs/implementation/evidence/SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN.md`)
+permanecen intactos. Pricing-A / MSI-A / bundle regen no se reinterpreta
+como valida para el contrato nuevo.
+
+Este freeze no modifica codigo, specs, SQL, landing, InsForge, Mercado
+Pago, `SALES_STATUS`, commit ni push.
+
+Gate: `READY_FOR_RELAUNCH_SPEC_DRAFT_APPROVAL`.
+
+### RELAUNCH-DELTA-SPEC-DRAFT (2026-08-21)
+
+Unidad documental. SPEC-030/031/032 v0.3.0 creadas como `DRAFT` bajo
+`docs/specs/drafts/`. Las v0.2.0 APPROVED permanecen intactas y efectivas.
+
+```text
+Unit: RELAUNCH-DELTA-SPEC-DRAFT
+Mode: DOCUMENTATION ONLY
+SPEC-030 v0.3.0: DRAFT
+SPEC-031 v0.3.0: DRAFT
+SPEC-032 v0.3.0: DRAFT
+v0.2.0 APPROVED files: INTACT
+0018: NOT APPLIED
+SALES_STATUS: CLOSED
+Implementation: NOT AUTHORIZED
+```
+
+Archivos creados:
+
+```text
+docs/specs/drafts/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.3.0.md
+docs/specs/drafts/SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT-v0.3.0.md
+docs/specs/drafts/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY-v0.3.0.md
+```
+
+Gate: `READY_FOR_RELAUNCH_SPEC_REVIEW`.
+
+### RELAUNCH-DELTA-SPEC-DRAFT CORRECTION PASS (2026-08-21)
+
+Corrección documental mínima autorizada tras review independiente
+`CHANGES_REQUIRED`. No redefinición de producto.
+
+```text
+Unit: RELAUNCH-DELTA-SPEC-DRAFT (correction pass)
+Mode: DOCUMENTATION CORRECTION ONLY
+Prior review: CHANGES_REQUIRED
+SPEC-030 v0.3.0: DRAFT (R304, AC201, AC305/R231, OD-RELAUNCH-004, docs/04 row 6 stale, 0018/bundle failure modes)
+SPEC-031 v0.3.0: DRAFT (unchanged; no applicable finding)
+SPEC-032 v0.3.0: DRAFT (AC303 trace; R301 SHOULD clarification)
+v0.2.0 APPROVED files: INTACT
+Commercial contract: UNCHANGED
+0018: NOT APPLIED
+SALES_STATUS: CLOSED
+Implementation: NOT AUTHORIZED
+```
+
+Corrections:
+
+- SPEC-030-R304 MUST applies to domain `FULL_DAY` only; `ALL_DAY` remains
+  SHOULD / `OD-RELAUNCH-004` OPEN (implementation-blocking, not
+  approval-blocking);
+- SPEC-030-AC201 Pass names the three half-open windows and
+  `SALES_CLOSED` at `2026-11-08 00:00:00 America/Merida`;
+- SPEC-030 §2 records `docs/04` row 6 (“48 h antes”) as stale;
+- SPEC-032-AC303 traces to R012 / SPEC-030-R304, not SPEC-032-R301.
+- SPEC-030-AC305 covers SPEC-030-R231: normative rule D-14; for
+  `2026-11-13` derived deadline day `2026-10-30`; sole close boundary
+  `now >= 2026-10-31 00:00:00 America/Merida` (no `23:59:59` co-authority);
+  `2026-09-25` is not universal policy; event-date change requires D-14
+  recalculation;
+- SPEC-030 failure modes: historical
+  `insforge/migrations/0018_staged-commercial-pricing.sql` is
+  `STALE / INCOMPATIBLE` and cannot silently authorize go-live; frozen
+  `SALES-GO-LIVE-0C-MP-MSI-BUNDLE-REGEN` cannot be evidence, runtime, or
+  go-live authority for v0.3.0.
+
+Gate: `READY_FOR_RELAUNCH_SPEC_REVIEW`.
+
+### RELAUNCH v0.3.0 FORMAL APPROVAL (2026-08-21)
+
+Project Owner Option 3: last clean committed baseline = v0.1.0; v0.2.0
+operational APPROVED never committed cleanly; v0.3.0 now APPROVED/EFFECTIVE.
+
+```text
+Unit: RELAUNCH-v0.3.0-APPROVAL
+Mode: DOCUMENTATION ONLY
+SPEC-030 v0.3.0: APPROVED / EFFECTIVE
+SPEC-031 v0.3.0: APPROVED / EFFECTIVE
+SPEC-032 v0.3.0: APPROVED / EFFECTIVE
+v0.1.0: LAST CLEAN COMMITTED HISTORICAL BASELINE (archive)
+v0.2.0: OPERATIONAL APPROVED / UNCOMMITTED; no clean archive;
+        evidence in holding/SALES-GO-LIVE-0C-WIP-2026-08-21/ (NON_AUTHORITATIVE)
+EVENT: 2026-11-13 → 2026-11-15 America/Merida
+SELLABLE CATALOG: 23
+RETIRED SKUS: 5 historically preserved
+SALES WINDOWS: v0.3.0
+SALES_STATUS: CLOSED
+OLD BUNDLE: FROZEN_BY_RELAUNCH_CONTRACT_CHANGE
+0018: NOT APPLIED
+IMPLEMENTATION: NOT STARTED
+MULTI-PAYMENT PROVIDERS: SEPARATE LANE
+```
+
+Gate: `READY_FOR_IMPLEMENTATION_PLAN`.
+
+### 7-BIS — mp-create-checkout authority vs Main deploy (2026-08-25)
+
+```text
+Unit: CLEANUP-V04-BUNDLE-AUTHORITY
+Mode: DOCUMENTATION ONLY (no deploy)
+```
+
+- The **live Main** edge `mp-create-checkout` (last mutate observed
+  `2026-08-24T21:41:42.617Z`) corresponds to the **pre–v0.4 cleanup**
+  bundle (still carried calendar eligibility for November multiday, but
+  retained dead quota / HWM helpers that SPEC-030 v0.4.0 forbids).
+- After this cleanup lane, the **git repository on `main`** is the
+  commercial/checkout **source authority** (calendar-only staged pricing,
+  organizer `sale_state`, PUB-3D/FOT-3D sellable, multi-gateway parked on
+  `wip/multi-gateway`).
+- The next production deploy of `mp-create-checkout` **MUST** be cut from
+  this repo (`npm run bundle:checkout` → authorized InsForge function
+  deploy) under a **separate explicit authorization**. This entry does
+  **not** authorize deploy, push, SQL apply, or `SALES_STATUS=OPEN`.
+- Intentional drift: Main runtime ≠ current repo bundle until that
+  authorized redeploy.

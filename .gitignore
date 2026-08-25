@@ -24,4 +24,20 @@ logs
 *.njsproj
 *.sln
 *.sw?
-.cursor/mcp.env
+# Cursor local dumps / secrets (never commit)
+.cursor/*
+!.cursor/mcp.json
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf

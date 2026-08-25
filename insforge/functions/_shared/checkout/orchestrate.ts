@@ -3,16 +3,38 @@ import { loadCheckoutRuntimeConfig, type CheckoutRuntimeConfig } from './config'
 import { fingerprintRequest, hashIdempotencyKey } from './idempotency'
 import { journeyForProductCode } from './journeys'
 import type { MercadoPagoClient } from './mp-client'
+import {
+  assertCanonicalMsiEligible,
+  toCheckoutPaymentPolicy,
+} from './payment-policy'
 import { buildPriceSnapshot } from './pricing'
-import { assertCheckoutProductAvailable } from './eligibility'
+import { assertCheckoutProductAvailable, isMultidayCheckoutBlocked } from './eligibility'
 import { assertQuantityForProduct, capacityUnitsForQuantity } from './quantity'
-import { assertProductSellable, assertSalesOpen, type EventSalesRow, type ProductSalesRow } from './sales'
-import { parseCheckoutRequest } from './validate'
+import {
+  assertProductSellable,
+  assertSalesOpen,
+  type EventSalesRow,
+  type ProductSalesRow,
+} from './sales'
+import {
+  assertClientExpectedPrice,
+  buildOrderCommercialSnapshot,
+  resolveCommercialOffer,
+} from './staged-pricing'
+import {
+  assertSelectedProvider,
+  loadRuntimeProviderEnablement,
+  parseCheckoutRequest,
+} from './validate'
 
 export type CatalogPort = {
   getProductWithEvent: (
     productCode: string,
   ) => Promise<{ product: ProductSalesRow; event: EventSalesRow } | null>
+  /** Canonical consumed units (sold CONVERTED + active non-expired holds). Informational only. */
+  getConsumedCapacityUnits?: (productId: string) => Promise<number>
+  /** Organizer category/offer SOLD_OUT for products.block (COMPITE/EXPERIENCE/ASISTE). */
+  getCategoryOfferSaleState?: (eventCode: string, block: string) => Promise<string | null>
 }
 
 export type CheckoutTxInput = {
@@ -97,12 +119,23 @@ export async function orchestrateCheckoutStart(
     const found = await deps.catalog.getProductWithEvent(req.product_code)
     if (!found) throw new CheckoutError('PRODUCT_NOT_FOUND')
 
-    // OD-020: block multiday ASISTE before sales window, idempotency, holds, or MP.
+    // Spectator/press without a bound day remain blocked except PUB-3D / FOT-3D.
     assertCheckoutProductAvailable(found.product)
 
     assertSalesOpen(found.event, deps.now?.() ?? new Date())
-    assertProductSellable(found.product)
+    const categoryOfferSaleState =
+      (await deps.catalog.getCategoryOfferSaleState?.(found.event.code, found.product.block)) ?? null
+    assertProductSellable(found.product, {
+      event: found.event,
+      categoryOfferSaleState,
+    })
     assertQuantityForProduct(found.product, req.quantity)
+
+    const enablement = loadRuntimeProviderEnablement(deps.env)
+    const selectedProvider = assertSelectedProvider(req.selected_provider, enablement)
+    if (selectedProvider !== 'MERCADO_PAGO') {
+      throw new CheckoutError('UNSUPPORTED_PROVIDER')
+    }
 
     const config = loadCheckoutRuntimeConfig(deps.env)
     assertWaiverConfig(config, journey, req.waiver)
@@ -110,7 +143,38 @@ export async function orchestrateCheckoutStart(
       throw new CheckoutError('CONFIGURATION_ERROR', 'TEAM_INVITATION_TTL_SECONDS missing')
     }
 
-    const price = buildPriceSnapshot(found.product, journey, req.quantity)
+    const now = deps.now?.() ?? new Date()
+    const consumed =
+      (await deps.catalog.getConsumedCapacityUnits?.(found.product.id)) ?? 0
+    const commercial = resolveCommercialOffer({
+      productCode: found.product.code,
+      totalCupo: found.product.cupo,
+      consumedUnits: consumed,
+      persistedStage: found.product.commercial_stage_high_water,
+      now,
+      productDisabled:
+        found.product.visibility === 'HIDDEN' ||
+        found.product.sale_state === 'CANCELLED' ||
+        found.product.sale_state === 'INACTIVE',
+      multidayBlocked: isMultidayCheckoutBlocked(found.product),
+    })
+    if ('error' in commercial) {
+      if (commercial.error === 'MULTIDAY_FAIL_CLOSED' || commercial.error === 'PRODUCT_DISABLED') {
+        throw new CheckoutError('PRODUCT_NOT_AVAILABLE')
+      }
+      throw new CheckoutError(commercial.error)
+    }
+
+    // Fail-closed before hold/TX: MSI policy requires a real boolean from domain.
+    assertCanonicalMsiEligible(commercial.msi_eligible)
+
+    try {
+      assertClientExpectedPrice(req.expected_unit_price_cents, commercial.unit_price_cents)
+    } catch {
+      throw new CheckoutError('PRICE_CHANGED')
+    }
+
+    const price = buildPriceSnapshot(found.product, journey, req.quantity, commercial)
     const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity)
     const normalized = {
       product_code: req.product_code,
@@ -122,6 +186,13 @@ export async function orchestrateCheckoutStart(
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key)
     const requestFingerprint = await fingerprintRequest(normalized)
     const correlationId = req.correlation_id ?? deps.randomId?.() ?? crypto.randomUUID()
+
+    // hold_expires_at is stamped once inside checkout_start_tx from the same
+    // v_expires_at used for the capacity hold — never computed twice here.
+    const orderSnap = buildOrderCommercialSnapshot({
+      resolution: commercial,
+      quantity: req.quantity,
+    })
 
     const tx = await deps.repo.startCheckoutTx({
       productCode: found.product.code,
@@ -156,9 +227,14 @@ export async function orchestrateCheckoutStart(
         capacity_unit: price.capacity_unit,
         chip_extra_cents: 0,
         insurance_extra_cents: 0,
-        unit_price_cents: price.unit_price_cents,
-        quantity: req.quantity,
+        unit_price_cents: orderSnap.unit_price_cents,
+        quantity: orderSnap.quantity,
+        total_price_cents: orderSnap.total_price_cents,
         currency: 'MXN',
+        commercial_stage: orderSnap.commercial_stage,
+        msi_eligible: orderSnap.msi_eligible,
+        pricing_rules_version: orderSnap.pricing_rules_version,
+        stage_resolved_at: orderSnap.stage_resolved_at,
       },
     })
 
@@ -167,6 +243,9 @@ export async function orchestrateCheckoutStart(
     }
 
     try {
+      assertCanonicalMsiEligible(orderSnap.msi_eligible)
+      const paymentPolicy = toCheckoutPaymentPolicy(orderSnap.msi_eligible)
+
       const preference = await deps.mp.createCheckoutProPreference({
         accessToken: config.mpAccessToken,
         siteId: config.mpSiteId,
@@ -174,6 +253,7 @@ export async function orchestrateCheckoutStart(
         productCode: found.product.code,
         productName: found.product.name,
         price,
+        paymentPolicy,
         backUrls: {
           success: config.backUrlSuccess,
           failure: config.backUrlFailure,

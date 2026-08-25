@@ -34,10 +34,20 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-000 | Specification Governance | APPROVED | 0.2.0 | R1 | None | `SPEC-000-GOVERNANCE.md` |
 | SPEC-001 | System Architecture | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0 | `SPEC-001-SYSTEM-ARCHITECTURE.md` |
 | SPEC-011 | PWA Foundation | APPROVED | 0.1.0 | F0-B3 | SPEC-000 v0.2.0, SPEC-001 | `SPEC-011-PWA-FOUNDATION.md` |
-| SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
-| SPEC-031 | Public Sales API and Backend Contract | APPROVED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
-| SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | APPROVED | 0.1.0 | SALE-3 | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031; compatible with SPEC-011 | `SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `archive/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.1.0.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.2.0 | SALES-GO-LIVE-0C-SPEC | Operational APPROVED, never committed as a clean artifact; see historical note | `holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE evidence, not a clean archive) |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.3.0 | RELAUNCH-DELTA-SPEC-DRAFT | Historical approved contract, superseded by v0.4.0; not rejected | `archive/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.3.0.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.4.0 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | SPEC-000 v0.2.0, SPEC-001, SPEC-011; compatible with SPEC-040 v0.1.1; supersedes SPEC-030 v0.3.0; Project Owner explicit approval 2026-08-23 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
+| SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `archive/SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT-v0.1.0.md` |
+| SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.2.0 | SALES-GO-LIVE-0C-SPEC | Operational APPROVED, never committed as a clean artifact; see historical note | `holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE evidence, not a clean archive) |
+| SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.3.0 | RELAUNCH-DELTA-SPEC-DRAFT | Historical approved contract, superseded by v0.4.0; not rejected; depends on SPEC-030 v0.3.0 | `archive/SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT-v0.3.0.md` |
+| SPEC-031 | Public Sales API and Backend Contract | APPROVED | 0.4.0 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | SPEC-000 v0.2.0, SPEC-001, SPEC-030 v0.4.0; compatible with SPEC-011, SPEC-032 v0.4.0, SPEC-040 v0.1.1; supersedes SPEC-031 v0.3.0; Project Owner explicit approval 2026-08-23 | `SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT.md` |
+| SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | SUPERSEDED | 0.1.0 | SALE-3 | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031; compatible with SPEC-011 | `archive/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY-v0.1.0.md` |
+| SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | SUPERSEDED | 0.2.0 | SALES-GO-LIVE-0C-SPEC | Operational APPROVED, never committed as a clean artifact; see historical note | `holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE evidence, not a clean archive) |
+| SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | SUPERSEDED | 0.3.0 | RELAUNCH-DELTA-SPEC-DRAFT | Historical approved contract, superseded by v0.4.0; not rejected; depends on SPEC-030/031 v0.3.0 | `archive/SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY-v0.3.0.md` |
+| SPEC-032 | Minimal Public Sales Data Model and Transaction Integrity | APPROVED | 0.4.0 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | SPEC-000 v0.2.0, SPEC-001, SPEC-030 v0.4.0, SPEC-031 v0.4.0; compatible with SPEC-011, SPEC-040 v0.1.1; supersedes SPEC-032 v0.3.0; Project Owner explicit approval 2026-08-23 | `SPEC-032-MINIMAL-SALES-DATA-MODEL-AND-TRANSACTION-INTEGRITY.md` |
 | SPEC-040 | Payment Pending Expiry Reconciliation | APPROVED | 0.1.1 | IMPL-14A | SPEC-000 v0.2.0, SPEC-001, SPEC-030, SPEC-031, SPEC-032; compatible with SPEC-011 | `SPEC-040-PAYMENT-PENDING-EXPIRY-RECONCILIATION.md` |
+| SPEC-041 | Multi-Provider Payment Contract | APPROVED | 0.1.0 | MULTI-PAY | SPEC-000 v0.2.0, SPEC-001, SPEC-030 v0.3.0, SPEC-031 v0.3.0, SPEC-032 v0.3.0; compatible with SPEC-011, SPEC-040 v0.1.1, SPEC-060 v0.1.0 | `SPEC-041-MULTI-PROVIDER-PAYMENT-CONTRACT.md` |
 | SPEC-060 | Event Entry Operations | APPROVED | 0.1.0 | R2H-T2 | SPEC-000 v0.2.0, SPEC-001, SPEC-011, SPEC-030, SPEC-031, SPEC-032; compatible with SPEC-040 | `SPEC-060-EVENT-ENTRY-OPERATIONS.md` |
 
 Future specifications are created only when their implementation phase is near.
@@ -48,6 +58,13 @@ Tramo 2 implementation traceability preparation. It does not by itself
 authorize runtime implementation, migrations, InsForge writes, Main,
 production, commit, or push. Each Tramo 2 unit requires separate authorization.
 
+SPEC-041 v0.1.0 Multi-Provider Payment Contract is `APPROVED` by Leandro
+Espinosa (Project Owner) on 2026-08-22 after `MULTI-PAY-1C` `READY_FOR_APPROVAL`.
+It authorizes `MULTI-PAY-2` implementation traceability preparation only. It
+does not by itself authorize adapters, SQL, migrations, InsForge writes,
+provider API calls, sandbox or production payments, `SALES_STATUS=OPEN`,
+commit, or push.
+
 SPEC-000 v0.2.0 is the approved and effective governance contract after
 explicit human authorization on 2026-07-23. Version 0.1.0 is historically
 approved, now `SUPERSEDED` by v0.2.0, and preserved unchanged in the archive.
@@ -55,7 +72,46 @@ SPEC-001 and SPEC-011 retain their versions, requirements, acceptance criteria,
 and approval states; their governance authority reference now resolves to
 SPEC-000 v0.2.0.
 
+SPEC-030 / SPEC-031 / SPEC-032 v0.4.0 are the approved and **effective** public
+sales contracts after explicit human authorization by the Project Owner on
+2026-08-23 (`"APRUEBO SPEC-030, SPEC-031 Y SPEC-032 v0.4.0"`). This approval
+does **not** authorize code, SQL, migrations, Main, landing, Mercado Pago,
+Clip, Openpay, PayPal, secrets, deploy, real payments, commit, push, or
+`SALES_STATUS=OPEN`. `SALES_STATUS` remains CLOSED / PRÓXIMAMENTE.
+
+SPEC-030 / SPEC-031 / SPEC-032 v0.3.0 remain historically approved contracts,
+now `SUPERSEDED` by v0.4.0, and preserved unchanged in
+`docs/specs/archive/*-v0.3.0.md`. They are not rejected or invalid.
+
+Pre-approval review copies of v0.4.0 remain under `docs/specs/drafts/*-v0.4.0.md`
+as historical review artifacts and are **not** the effective contract.
+
+Historical anomaly (do not hide): v0.2.0 was operationally `APPROVED` during
+Sales Go-Live 0C but was **never committed** as a clean standalone artifact.
+No `archive/*-v0.2.0.md` exists. Mixed working-copy evidence is preserved only
+in `docs/specs/holding/SALES-GO-LIVE-0C-WIP-2026-08-21/`
+(`NON_AUTHORITATIVE`). Last clean committed historical baseline remains v0.1.0
+in `docs/specs/archive/`. Pre-approval review copies remain under
+`docs/specs/drafts/*-v0.3.0.md` / `docs/specs/drafts/*-v0.4.0.md` and are
+**not** the effective contract.
+
 ## Current review gate
+
+Parallel public-sales gates (do not mix):
+
+1. `READY_FOR_SPEC_REVIEW_R2` — **CLOSED**. SPEC-030 / SPEC-031 / SPEC-032
+   v0.4.0 received explicit Project Owner approval on 2026-08-23 and are now
+   the effective contracts.
+2. `READY_FOR_IMPLEMENTATION_PLAN` — now bound to approved **v0.4.0**. This
+   registry update does **not** create the implementation plan. Do not plan or
+   execute relaunch implementation, SQL, migrations, InsForge writes, landing
+   writes, payments, deploy, commit, push, or `SALES_STATUS=OPEN` without a
+   later authorized unit.
+
+Sales relaunch implementation is **not** started by either gate above. Tramo 2
+documentary gate below is unchanged from the last committed registry baseline.
+
+Parallel Tramo 2 gate (not mixed with relaunch implementation):
 
 `READY_FOR_R2H_T2_1B_CLOSURE_COMMIT_REVIEW`
 

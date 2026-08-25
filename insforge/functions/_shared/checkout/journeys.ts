@@ -2,11 +2,17 @@ export type Journey = 'J1' | 'J2' | 'J3' | 'J4' | 'J5'
 export type EconomicUnit = 'person' | 'pair' | 'team'
 export type CapacityUnit = 'persons' | 'teams'
 
+/** Historical identities remain in data; they have no active purchase journey. */
+const HISTORICAL_CODES = new Set([
+  'IND-PRO-H',
+  'IND-PRO-M',
+  'DOB-VIE-HH',
+  'DOB-VIE-MH',
+  'DOB-SAB-MM',
+])
+
 const JOURNEY_BY_CODE: Record<string, Journey> = {
   'DOB-VIE-MM': 'J2',
-  'DOB-VIE-HH': 'J2',
-  'DOB-VIE-MH': 'J2',
-  'DOB-SAB-MM': 'J2',
   'DOB-SAB-HH': 'J2',
   'DOB-SAB-MH': 'J2',
   'REL-4H': 'J3',
@@ -14,8 +20,6 @@ const JOURNEY_BY_CODE: Record<string, Journey> = {
   'REL-2H2M': 'J3',
   'IND-H': 'J1',
   'IND-M': 'J1',
-  'IND-PRO-H': 'J1',
-  'IND-PRO-M': 'J1',
   'HALF-IND-M': 'J1',
   'HALF-IND-H': 'J1',
   'HALF-DOB-MM': 'J2',
@@ -34,6 +38,7 @@ const JOURNEY_BY_CODE: Record<string, Journey> = {
 }
 
 export function journeyForProductCode(code: string): Journey | null {
+  if (HISTORICAL_CODES.has(code)) return null
   return JOURNEY_BY_CODE[code] ?? null
 }
 

@@ -79,14 +79,30 @@ function createPorts() {
           has_chip: Boolean(product.has_chip),
           has_insurance: Boolean(product.has_insurance),
           day: product.day == null || product.day === '' ? null : String(product.day),
+          commercial_stage_high_water:
+            product.commercial_stage_high_water == null || product.commercial_stage_high_water === ''
+              ? 'LAUNCH'
+              : String(product.commercial_stage_high_water),
         },
         event: {
           code: String(event.code),
           status: String(event.status),
           sales_open_at: (event.sales_open_at as string | null) ?? null,
           sales_close_at: (event.sales_close_at as string | null) ?? null,
+          sale_state: (event.sale_state as string | null) ?? null,
         },
       }
+    },
+    async getCategoryOfferSaleState(eventCode, block) {
+      const { data, error } = await admin.database
+        .from('event_category_sale_states')
+        .select('sale_state')
+        .eq('event_code', eventCode)
+        .eq('block', block)
+        .limit(1)
+      if (error || !data?.length) return null
+      const saleState = (data[0] as { sale_state?: string | null }).sale_state
+      return saleState == null || saleState === '' ? null : String(saleState)
     },
   }
 
@@ -173,7 +189,32 @@ function createPorts() {
     },
   }
 
-  return { catalog, repo }
+  const catalogWithCapacity: CatalogPort = {
+    ...catalog,
+    async getConsumedCapacityUnits(productId) {
+      const { data: holds, error } = await admin.database
+        .from('capacity_holds')
+        .select('capacity_units,state,expires_at')
+        .eq('product_id', productId)
+      if (error || !holds) return 0
+      const nowMs = Date.now()
+      let sum = 0
+      for (const h of holds as Array<{ capacity_units: number; state: string; expires_at: string | null }>) {
+        if (h.state === 'CONVERTED') {
+          sum += Number(h.capacity_units) || 0
+          continue
+        }
+        if (h.state === 'ACTIVE') {
+          if (h.expires_at == null || new Date(h.expires_at).getTime() > nowMs) {
+            sum += Number(h.capacity_units) || 0
+          }
+        }
+      }
+      return sum
+    },
+  }
+
+  return { catalog: catalogWithCapacity, repo }
 }
 
 export default async function handler(req: Request): Promise<Response> {

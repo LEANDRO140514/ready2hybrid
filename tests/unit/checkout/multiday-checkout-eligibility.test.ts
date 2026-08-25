@@ -98,9 +98,19 @@ function body(product_code: string, quantity = 1) {
   return {
     product_code,
     quantity,
+    selected_provider: 'MERCADO_PAGO',
     idempotency_key: `impl13e0-${product_code}-${quantity}-xxxxxxxx`,
   }
 }
+
+const openEvent = {
+  code: 'HEX-2026',
+  status: 'EN_VENTA',
+  sales_open_at: '2026-01-01T00:00:00.000Z',
+  sales_close_at: null,
+}
+
+const launchNow = () => new Date('2026-08-15T18:00:00.000Z')
 
 function memoryRepo(): CheckoutRepository & { calls: string[] } {
   const calls: string[] = []
@@ -130,20 +140,23 @@ function memoryRepo(): CheckoutRepository & { calls: string[] } {
 }
 
 describe('isMultidayCheckoutBlocked / assertCheckoutProductAvailable', () => {
-  it('blocks spectator/press with null day (PUB-3D / FOT-3D)', () => {
-    expect(isMultidayCheckoutBlocked(products['PUB-3D'])).toBe(true)
-    expect(isMultidayCheckoutBlocked(products['FOT-3D'])).toBe(true)
-    expect(() => assertCheckoutProductAvailable(products['PUB-3D'])).toThrow(CheckoutError)
+  it('PUB-3D / FOT-3D are checkout-eligible with null day (SPEC-030 v0.4)', () => {
+    expect(isMultidayCheckoutBlocked(products['PUB-3D'])).toBe(false)
+    expect(isMultidayCheckoutBlocked(products['FOT-3D'])).toBe(false)
+    expect(() => assertCheckoutProductAvailable(products['PUB-3D'])).not.toThrow()
+    expect(() => assertCheckoutProductAvailable(products['FOT-3D'])).not.toThrow()
+  })
+
+  it('still blocks other spectator/press with null day', () => {
+    const orphan = asiste({ code: 'PUB-ORPHAN', day: null, kind: 'spectator' })
+    expect(isMultidayCheckoutBlocked(orphan)).toBe(true)
+    expect(() => assertCheckoutProductAvailable(orphan)).toThrow(CheckoutError)
     try {
-      assertCheckoutProductAvailable(products['FOT-3D'])
+      assertCheckoutProductAvailable(orphan)
       throw new Error('expected throw')
     } catch (e) {
       expect(e).toBeInstanceOf(CheckoutError)
       expect((e as CheckoutError).code).toBe('PRODUCT_NOT_AVAILABLE')
-      expect((e as CheckoutError).status).toBe(409)
-      expect((e as CheckoutError).toPublicBody().error.message).toBe(
-        'This product is not available for checkout.',
-      )
     }
   })
 
@@ -165,8 +178,8 @@ describe('isMultidayCheckoutBlocked / assertCheckoutProductAvailable', () => {
   })
 })
 
-describe('orchestrate multiday fail-closed before writes/MP', () => {
-  async function run(code: string, quantity = 1) {
+describe('orchestrate multiday sellable under open sales (SPEC-030 v0.4)', () => {
+  async function runConfigured(code: string, quantity = 1) {
     const catalog: CatalogPort = {
       async getProductWithEvent(productCode) {
         const product = products[productCode]
@@ -188,25 +201,52 @@ describe('orchestrate multiday fail-closed before writes/MP', () => {
     return { result, repo, createPreference }
   }
 
-  it('PUB-3D → PRODUCT_NOT_AVAILABLE with zero repo/MP calls', async () => {
-    const { result, repo, createPreference } = await run('PUB-3D', 1)
-    expect(result.status).toBe(409)
-    expect(result.body).toMatchObject({
-      error: {
-        code: 'PRODUCT_NOT_AVAILABLE',
-        message: 'This product is not available for checkout.',
+  async function runOpen(code: string, quantity = 1) {
+    const catalog: CatalogPort = {
+      async getProductWithEvent(productCode) {
+        const product = products[productCode]
+        if (!product) return null
+        return { product, event: openEvent }
       },
+    }
+    const repo = memoryRepo()
+    const createPreference = vi.fn(async () => ({
+      preferenceId: 'pref_multiday',
+      initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_multiday',
+    }))
+    const mp = createMockMercadoPagoClient(createPreference)
+    const result = await orchestrateCheckoutStart(body(code, quantity), {
+      env: envMap(requiredEnv),
+      catalog,
+      repo,
+      mp,
+      now: launchNow,
     })
-    expect(repo.calls).toEqual([])
-    expect(createPreference).not.toHaveBeenCalled()
+    return { result, repo, createPreference }
+  }
+
+  it('PUB-3D is vendible when sales are open (not PRODUCT_NOT_AVAILABLE)', async () => {
+    const { result, repo, createPreference } = await runOpen('PUB-3D', 1)
+    expect(result.status).toBe(200)
+    expect(repo.calls).toContain('startCheckoutTx')
+    expect(createPreference).toHaveBeenCalledOnce()
   })
 
-  it('FOT-3D → PRODUCT_NOT_AVAILABLE with zero repo/MP calls', async () => {
-    const { result, repo, createPreference } = await run('FOT-3D', 1)
-    expect(result.status).toBe(409)
-    expect(result.body).toMatchObject({ error: { code: 'PRODUCT_NOT_AVAILABLE' } })
-    expect(repo.calls).toEqual([])
-    expect(createPreference).not.toHaveBeenCalled()
+  it('FOT-3D is vendible when sales are open (not PRODUCT_NOT_AVAILABLE)', async () => {
+    const { result, repo, createPreference } = await runOpen('FOT-3D', 1)
+    expect(result.status).toBe(200)
+    expect(repo.calls).toContain('startCheckoutTx')
+    expect(createPreference).toHaveBeenCalledOnce()
+  })
+
+  it('PUB-3D / FOT-3D under CONFIGURADO are SALES_NOT_OPEN (same as single-day), not multiday-blocked', async () => {
+    for (const code of ['PUB-3D', 'FOT-3D'] as const) {
+      const { result, repo, createPreference } = await runConfigured(code, 1)
+      expect(result.status).toBe(409)
+      expect(result.body).toMatchObject({ error: { code: 'SALES_NOT_OPEN' } })
+      expect(repo.calls).toEqual([])
+      expect(createPreference).not.toHaveBeenCalled()
+    }
   })
 
   it('single-day products remain SALES_NOT_OPEN under CONFIGURADO', async () => {
@@ -220,7 +260,7 @@ describe('orchestrate multiday fail-closed before writes/MP', () => {
       ['FOT-DOM', 1],
     ]
     for (const [code, qty] of cases) {
-      const { result, repo, createPreference } = await run(code, qty)
+      const { result, repo, createPreference } = await runConfigured(code, qty)
       expect(result.status).toBe(409)
       expect(result.body).toMatchObject({ error: { code: 'SALES_NOT_OPEN' } })
       expect(repo.calls).toEqual([])
@@ -229,7 +269,7 @@ describe('orchestrate multiday fail-closed before writes/MP', () => {
   })
 
   it('unknown product keeps PRODUCT_NOT_FOUND', async () => {
-    const { result, repo, createPreference } = await run('NOPE-CODE', 1)
+    const { result, repo, createPreference } = await runConfigured('NOPE-CODE', 1)
     expect(result.status).toBe(404)
     expect(result.body).toMatchObject({ error: { code: 'PRODUCT_NOT_FOUND' } })
     expect(repo.calls).toEqual([])

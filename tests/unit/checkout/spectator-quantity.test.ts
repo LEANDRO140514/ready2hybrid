@@ -15,7 +15,9 @@ import {
   capacityUnitsForQuantity,
 } from '../../../insforge/functions/_shared/checkout/quantity'
 import { parseCheckoutRequest } from '../../../insforge/functions/_shared/checkout/validate'
+import { dateFromMeridaWall } from '../../../insforge/functions/_shared/checkout/staged-pricing'
 
+const launchNow = () => dateFromMeridaWall(2026, 8, 15, 12, 0, 0)
 const spectator = {
   id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   code: 'PUB-VIE',
@@ -94,6 +96,7 @@ function body(product_code: string, quantity?: unknown, extras: Record<string, u
   const payload: Record<string, unknown> = {
     product_code,
     idempotency_key: `idem-${product_code}-${Date.now()}-xxxxxxxx`,
+    selected_provider: 'MERCADO_PAGO',
     ...extras,
   }
   if (quantity !== undefined) payload.quantity = quantity
@@ -182,15 +185,9 @@ describe('OD-001 spectator quantity validation', () => {
     }
   })
 
-  it('quantity superior al cupo = REJECT', () => {
+  it('quantity superior al cupo must proceed (cupo is not commercial SOLD_OUT)', () => {
     const tiny = { ...spectator, cupo: 1 }
-    try {
-      assertQuantityForProduct(tiny, 2)
-      throw new Error('expected throw')
-    } catch (e) {
-      expect(e).toBeInstanceOf(CheckoutError)
-      expect((e as CheckoutError).code).toBe('SOLD_OUT')
-    }
+    expect(() => assertQuantityForProduct(tiny, 2)).not.toThrow()
   })
 
   it('PUB-VIE unit price × 2 = total correcto', () => {
@@ -216,6 +213,7 @@ describe('OD-001 orchestrate spectator quantity=2', () => {
       catalog,
       repo,
       mp: createMockMercadoPagoClient(),
+      now: launchNow,
     })
     expect(result.status).toBe(200)
     expect(start).toHaveBeenCalledOnce()

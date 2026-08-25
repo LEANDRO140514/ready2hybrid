@@ -12,6 +12,10 @@ import { buildPriceSnapshot } from '../../../insforge/functions/_shared/checkout
 import { assertSalesOpen } from '../../../insforge/functions/_shared/checkout/sales'
 import { parseCheckoutRequest } from '../../../insforge/functions/_shared/checkout/validate'
 import { journeyForProductCode } from '../../../insforge/functions/_shared/checkout/journeys'
+import {
+  dateFromMeridaWall,
+  resolveCommercialOffer,
+} from '../../../insforge/functions/_shared/checkout/staged-pricing'
 
 const baseProduct = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -22,7 +26,7 @@ const baseProduct = {
   sale_state: null,
   visibility: null,
   cupo: 60,
-  price_cents: 140000,
+  price_cents: 180000,
   currency: 'MXN',
   team_size: 1,
   event_code: 'HEX-2026',
@@ -30,6 +34,8 @@ const baseProduct = {
   has_insurance: true,
   day: '2026-10-11',
 }
+
+const launchNow = () => dateFromMeridaWall(2026, 8, 15, 12, 0, 0)
 
 const openEvent = {
   code: 'HEX-2026',
@@ -65,6 +71,7 @@ function validBody(overrides: Record<string, unknown> = {}) {
   return {
     product_code: 'IND-H',
     idempotency_key: 'idem-key-12345678',
+    selected_provider: 'MERCADO_PAGO',
     waiver: {
       document_type: 'SPORTS_WAIVER',
       version: '2026.1',
@@ -118,6 +125,12 @@ describe('checkout validate', () => {
     expect(() => parseCheckoutRequest(validBody({ price_cents: 1 }))).toThrow(/price_cents|INVALID/)
   })
 
+  it('rejects client commercial_stage authority', () => {
+    expect(() => parseCheckoutRequest(validBody({ commercial_stage: 'LAUNCH' }))).toThrow(
+      CheckoutError,
+    )
+  })
+
   it('rejects client currency authority', () => {
     expect(() => parseCheckoutRequest(validBody({ currency: 'USD' }))).toThrow(CheckoutError)
   })
@@ -136,33 +149,59 @@ describe('sales gate', () => {
 })
 
 describe('pricing', () => {
-  it('prices Individual once', () => {
-    const snap = buildPriceSnapshot(baseProduct, 'J1', 1)
-    expect(snap.total_cents).toBe(140000)
+  it('prices Individual from staged commercial resolution', () => {
+    const commercial = resolveCommercialOffer({
+      productCode: 'IND-H',
+      totalCupo: 60,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect('error' in commercial).toBe(false)
+    if ('error' in commercial) return
+    const snap = buildPriceSnapshot(baseProduct, 'J1', 1, commercial)
+    expect(snap.total_cents).toBe(150000)
+    expect(snap.commercial_stage).toBe('LAUNCH')
+    expect(snap.msi_eligible).toBe(true)
     expect(snap.chip_extra_cents).toBe(0)
     expect(snap.insurance_extra_cents).toBe(0)
   })
 
-  it('prices Dobles as full pair unit', () => {
+  it('prices Dobles as full pair unit at launch', () => {
     const dobles = {
       ...baseProduct,
       code: 'DOB-VIE-MM',
-      price_cents: 240000,
+      price_cents: 300000,
       team_size: 2,
     }
-    const snap = buildPriceSnapshot(dobles, 'J2', 1)
-    expect(snap.total_cents).toBe(240000)
+    const commercial = resolveCommercialOffer({
+      productCode: 'DOB-VIE-MM',
+      totalCupo: 40,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect('error' in commercial).toBe(false)
+    if ('error' in commercial) return
+    const snap = buildPriceSnapshot(dobles, 'J2', 1, commercial)
+    expect(snap.total_cents).toBe(250000)
     expect(snap.economic_unit).toBe('pair')
   })
 
-  it('prices Relay as full team unit', () => {
+  it('prices Relay as full team unit at launch', () => {
     const relay = {
       ...baseProduct,
       code: 'REL-4H',
-      price_cents: 320000,
+      price_cents: 380000,
       team_size: 4,
     }
-    const snap = buildPriceSnapshot(relay, 'J3', 1)
+    const commercial = resolveCommercialOffer({
+      productCode: 'REL-4H',
+      totalCupo: 20,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect('error' in commercial).toBe(false)
+    if ('error' in commercial) return
+    const snap = buildPriceSnapshot(relay, 'J3', 1, commercial)
     expect(snap.total_cents).toBe(320000)
     expect(snap.economic_unit).toBe('team')
   })
@@ -240,6 +279,7 @@ describe('orchestrateCheckoutStart', () => {
 
   it('creates checkout when sales are open', async () => {
     const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
     const result = await orchestrateCheckoutStart(validBody(), {
       env: envMap(requiredEnv),
       catalog: {
@@ -249,6 +289,7 @@ describe('orchestrateCheckoutStart', () => {
       },
       repo,
       mp: createMockMercadoPagoClient(),
+      now: launchNow,
     })
     expect(result.status).toBe(200)
     expect(result.body).toMatchObject({
@@ -259,6 +300,139 @@ describe('orchestrateCheckoutStart', () => {
     expect(JSON.stringify(result.body)).not.toContain('MERCADOPAGO')
     expect(result.body).not.toHaveProperty('order_id')
     expect(result.body).not.toHaveProperty('preference_id')
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unitPriceCents: 150000,
+        commercialSnapshot: expect.objectContaining({
+          commercial_stage: 'LAUNCH',
+          msi_eligible: true,
+          unit_price_cents: 150000,
+          pricing_rules_version: 'r2h-commercial-2026.1',
+        }),
+      }),
+    )
+    // hold_expires_at is stamped inside checkout_start_tx from the hold clock.
+    expect(startSpy.mock.calls[0][0].commercialSnapshot).not.toHaveProperty('hold_expires_at')
+  })
+
+  it('ignores HWM/cupo and prices from calendar stage only (SPEC-030 v0.4)', async () => {
+    const repo = memoryRepo()
+    const spy = vi.spyOn(repo, 'startCheckoutTx')
+    const result = await orchestrateCheckoutStart(validBody(), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return {
+            product: {
+              ...baseProduct,
+              commercial_stage_high_water: 'PRESALE',
+            },
+            event: openEvent,
+          }
+        },
+        async getConsumedCapacityUnits() {
+          return 0
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: launchNow,
+    })
+    expect(result.status).toBe(200)
+    // launchNow is 2026-08-15 Merida → LAUNCH; HWM PRESALE must not win.
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unitPriceCents: 150000,
+        commercialSnapshot: expect.objectContaining({
+          commercial_stage: 'LAUNCH',
+          unit_price_cents: 150000,
+        }),
+      }),
+    )
+  })
+
+  it('returns PRICE_CHANGED when expected display price is stale', async () => {
+    const result = await orchestrateCheckoutStart(
+      validBody({ expected_unit_price_cents: 140000 }),
+      {
+        env: envMap(requiredEnv),
+        catalog: {
+          async getProductWithEvent() {
+            return { product: baseProduct, event: openEvent }
+          },
+        },
+        repo: memoryRepo(),
+        mp: createMockMercadoPagoClient(),
+        now: launchNow,
+      },
+    )
+    expect(result.status).toBe(409)
+    expect(result.body).toMatchObject({ error: { code: 'PRICE_CHANGED' } })
+  })
+
+  it('passes paymentPolicy from commercial snapshot to Mercado Pago', async () => {
+    const mpCalls: Array<{ paymentPolicy: unknown; productCode: string }> = []
+    const result = await orchestrateCheckoutStart(validBody(), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo: memoryRepo(),
+      mp: createMockMercadoPagoClient(async (input) => {
+        mpCalls.push({ paymentPolicy: input.paymentPolicy, productCode: input.productCode })
+        return {
+          preferenceId: 'pref_policy',
+          initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_policy',
+        }
+      }),
+      now: launchNow,
+    })
+    expect(result.status).toBe(200)
+    expect(mpCalls).toHaveLength(1)
+    expect(mpCalls[0]).toEqual({
+      productCode: 'IND-H',
+      paymentPolicy: { maximumInstallments: 3, excludeTicketPayments: true },
+    })
+  })
+
+  it('passes installments=1 policy for Workout (no MSI)', async () => {
+    const mpCalls: Array<unknown> = []
+    const result = await orchestrateCheckoutStart(
+      validBody({ product_code: 'WOD-M' }),
+      {
+        env: envMap(requiredEnv),
+        catalog: {
+          async getProductWithEvent() {
+            return {
+              product: {
+                ...baseProduct,
+                code: 'WOD-M',
+                name: 'Workout',
+                block: 'ENTRENA',
+                kind: 'workout',
+                price_cents: 35000,
+                has_chip: false,
+                has_insurance: false,
+              },
+              event: openEvent,
+            }
+          },
+        },
+        repo: memoryRepo(),
+        mp: createMockMercadoPagoClient(async (input) => {
+          mpCalls.push(input.paymentPolicy)
+          return {
+            preferenceId: 'pref_wod',
+            initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_wod',
+          }
+        }),
+        now: launchNow,
+      },
+    )
+    expect(result.status).toBe(200)
+    expect(mpCalls[0]).toEqual({ maximumInstallments: 1, excludeTicketPayments: true })
   })
 
   it('compensates when Mercado Pago fails', async () => {
@@ -275,6 +449,7 @@ describe('orchestrateCheckoutStart', () => {
       mp: createMockMercadoPagoClient(async () => {
         throw new CheckoutError('CHECKOUT_CREATION_FAILED')
       }),
+      now: launchNow,
     })
     expect(result.body).toMatchObject({ error: { code: 'CHECKOUT_CREATION_FAILED' } })
     expect(compensate).toHaveBeenCalledOnce()
@@ -302,6 +477,7 @@ describe('orchestrateCheckoutStart', () => {
       },
       repo,
       mp,
+      now: launchNow,
     })
     expect(result.status).toBe(200)
     expect(result.body).toEqual(prior)
