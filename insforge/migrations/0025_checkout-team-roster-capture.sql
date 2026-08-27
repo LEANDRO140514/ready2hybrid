@@ -383,10 +383,8 @@ BEGIN
     END IF;
 
     FOR v_pos IN 2..v_product.team_size LOOP
-      v_mate_name := NULLIF(btrim(v_teammates->>((v_pos - 2))), '');
-      IF v_mate_name IS NULL THEN
-        RETURN jsonb_build_object('ok', false, 'error_code', 'INVALID_REQUEST');
-      END IF;
+      -- Length/emptiness already validated before any INSERT; re-read only.
+      v_mate_name := btrim(v_teammates->>((v_pos - 2)));
 
       INSERT INTO public.participants (
         public_ref, buyer_contact_id, participation_type, state, name
