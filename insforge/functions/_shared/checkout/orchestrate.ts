@@ -23,8 +23,10 @@ import {
 } from './staged-pricing'
 import {
   assertSelectedProvider,
+  assertTeammateNamesForTeamSize,
   loadRuntimeProviderEnablement,
   parseCheckoutRequest,
+  resolveCaptainDisplayName,
 } from './validate'
 
 export type CatalogPort = {
@@ -58,6 +60,8 @@ export type CheckoutTxInput = {
   buyerPhone: string | null
   buyerContactConsent: boolean
   participantPublicRef: string | null
+  captainName: string
+  teammateNames: string[]
   commercialSnapshot: Record<string, unknown>
   invitationTtlSeconds: number | null
   waiverDocumentType: string | null
@@ -143,9 +147,12 @@ export async function orchestrateCheckoutStart(
 
     const config = loadCheckoutRuntimeConfig(deps.env)
     assertWaiverConfig(config, journey, req.waiver)
-    if ((journey === 'J2' || journey === 'J3') && !config.invitationTtlSeconds) {
-      throw new CheckoutError('CONFIGURATION_ERROR', 'TEAM_INVITATION_TTL_SECONDS missing')
-    }
+
+    const captainName = resolveCaptainDisplayName(req.buyer.name, req.captain_name)
+    const teammateNames = assertTeammateNamesForTeamSize(
+      found.product.team_size,
+      req.teammate_names,
+    )
 
     const now = deps.now?.() ?? new Date()
     const consumed =
@@ -186,6 +193,8 @@ export async function orchestrateCheckoutStart(
       buyer: req.buyer ?? null,
       participant: req.participant ?? null,
       waiver: req.waiver ?? null,
+      captain_name: captainName,
+      teammate_names: teammateNames,
     }
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key)
     const requestFingerprint = await fingerprintRequest(normalized)
@@ -219,6 +228,8 @@ export async function orchestrateCheckoutStart(
       buyerPhone: req.buyer.phone?.trim() ? req.buyer.phone.trim() : null,
       buyerContactConsent: req.buyer.contact_consent === true,
       participantPublicRef: req.participant?.public_ref ?? null,
+      captainName,
+      teammateNames,
       invitationTtlSeconds: config.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,
       waiverDocumentVersion: req.waiver?.version ?? null,

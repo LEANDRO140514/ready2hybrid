@@ -72,10 +72,55 @@ export const checkoutRequestSchema = z
       .optional(),
     correlation_id: z.string().min(1).max(128).optional(),
     selected_provider: z.enum(['MERCADO_PAGO', 'CLIP', 'OPENPAY']).optional(),
+    /**
+     * Optional competitor display name for slot 1 (captain / individual).
+     * When omitted, edge defaults to buyer.name (Owner 2026-08-27).
+     */
+    captain_name: z.string().min(1).max(200).optional(),
+    /**
+     * Teammate display names only (no email/phone/ID). Length must equal
+     * team_size - 1 after catalog resolve; forbidden on non-team products.
+     */
+    teammate_names: z.array(z.string().max(200)).max(8).optional(),
   })
   .strict()
 
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>
+
+/** Owner: captain_name defaults to buyer.name when omitted/blank. */
+export function resolveCaptainDisplayName(buyerName: string, captainName?: string): string {
+  const trimmed = captainName?.trim() ?? ''
+  return trimmed.length > 0 ? trimmed : buyerName.trim()
+}
+
+/**
+ * Fail-closed teammate_names vs product.team_size.
+ * Non-team: any non-empty array → INVALID_REQUEST.
+ * Team: exact length team_size-1; each entry non-empty after trim.
+ */
+export function assertTeammateNamesForTeamSize(
+  teamSize: number,
+  teammateNames: string[] | undefined,
+): string[] {
+  const raw = teammateNames ?? []
+  if (!Number.isInteger(teamSize) || teamSize < 1) {
+    throw new CheckoutError('INVALID_REQUEST')
+  }
+  if (teamSize <= 1) {
+    if (raw.length > 0) {
+      throw new CheckoutError('INVALID_REQUEST')
+    }
+    return []
+  }
+  if (raw.length !== teamSize - 1) {
+    throw new CheckoutError('INVALID_REQUEST')
+  }
+  const trimmed = raw.map((n) => (typeof n === 'string' ? n.trim() : ''))
+  if (trimmed.some((n) => n.length === 0)) {
+    throw new CheckoutError('INVALID_REQUEST')
+  }
+  return trimmed
+}
 
 export function assertNoClientMoneyAuthority(raw: unknown): void {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {

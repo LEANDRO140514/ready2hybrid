@@ -3,14 +3,14 @@
  *
  * 0018 (HWM / quota / cupo SOLD_OUT) lives in holding and must not be applied.
  * Live commercial authority is 0020 (organizer sale_state + calendar pricing);
- * 0023 is the live checkout_start_tx successor (buyer contact write).
+ * 0025 is the live checkout_start_tx successor (team roster capture).
  *
  * Former FIX-1 Postgres suite against 0018 was removed: it affirmed the retired
  * HWM/quota model. Coverage of calendar-only pricing and non-cupo SOLD_OUT is in:
  * - tests/unit/v04-relaunch/pricing-calendar.contract.test.ts
  * - tests/unit/v04-relaunch/quantity-independence.contract.test.ts
  * - tests/unit/checkout/checkout-start.test.ts (calendar ignores HWM)
- * - tests/unit/expiry/logical-capacity-exclusion.test.ts (0023 TX contract)
+ * - tests/unit/expiry/logical-capacity-exclusion.test.ts (0025 TX contract)
  */
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'

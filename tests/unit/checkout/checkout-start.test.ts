@@ -10,7 +10,11 @@ import {
 } from '../../../insforge/functions/_shared/checkout/orchestrate'
 import { buildPriceSnapshot } from '../../../insforge/functions/_shared/checkout/pricing'
 import { assertSalesOpen } from '../../../insforge/functions/_shared/checkout/sales'
-import { parseCheckoutRequest } from '../../../insforge/functions/_shared/checkout/validate'
+import {
+  assertTeammateNamesForTeamSize,
+  parseCheckoutRequest,
+  resolveCaptainDisplayName,
+} from '../../../insforge/functions/_shared/checkout/validate'
 import { journeyForProductCode } from '../../../insforge/functions/_shared/checkout/journeys'
 import {
   dateFromMeridaWall,
@@ -168,6 +172,41 @@ describe('checkout validate', () => {
       expect.unreachable('expected CONTACT_REQUIRED')
     } catch (e) {
       expect((e as CheckoutError).code).toBe('CONTACT_REQUIRED')
+    }
+  })
+
+  it('defaults captain_name to buyer.name and accepts explicit override', () => {
+    expect(resolveCaptainDisplayName('Buyer Example')).toBe('Buyer Example')
+    expect(resolveCaptainDisplayName('Buyer Example', '  Capitan Real  ')).toBe('Capitan Real')
+    const parsed = parseCheckoutRequest(
+      validBody({ captain_name: 'Capitan UI', teammate_names: ['Pareja Uno'] }),
+    )
+    expect(parsed.captain_name).toBe('Capitan UI')
+    expect(parsed.teammate_names).toEqual(['Pareja Uno'])
+  })
+
+  it('fail-closed teammate_names vs team_size', () => {
+    expect(assertTeammateNamesForTeamSize(1, undefined)).toEqual([])
+    expect(assertTeammateNamesForTeamSize(1, [])).toEqual([])
+    try {
+      assertTeammateNamesForTeamSize(1, ['Extra'])
+      expect.unreachable('expected INVALID_REQUEST')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('INVALID_REQUEST')
+    }
+    expect(assertTeammateNamesForTeamSize(2, ['Pareja'])).toEqual(['Pareja'])
+    try {
+      assertTeammateNamesForTeamSize(2, [])
+      expect.unreachable('expected INVALID_REQUEST')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('INVALID_REQUEST')
+    }
+    expect(assertTeammateNamesForTeamSize(4, ['A', 'B', 'C'])).toEqual(['A', 'B', 'C'])
+    try {
+      assertTeammateNamesForTeamSize(4, ['A', ' ', 'C'])
+      expect.unreachable('expected INVALID_REQUEST')
+    } catch (e) {
+      expect((e as CheckoutError).code).toBe('INVALID_REQUEST')
     }
   })
 })
@@ -349,6 +388,66 @@ describe('orchestrateCheckoutStart', () => {
     )
     // hold_expires_at is stamped inside checkout_start_tx from the hold clock.
     expect(startSpy.mock.calls[0][0].commercialSnapshot).not.toHaveProperty('hold_expires_at')
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        captainName: 'Buyer Example',
+        teammateNames: [],
+      }),
+    )
+  })
+
+  it('passes teammate_names for Dobles and defaults captain_name', async () => {
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const result = await orchestrateCheckoutStart(
+      validBody({
+        product_code: 'DOB-VIE-MM',
+        teammate_names: ['Pareja Uno'],
+      }),
+      {
+        env: envMap(requiredEnv),
+        catalog: {
+          async getProductWithEvent() {
+            return {
+              product: { ...baseProduct, code: 'DOB-VIE-MM', team_size: 2, price_cents: 250000 },
+              event: openEvent,
+            }
+          },
+        },
+        repo,
+        mp: createMockMercadoPagoClient(),
+        now: launchNow,
+      },
+    )
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        captainName: 'Buyer Example',
+        teammateNames: ['Pareja Uno'],
+      }),
+    )
+  })
+
+  it('rejects teammate_names on individual product (INVALID_REQUEST)', async () => {
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const result = await orchestrateCheckoutStart(
+      validBody({ teammate_names: ['No Debe'] }),
+      {
+        env: envMap(requiredEnv),
+        catalog: {
+          async getProductWithEvent() {
+            return { product: baseProduct, event: openEvent }
+          },
+        },
+        repo,
+        mp: createMockMercadoPagoClient(),
+        now: launchNow,
+      },
+    )
+    expect(result.status).toBe(400)
+    expect(result.body).toMatchObject({ error: { code: 'INVALID_REQUEST' } })
+    expect(startSpy).not.toHaveBeenCalled()
   })
 
   it('ignores HWM/cupo and prices from calendar stage only (SPEC-030 v0.4)', async () => {

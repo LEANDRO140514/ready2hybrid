@@ -129,6 +129,8 @@ function createPorts() {
           buyer_phone: input.buyerPhone,
           buyer_contact_consent: input.buyerContactConsent,
           participant_public_ref: input.participantPublicRef,
+          captain_name: input.captainName,
+          teammate_names: input.teammateNames,
           commercial_snapshot: input.commercialSnapshot,
           invitation_ttl_seconds: input.invitationTtlSeconds,
           waiver_document_type: input.waiverDocumentType,

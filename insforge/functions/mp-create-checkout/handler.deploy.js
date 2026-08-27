@@ -11759,8 +11759,42 @@ var checkoutRequestSchema = external_exports.object({
     accepted: external_exports.boolean().optional()
   }).strict().optional(),
   correlation_id: external_exports.string().min(1).max(128).optional(),
-  selected_provider: external_exports.enum(["MERCADO_PAGO", "CLIP", "OPENPAY"]).optional()
+  selected_provider: external_exports.enum(["MERCADO_PAGO", "CLIP", "OPENPAY"]).optional(),
+  /**
+   * Optional competitor display name for slot 1 (captain / individual).
+   * When omitted, edge defaults to buyer.name (Owner 2026-08-27).
+   */
+  captain_name: external_exports.string().min(1).max(200).optional(),
+  /**
+   * Teammate display names only (no email/phone/ID). Length must equal
+   * team_size - 1 after catalog resolve; forbidden on non-team products.
+   */
+  teammate_names: external_exports.array(external_exports.string().max(200)).max(8).optional()
 }).strict();
+function resolveCaptainDisplayName(buyerName, captainName) {
+  const trimmed = captainName?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : buyerName.trim();
+}
+function assertTeammateNamesForTeamSize(teamSize, teammateNames) {
+  const raw = teammateNames ?? [];
+  if (!Number.isInteger(teamSize) || teamSize < 1) {
+    throw new CheckoutError("INVALID_REQUEST");
+  }
+  if (teamSize <= 1) {
+    if (raw.length > 0) {
+      throw new CheckoutError("INVALID_REQUEST");
+    }
+    return [];
+  }
+  if (raw.length !== teamSize - 1) {
+    throw new CheckoutError("INVALID_REQUEST");
+  }
+  const trimmed = raw.map((n) => typeof n === "string" ? n.trim() : "");
+  if (trimmed.some((n) => n.length === 0)) {
+    throw new CheckoutError("INVALID_REQUEST");
+  }
+  return trimmed;
+}
 function assertNoClientMoneyAuthority(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new CheckoutError("INVALID_REQUEST");
@@ -11854,9 +11888,11 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     }
     const config2 = loadCheckoutRuntimeConfig(deps.env);
     assertWaiverConfig(config2, journey, req.waiver);
-    if ((journey === "J2" || journey === "J3") && !config2.invitationTtlSeconds) {
-      throw new CheckoutError("CONFIGURATION_ERROR", "TEAM_INVITATION_TTL_SECONDS missing");
-    }
+    const captainName = resolveCaptainDisplayName(req.buyer.name, req.captain_name);
+    const teammateNames = assertTeammateNamesForTeamSize(
+      found.product.team_size,
+      req.teammate_names
+    );
     const now = deps.now?.() ?? /* @__PURE__ */ new Date();
     const consumed = await deps.catalog.getConsumedCapacityUnits?.(found.product.id) ?? 0;
     const commercial = resolveCommercialOffer({
@@ -11887,7 +11923,9 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       quantity: req.quantity,
       buyer: req.buyer ?? null,
       participant: req.participant ?? null,
-      waiver: req.waiver ?? null
+      waiver: req.waiver ?? null,
+      captain_name: captainName,
+      teammate_names: teammateNames
     };
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key);
     const requestFingerprint = await fingerprintRequest(normalized);
@@ -11917,6 +11955,8 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       buyerPhone: req.buyer.phone?.trim() ? req.buyer.phone.trim() : null,
       buyerContactConsent: req.buyer.contact_consent === true,
       participantPublicRef: req.participant?.public_ref ?? null,
+      captainName,
+      teammateNames,
       invitationTtlSeconds: config2.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,
       waiverDocumentVersion: req.waiver?.version ?? null,
@@ -12172,6 +12212,8 @@ function createPorts() {
           buyer_phone: input.buyerPhone,
           buyer_contact_consent: input.buyerContactConsent,
           participant_public_ref: input.participantPublicRef,
+          captain_name: input.captainName,
+          teammate_names: input.teammateNames,
           commercial_snapshot: input.commercialSnapshot,
           invitation_ttl_seconds: input.invitationTtlSeconds,
           waiver_document_type: input.waiverDocumentType,

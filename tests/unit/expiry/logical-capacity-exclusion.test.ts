@@ -306,7 +306,7 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(clockCapture).toBeLessThan(inventorySum)
   })
 
-  it('keeps the canonical checkout_start_tx as 0023 (buyer contact write) without cupo SOLD_OUT', () => {
+  it('keeps the canonical checkout_start_tx as 0025 (team roster capture) without cupo SOLD_OUT', () => {
     const definitions = readdirSync(migDir)
       .filter((n) => /^\d{4}_.+\.sql$/.test(n))
       .sort()
@@ -317,11 +317,11 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
       )
     expect(definitions.length).toBeGreaterThan(0)
 
-    // 0011 introduced the null-safe predicate; 0020 v0.4 commercial; 0023 buyer contact.
+    // 0011 introduced the null-safe predicate; 0020 v0.4 commercial; 0025 team capture.
     expect(definitions).toContain(MIGRATION_FILE)
     expect(definitions).not.toContain('0018_staged-commercial-pricing.sql')
     const canonical = definitions[definitions.length - 1]
-    expect(canonical).toBe('0023_buyer-contact-checkout-write.sql')
+    expect(canonical).toBe('0025_checkout-team-roster-capture.sql')
 
     const canonicalCode = stripSqlComments(
       readFileSync(resolve(migDir, canonical), 'utf8'),
@@ -336,7 +336,10 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(canonicalCode).toMatch(/cupo\/holds are not commercial SOLD_OUT/i)
     expect(canonicalCode).toContain('CONTACT_REQUIRED')
     expect(canonicalCode).toContain('contact_consent_at')
-
+    expect(canonicalCode).toContain('teammate_names')
+    expect(canonicalCode).toContain('captain_name')
+    expect(canonicalCode).not.toContain('INVITATION_EXCHANGE_CODE')
+    expect(canonicalCode).toContain("'invitation_tokens', '[]'::jsonb")
     // Historical 0011 still encodes the null-safe inventory predicate.
     const baselineCode = stripSqlComments(
       readFileSync(resolve(migDir, MIGRATION_FILE), 'utf8'),
