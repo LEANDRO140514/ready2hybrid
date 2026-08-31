@@ -58,6 +58,15 @@
   `MP-MSI-SANDBOX-E2E` NOT AUTHORIZED. Siguiente unidad propuesta:
   `RELAUNCH-DELTA-SPEC-DRAFT` (no iniciada)
 - RELAUNCH-DELTA-SPEC-DRAFT: SPEC-030/031/032 v0.3.0 APPROVED / EFFECTIVE
+- GO-LIVE-MIGRATIONS-0022-0025: APPLIED TO MAIN (2026-08-31 America/Merida)
+  Migraciones 0022 (buyer contact fields) + 0023 (checkout buyer write +
+  CONTACT_REQUIRED) + 0024 (participant display name) + 0025 (team roster
+  capture) aplicadas y verificadas en Main. `mp-create-checkout` redesplegado
+  desde bundle del repo (SHA-256 `3B9AE28A...`, updatedAt `2026-08-31T05:25:42Z`).
+  E2E validado: CONTACT_REQUIRED funcional en edge; payload válido llega a
+  SALES_NOT_OPEN (correcto, ventas cerradas). **CHECKOUT TÉCNICAMENTE LISTO.**
+  Pendiente SOLO apertura comercial de ventas (decisión del Owner, no paso
+  técnico). `SALES_STATUS` = CLOSED. `events.status` = CONFIGURADO.
   (Leandro Espinosa, CEO / Project Owner, 2026-08-21 America/Merida;
   independent review `READY_FOR_APPROVAL`; Option 3 historical exception).
   Event 13–15 Nov 2026; 23 vendible SKUs; 5 RETIRED_FROM_SALE historically
@@ -1411,3 +1420,89 @@ Mode: DOCUMENTATION ONLY (no deploy)
   **not** authorize deploy, push, SQL apply, or `SALES_STATUS=OPEN`.
 - Intentional drift: Main runtime ≠ current repo bundle until that
   authorized redeploy.
+
+### GO-LIVE-MIGRATIONS-0022-0025 (2026-08-31)
+
+```text
+Unit: GO-LIVE-MIGRATIONS-0022-0025
+Mode: AUTHORIZED PRODUCTION MUTATION
+Date: 2026-08-31 America/Merida
+Authorization: Project Owner explicit
+Prior gate: READY_FOR_MP_WEBHOOK_SECRET_AND_LANDING_WIRING
+Gate out: CHECKOUT_TECHNICALLY_READY_PENDING_SALES_OPEN
+```
+
+#### Migrations applied to Main
+
+| Migration | Purpose | Verification |
+|---|---|---|
+| 0022 | `buyer_contacts.email/name/phone` + CHECK constraint | 3 columns + `ck_buyer_contacts_email_has_at` ✓ |
+| 0023 | `contact_consent_at` + `checkout_start_tx` CONTACT_REQUIRED | Column exists + RPC returns `CONTACT_REQUIRED` when email missing ✓ |
+| 0024 | `participants.name` for team roster | Column exists ✓ |
+| 0025 | `checkout_start_tx` with `captain_name` + `teammate_names[]` | Function comment + RPC accepts params ✓ |
+
+Applied via `insforge db import` (DDL direct). Verified individually before
+proceeding to next.
+
+#### mp-create-checkout redeploy
+
+| Item | Value |
+|---|---|
+| Bundle source | `insforge/functions/mp-create-checkout/handler.deploy.js` (repo) |
+| Bundle SHA-256 | `3B9AE28A01D996A9C4D3835B47178534A91C3C4060CBB543AC336EB7B95BDB9C` |
+| Bundle size | 441,909 bytes |
+| Deploy command | `insforge functions deploy mp-create-checkout --file <repo-bundle>` |
+| Result | `success: true`, `deployment.status: success` |
+| updatedAt | `2026-08-31T05:25:42.230Z` |
+
+Bundle was already current (no git diff after regen). Deployed from repo, not temp.
+
+#### E2E validation
+
+| Test | Payload | Result | Status |
+|---|---|---|---|
+| Origin guard | CLI (no Origin header) | `ORIGIN_NOT_ALLOWED` | ✓ Expected |
+| Missing buyer.email | Valid except no email | `CONTACT_REQUIRED` | ✓ 0023 active |
+| Invalid email (no @) | `buyer_email: "x"` | `CONTACT_REQUIRED` | ✓ 0023 active |
+| Full valid payload | email + name + idempotency_key | `SALES_NOT_OPEN` | ✓ Expected |
+
+The checkout flow is **technically complete**. The `SALES_NOT_OPEN` response
+is correct because HEX-2026 has `status = CONFIGURADO` and `sales_open_at = NULL`.
+
+#### What remains for go-live
+
+| Item | Type | Status |
+|---|---|---|
+| Open sales (HEX-2026) | **Commercial decision** | Pending Owner |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Technical (post-sales-open) | Not configured |
+| Landing production checkout | Technical (post-sales-open) | Ready in `hybrid-event-landing` |
+
+**Opening sales is NOT a technical step.** It is a business decision that
+requires explicit Owner authorization:
+
+```sql
+UPDATE events
+SET status = 'EN_VENTA', sales_open_at = now()
+WHERE code = 'HEX-2026';
+```
+
+This unit does NOT authorize that mutation.
+
+#### Files modified
+
+- `WORKSPACE_STATUS.md` (this entry)
+
+#### Mutation confirmation
+
+- 0022 APPLIED TO MAIN
+- 0023 APPLIED TO MAIN
+- 0024 APPLIED TO MAIN
+- 0025 APPLIED TO MAIN
+- MP-CREATE-CHECKOUT DEPLOYED FROM REPO BUNDLE
+- CONTACT_REQUIRED FUNCTIONAL IN EDGE
+- SALES_NOT_OPEN CORRECT (sales closed)
+- NO SALES OPENED
+- NO PAYMENT EXECUTED
+- NO TICKET ISSUED
+- SALES_STATUS = CLOSED
+- events.status = CONFIGURADO
