@@ -349,7 +349,9 @@ async function orchestrateWebhook(req, deps) {
       applied,
       replay: Boolean(apply.replay),
       outcome
-    }
+    },
+    order_id: apply.order_id,
+    outcome
   };
 }
 
@@ -406,7 +408,8 @@ function createLazyRepo() {
           ok: Boolean(row?.ok),
           replay: Boolean(row?.replay),
           outcome: row?.outcome,
-          error_code: row?.error_code
+          error_code: row?.error_code,
+          order_id: row?.order_id
         };
       }
     };
@@ -416,6 +419,20 @@ function createLazyRepo() {
     applyPaymentTx: (input) => getInner().applyPaymentTx(input)
   };
 }
+function fireAndForgetTicketEmail(orderId) {
+  const base = env("INSFORGE_BASE_URL");
+  const bearer = env("TICKET_OPERATOR_BEARER");
+  if (!base || !bearer) return;
+  fetch(`${base}/functions/v1/send-ticket-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${bearer}`
+    },
+    body: JSON.stringify({ order_id: orderId })
+  }).catch(() => {
+  });
+}
 async function handler(req) {
   try {
     const result = await orchestrateWebhook(req, {
@@ -423,6 +440,9 @@ async function handler(req) {
       payments: createHttpPaymentClient(),
       repo: createLazyRepo()
     });
+    if (result.order_id && result.outcome && (result.outcome === "PAID" || result.outcome === "ALREADY_PAID")) {
+      fireAndForgetTicketEmail(result.order_id);
+    }
     return jsonResponse(result.status, result.body);
   } catch (error) {
     if (error instanceof WebhookError) {

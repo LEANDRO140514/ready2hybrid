@@ -53,12 +53,19 @@ function createLazyRepo(): WebhookRepository {
         if (error) {
           throw new WebhookError('INTERNAL_ERROR')
         }
-        const row = data as { ok?: boolean; replay?: boolean; outcome?: string; error_code?: string }
+        const row = data as {
+          ok?: boolean
+          replay?: boolean
+          outcome?: string
+          error_code?: string
+          order_id?: string
+        }
         return {
           ok: Boolean(row?.ok),
           replay: Boolean(row?.replay),
           outcome: row?.outcome,
           error_code: row?.error_code,
+          order_id: row?.order_id,
         }
       },
     }
@@ -70,6 +77,23 @@ function createLazyRepo(): WebhookRepository {
   }
 }
 
+function fireAndForgetTicketEmail(orderId: string): void {
+  const base = env('INSFORGE_BASE_URL')
+  const bearer = env('TICKET_OPERATOR_BEARER')
+  if (!base || !bearer) return
+
+  fetch(`${base}/functions/v1/send-ticket-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${bearer}`,
+    },
+    body: JSON.stringify({ order_id: orderId }),
+  }).catch(() => {
+    // Fire-and-forget: failures are recovered by SWEEP mode
+  })
+}
+
 export default async function handler(req: Request): Promise<Response> {
   try {
     const result = await orchestrateWebhook(req, {
@@ -77,6 +101,16 @@ export default async function handler(req: Request): Promise<Response> {
       payments: createHttpPaymentClient(),
       repo: createLazyRepo(),
     })
+
+    // Fire-and-forget ticket email for successful payments
+    if (
+      result.order_id &&
+      result.outcome &&
+      (result.outcome === 'PAID' || result.outcome === 'ALREADY_PAID')
+    ) {
+      fireAndForgetTicketEmail(result.order_id)
+    }
+
     return jsonResponse(result.status, result.body)
   } catch (error) {
     if (error instanceof WebhookError) {

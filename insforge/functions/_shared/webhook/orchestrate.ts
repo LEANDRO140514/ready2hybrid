@@ -37,6 +37,7 @@ export type WebhookApplyResult = {
   replay?: boolean
   outcome?: string
   error_code?: string
+  order_id?: string
 }
 
 export type WebhookRepository = {
@@ -70,10 +71,17 @@ function sanitizeHeaders(headers: Headers): Record<string, string> {
   return out
 }
 
+export type WebhookOrchestrationResult = {
+  status: number
+  body: Record<string, unknown>
+  order_id?: string
+  outcome?: string
+}
+
 export async function orchestrateWebhook(
   req: Request,
   deps: OrchestrateDeps,
-): Promise<{ status: number; body: Record<string, unknown> }> {
+): Promise<WebhookOrchestrationResult> {
   if (req.method !== 'POST') {
     throw new WebhookError('METHOD_NOT_ALLOWED')
   }
@@ -232,5 +240,7 @@ export async function orchestrateWebhook(
       replay: Boolean(apply.replay),
       outcome,
     },
+    order_id: apply.order_id,
+    outcome,
   }
 }
