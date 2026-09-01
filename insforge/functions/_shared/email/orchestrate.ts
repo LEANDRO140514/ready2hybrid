@@ -307,7 +307,7 @@ async function sendForOrder(
     let teamName: string | null = null
     let rosterNames: string[] = [buyerName]
 
-    if (teamSize > 1 && teamId) {
+    if (teamId) {
       teamName = teamNameMap.get(teamId) ?? null
       rosterNames = teamRosterMap.get(teamId) ?? [buyerName]
     }
@@ -416,6 +416,10 @@ async function sendForOrder(
 
   // ─────────────────────────────────────────────────────────────────────────
   // STEP 10: Build email HTML using first ticket's data
+  // ASSUMPTION: one ticket per order (T1 model). The email body describes
+  // firstTicket only. If an order ever carries multiple distinct products,
+  // buildEmailHtml must be extended to list all of them. PDFs for all tickets
+  // are attached regardless; only the HTML body assumes one.
   // ─────────────────────────────────────────────────────────────────────────
   const firstTicket = resolvedTickets.find((t) => attachments.some((a) => a.ticketId === t.id))!
   const emailHtml = buildEmailHtml({

@@ -285,7 +285,7 @@ async function sendForOrder(orderId, deps, config) {
     const productName = product?.name ?? t.product_code;
     let teamName = null;
     let rosterNames = [buyerName];
-    if (teamSize > 1 && teamId) {
+    if (teamId) {
       teamName = teamNameMap.get(teamId) ?? null;
       rosterNames = teamRosterMap.get(teamId) ?? [buyerName];
     }
