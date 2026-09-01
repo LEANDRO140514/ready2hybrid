@@ -423,7 +423,7 @@ function fireAndForgetTicketEmail(orderId) {
   const base = env("INSFORGE_BASE_URL");
   const bearer = env("TICKET_OPERATOR_BEARER");
   if (!base || !bearer) return;
-  fetch(`${base}/functions/v1/send-ticket-email`, {
+  fetch(`${base}/functions/send-ticket-email`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

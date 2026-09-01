@@ -32,10 +32,13 @@ var SendTicketEmailError = class extends Error {
 function loadSendTicketEmailRuntimeConfig(env2) {
   const ttlRaw = env2("TICKET_CREDENTIAL_IDEMPOTENCY_TTL_SECONDS") ?? "3600";
   const ttl = Number.parseInt(ttlRaw, 10);
+  if (!Number.isFinite(ttl) || ttl <= 0) {
+    throw new SendTicketEmailError("CONFIGURATION_ERROR", "Invalid TICKET_CREDENTIAL_IDEMPOTENCY_TTL_SECONDS");
+  }
   return {
     operatorBearer: env2("TICKET_OPERATOR_BEARER") ?? null,
     resendApiKey: env2("RESEND_API_KEY") ?? null,
-    idempotencyTtlSeconds: Number.isFinite(ttl) && ttl > 0 ? ttl : 3600
+    idempotencyTtlSeconds: ttl
   };
 }
 
@@ -185,60 +188,122 @@ function parseRequest(raw) {
 }
 async function sendForOrder(orderId, deps, config) {
   const admin = deps.getAdminClient();
-  const results = [];
-  const { data: ticketsRaw, error: ticketsErr } = await admin.database.from("tickets").select(`
-      id,
-      folio,
-      registration_id,
-      product_code,
-      registrations!inner(order_id, team_id, products!inner(team_size, name))
-    `).eq("registrations.order_id", orderId);
+  const { data: registrationsRaw, error: regErr } = await admin.database.from("registrations").select("id, product_id, team_id").eq("order_id", orderId).limit(100);
+  if (regErr || !registrationsRaw) {
+    throw new SendTicketEmailError("SERVICE_UNAVAILABLE");
+  }
+  const registrations = registrationsRaw;
+  if (registrations.length === 0) {
+    return { ok: true, sent: 0, reason: "NO_REGISTRATIONS" };
+  }
+  const registrationIds = registrations.map((r) => r.id);
+  const { data: ticketsRaw, error: ticketsErr } = await admin.database.from("tickets").select("id, folio, registration_id, product_code").in("registration_id", registrationIds);
   if (ticketsErr || !ticketsRaw) {
     throw new SendTicketEmailError("SERVICE_UNAVAILABLE");
   }
-  const tickets = ticketsRaw.filter(
-    (t) => t.registrations?.order_id === orderId
-  );
-  if (tickets.length === 0) {
+  const ticketRows = ticketsRaw;
+  if (ticketRows.length === 0) {
     return { ok: true, sent: 0, reason: "NO_TICKETS" };
   }
-  const { data: orderData, error: orderErr } = await admin.database.from("orders").select("buyer_contact_id, buyer_contacts!inner(email, name)").eq("id", orderId).single();
+  const ticketDomainRefs = ticketRows.map((t) => `ticket:${t.id}`);
+  const { data: outboxRaw } = await admin.database.from("outbox_delivery_jobs").select("domain_event_ref, state").in("domain_event_ref", ticketDomainRefs);
+  const outboxJobs = outboxRaw ?? [];
+  const alreadySentRefs = new Set(
+    outboxJobs.filter((j) => j.state === "SENT").map((j) => j.domain_event_ref)
+  );
+  const pendingTicketRows = ticketRows.filter((t) => !alreadySentRefs.has(`ticket:${t.id}`));
+  if (pendingTicketRows.length === 0) {
+    return { ok: true, sent: 0, reason: "ALL_ALREADY_SENT" };
+  }
+  const productIds = [...new Set(registrations.map((r) => r.product_id))];
+  const { data: productsRaw, error: productsErr } = await admin.database.from("products").select("id, name, team_size").in("id", productIds);
+  if (productsErr || !productsRaw) {
+    throw new SendTicketEmailError("SERVICE_UNAVAILABLE");
+  }
+  const products = productsRaw;
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const regToProduct = /* @__PURE__ */ new Map();
+  for (const reg of registrations) {
+    regToProduct.set(reg.id, productMap.get(reg.product_id));
+  }
+  const regToTeamId = /* @__PURE__ */ new Map();
+  for (const reg of registrations) {
+    regToTeamId.set(reg.id, reg.team_id);
+  }
+  const { data: orderData, error: orderErr } = await admin.database.from("orders").select("id, buyer_contact_id").eq("id", orderId).single();
   if (orderErr || !orderData) {
     throw new SendTicketEmailError("ORDER_NOT_FOUND");
   }
   const order = orderData;
-  const buyerEmail = order.buyer_contacts?.email;
-  const buyerName = order.buyer_contacts?.name ?? "Participante";
+  const { data: buyerData, error: buyerErr } = await admin.database.from("buyer_contacts").select("id, email, name").eq("id", order.buyer_contact_id).single();
+  if (buyerErr || !buyerData) {
+    throw new SendTicketEmailError("ORDER_NOT_FOUND");
+  }
+  const buyer = buyerData;
+  const buyerEmail = buyer.email;
+  const buyerName = buyer.name ?? "Participante";
   if (!buyerEmail) {
-    for (const t of tickets) {
+    const results = [];
+    for (const t of pendingTicketRows) {
       await markOutboxResult(admin, t.id, "BUYER_EMAIL_MISSING");
       results.push({ ticket_id: t.id, status: "FAILED", detail: "BUYER_EMAIL_MISSING" });
     }
-    return { ok: false, sent: 0, failed: tickets.length, results, error: "BUYER_EMAIL_MISSING" };
+    return { ok: false, sent: 0, failed: pendingTicketRows.length, results, error: "BUYER_EMAIL_MISSING" };
   }
   if (!config.resendApiKey) {
     throw new SendTicketEmailError("EMAIL_NOT_CONFIGURED");
   }
-  const attachments = [];
-  let sent = 0;
-  let failed = 0;
-  for (const ticket of tickets) {
-    const teamSize2 = ticket.registrations.products?.team_size ?? 1;
-    const teamId2 = ticket.registrations.team_id;
-    const productName2 = ticket.registrations.products?.name ?? ticket.product_code;
-    let rosterNames2 = [buyerName];
-    let teamName2 = null;
-    if (teamSize2 > 1 && teamId2) {
-      const { data: teamData } = await admin.database.from("teams").select("name").eq("id", teamId2).single();
-      teamName2 = teamData?.name ?? null;
-      const { data: membersRaw } = await admin.database.from("team_members").select("participant_id, position, participants!inner(name)").eq("team_id", teamId2).order("position");
-      if (membersRaw && Array.isArray(membersRaw)) {
-        rosterNames2 = membersRaw.map((m) => m.participants?.name).filter((n) => Boolean(n));
-        if (rosterNames2.length === 0) {
-          rosterNames2 = [buyerName];
-        }
-      }
+  const teamIds = [...new Set(registrations.map((r) => r.team_id).filter((id) => id != null))];
+  const teamNameMap = /* @__PURE__ */ new Map();
+  const teamRosterMap = /* @__PURE__ */ new Map();
+  if (teamIds.length > 0) {
+    const { data: teamsRaw } = await admin.database.from("teams").select("id, name").in("id", teamIds);
+    const teams = teamsRaw ?? [];
+    for (const t of teams) {
+      teamNameMap.set(t.id, t.name);
     }
+    const { data: membersRaw } = await admin.database.from("team_members").select("team_id, participant_id, position").in("team_id", teamIds);
+    const members = membersRaw ?? [];
+    const participantIds = [...new Set(members.map((m) => m.participant_id))];
+    let participantNameMap = /* @__PURE__ */ new Map();
+    if (participantIds.length > 0) {
+      const { data: participantsRaw } = await admin.database.from("participants").select("id, name").in("id", participantIds);
+      const participants = participantsRaw ?? [];
+      participantNameMap = new Map(participants.map((p) => [p.id, p.name]));
+    }
+    for (const teamId of teamIds) {
+      const teamMembers = members.filter((m) => m.team_id === teamId).sort((a, b) => a.position - b.position);
+      const names = teamMembers.map((m) => participantNameMap.get(m.participant_id)).filter((n) => Boolean(n));
+      teamRosterMap.set(teamId, names.length > 0 ? names : [buyerName]);
+    }
+  }
+  const resolvedTickets = [];
+  for (const t of pendingTicketRows) {
+    const product = regToProduct.get(t.registration_id);
+    const teamId = regToTeamId.get(t.registration_id);
+    const teamSize = product?.team_size ?? 1;
+    const productName = product?.name ?? t.product_code;
+    let teamName = null;
+    let rosterNames = [buyerName];
+    if (teamSize > 1 && teamId) {
+      teamName = teamNameMap.get(teamId) ?? null;
+      rosterNames = teamRosterMap.get(teamId) ?? [buyerName];
+    }
+    resolvedTickets.push({
+      id: t.id,
+      folio: t.folio,
+      registrationId: t.registration_id,
+      productCode: t.product_code,
+      productName,
+      teamSize,
+      teamId,
+      teamName,
+      rosterNames
+    });
+  }
+  const attachments = [];
+  const failedResults = [];
+  for (const ticket of resolvedTickets) {
     const uniqueSeed = `email:${ticket.id}:${Date.now()}:${crypto.randomUUID()}`;
     const idempotencyKeyHash = await sha256Hex(uniqueSeed);
     const requestFingerprint = await sha256Hex(JSON.stringify({ ticket_id: ticket.id, send_ts: Date.now() }));
@@ -255,71 +320,53 @@ async function sendForOrder(orderId, deps, config) {
     );
     if (reissueErr) {
       await markOutboxResult(admin, ticket.id, "REISSUE_RPC_ERROR");
-      results.push({ ticket_id: ticket.id, status: "FAILED", detail: "REISSUE_RPC_ERROR" });
-      failed++;
+      failedResults.push({ ticket_id: ticket.id, status: "FAILED", detail: "REISSUE_RPC_ERROR" });
       continue;
     }
     const reissue = reissueData;
     if (!reissue?.ok) {
       const errCode = reissue?.error_code ?? "REISSUE_FAILED";
       await markOutboxResult(admin, ticket.id, errCode);
-      results.push({ ticket_id: ticket.id, status: "FAILED", detail: errCode });
-      failed++;
+      failedResults.push({ ticket_id: ticket.id, status: "FAILED", detail: errCode });
       continue;
     }
     const rawToken = reissue.response?.raw_token;
     if (!rawToken) {
       await markOutboxResult(admin, ticket.id, "NO_RAW_TOKEN");
-      results.push({ ticket_id: ticket.id, status: "FAILED", detail: "NO_RAW_TOKEN" });
-      failed++;
+      failedResults.push({ ticket_id: ticket.id, status: "FAILED", detail: "NO_RAW_TOKEN" });
       continue;
     }
     try {
       const pdfBase64 = await generateTicketPdf({
         ticketFolio: ticket.folio,
-        productName: productName2,
-        teamName: teamName2,
-        rosterNames: rosterNames2,
+        productName: ticket.productName,
+        teamName: ticket.teamName,
+        rosterNames: ticket.rosterNames,
         buyerName,
         rawToken
       });
-      attachments.push({
-        filename: tickets.length > 1 ? `boleto-${ticket.folio}.pdf` : "boleto-hybrid-experience.pdf",
-        content: pdfBase64
-      });
-      results.push({ ticket_id: ticket.id, status: "SENT" });
-      sent++;
-    } catch (pdfErr) {
+      const filename = resolvedTickets.length > 1 ? `boleto-${ticket.folio}.pdf` : "boleto-hybrid-experience.pdf";
+      attachments.push({ ticketId: ticket.id, filename, content: pdfBase64 });
+    } catch {
       await markOutboxResult(admin, ticket.id, "PDF_GENERATION_FAILED");
-      results.push({ ticket_id: ticket.id, status: "FAILED", detail: "PDF_GENERATION_FAILED" });
-      failed++;
+      failedResults.push({ ticket_id: ticket.id, status: "FAILED", detail: "PDF_GENERATION_FAILED" });
     }
   }
   if (attachments.length === 0) {
-    return { ok: false, sent: 0, failed, results, error: "NO_ATTACHMENTS_GENERATED" };
+    return {
+      ok: false,
+      sent: 0,
+      failed: failedResults.length,
+      results: failedResults,
+      error: "NO_ATTACHMENTS_GENERATED"
+    };
   }
-  const firstTicket = tickets[0];
-  const productName = firstTicket.registrations.products?.name ?? firstTicket.product_code;
-  const teamSize = firstTicket.registrations.products?.team_size ?? 1;
-  const teamId = firstTicket.registrations.team_id;
-  let rosterNames = [buyerName];
-  let teamName = null;
-  if (teamSize > 1 && teamId) {
-    const { data: teamData } = await admin.database.from("teams").select("name").eq("id", teamId).single();
-    teamName = teamData?.name ?? null;
-    const { data: membersRaw } = await admin.database.from("team_members").select("participant_id, position, participants!inner(name)").eq("team_id", teamId).order("position");
-    if (membersRaw && Array.isArray(membersRaw)) {
-      rosterNames = membersRaw.map((m) => m.participants?.name).filter((n) => Boolean(n));
-      if (rosterNames.length === 0) {
-        rosterNames = [buyerName];
-      }
-    }
-  }
+  const firstTicket = resolvedTickets.find((t) => attachments.some((a) => a.ticketId === t.id));
   const emailHtml = buildEmailHtml({
     buyerName,
-    productName,
-    teamName,
-    rosterNames,
+    productName: firstTicket.productName,
+    teamName: firstTicket.teamName,
+    rosterNames: firstTicket.rosterNames,
     ticketFolio: firstTicket.folio
   });
   const resendResponse = await fetch("https://api.resend.com/emails", {
@@ -341,25 +388,42 @@ async function sendForOrder(orderId, deps, config) {
   });
   if (!resendResponse.ok) {
     const errText = await resendResponse.text().catch(() => "unknown");
-    for (const ticket of tickets) {
-      await markOutboxResult(admin, ticket.id, `RESEND_ERROR:${resendResponse.status}`);
+    const errorDetail = `RESEND_ERROR:${resendResponse.status}`;
+    for (const att of attachments) {
+      await markOutboxResult(admin, att.ticketId, errorDetail);
     }
+    const allResults = [
+      ...failedResults,
+      ...attachments.map((a) => ({
+        ticket_id: a.ticketId,
+        status: "FAILED",
+        detail: "RESEND_FAILED"
+      }))
+    ];
     return {
       ok: false,
       sent: 0,
-      failed: tickets.length,
-      results: results.map(
-        (r) => r.status === "SENT" ? { ...r, status: "FAILED", detail: "RESEND_FAILED" } : r
-      ),
-      error: `RESEND_ERROR:${resendResponse.status}:${errText.slice(0, 100)}`
+      failed: allResults.length,
+      results: allResults,
+      error: `${errorDetail}:${errText.slice(0, 100)}`
     };
   }
   const resendResult = await resendResponse.json();
   const resendId = resendResult.id ?? "ok";
-  for (const ticket of tickets) {
-    await admin.database.from("outbox_delivery_jobs").update({ state: "SENT", result: resendId, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("domain_event_ref", `ticket:${ticket.id}`).neq("state", "SENT");
+  for (const att of attachments) {
+    await admin.database.from("outbox_delivery_jobs").update({ state: "SENT", result: resendId, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("domain_event_ref", `ticket:${att.ticketId}`).neq("state", "SENT");
   }
-  return { ok: true, orders: 1, sent, failed, results };
+  const successResults = attachments.map((a) => ({
+    ticket_id: a.ticketId,
+    status: "SENT"
+  }));
+  return {
+    ok: true,
+    orders: 1,
+    sent: attachments.length,
+    failed: failedResults.length,
+    results: [...successResults, ...failedResults]
+  };
 }
 async function markOutboxResult(admin, ticketId, result) {
   await admin.database.from("outbox_delivery_jobs").update({ result, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("domain_event_ref", `ticket:${ticketId}`).neq("state", "SENT");
@@ -378,11 +442,18 @@ async function sweepPending(max, deps, config) {
   if (ticketIds.length === 0) {
     return { ok: true, orders: 0, sent: 0, failed: 0, results: [] };
   }
-  const { data: ticketsRaw } = await admin.database.from("tickets").select("registration_id, registrations!inner(order_id)").in("id", ticketIds);
+  const { data: ticketsRaw } = await admin.database.from("tickets").select("id, registration_id").in("id", ticketIds);
   if (!ticketsRaw) {
     return { ok: true, orders: 0, sent: 0, failed: 0, results: [] };
   }
-  const orderIds = [...new Set(ticketsRaw.map((t) => t.registrations.order_id))];
+  const tickets = ticketsRaw;
+  const registrationIds = [...new Set(tickets.map((t) => t.registration_id))];
+  const { data: regsRaw } = await admin.database.from("registrations").select("id, order_id").in("id", registrationIds);
+  if (!regsRaw) {
+    return { ok: true, orders: 0, sent: 0, failed: 0, results: [] };
+  }
+  const regs = regsRaw;
+  const orderIds = [...new Set(regs.map((r) => r.order_id))];
   const limitedOrderIds = orderIds.slice(0, max);
   let totalSent = 0;
   let totalFailed = 0;
@@ -409,16 +480,26 @@ async function sweepPending(max, deps, config) {
 }
 async function statusForOrder(orderId, deps) {
   const admin = deps.getAdminClient();
-  const { data: ticketsRaw, error: ticketsErr } = await admin.database.from("tickets").select("id, folio, registration_id, registrations!inner(order_id)").eq("registrations.order_id", orderId);
+  const { data: regsRaw, error: regsErr } = await admin.database.from("registrations").select("id").eq("order_id", orderId).limit(100);
+  if (regsErr || !regsRaw) {
+    throw new SendTicketEmailError("SERVICE_UNAVAILABLE");
+  }
+  const regs = regsRaw;
+  if (regs.length === 0) {
+    return { ok: true, sent: 0, reason: "NO_REGISTRATIONS", results: [] };
+  }
+  const registrationIds = regs.map((r) => r.id);
+  const { data: ticketsRaw, error: ticketsErr } = await admin.database.from("tickets").select("id, folio, registration_id").in("registration_id", registrationIds);
   if (ticketsErr || !ticketsRaw) {
     throw new SendTicketEmailError("SERVICE_UNAVAILABLE");
   }
-  const tickets = ticketsRaw.filter((t) => t.registrations?.order_id === orderId);
+  const tickets = ticketsRaw;
   if (tickets.length === 0) {
     return { ok: true, sent: 0, reason: "NO_TICKETS", results: [] };
   }
   const ticketIds = tickets.map((t) => t.id);
-  const { data: jobsRaw } = await admin.database.from("outbox_delivery_jobs").select("domain_event_ref, state, result").eq("communication_type", "TICKET_READY").in("domain_event_ref", ticketIds.map((id) => `ticket:${id}`));
+  const ticketDomainRefs = ticketIds.map((id) => `ticket:${id}`);
+  const { data: jobsRaw } = await admin.database.from("outbox_delivery_jobs").select("domain_event_ref, state, result").in("domain_event_ref", ticketDomainRefs);
   const jobs = jobsRaw ?? [];
   const jobMap = new Map(jobs.map((j) => [j.domain_event_ref, j]));
   const results = tickets.map((t) => {
