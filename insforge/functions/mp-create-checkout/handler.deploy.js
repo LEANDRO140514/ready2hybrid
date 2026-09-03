@@ -134,6 +134,8 @@ function createHttpMercadoPagoClient(fetchImpl = fetch) {
         body: JSON.stringify(body)
       });
       if (!response.ok) {
+        const mpErrorBody = await response.text().catch(() => "no-body");
+        console.error("[MP_PREF_ERROR]", response.status, mpErrorBody);
         throw new CheckoutError("CHECKOUT_CREATION_FAILED");
       }
       const json2 = await response.json();

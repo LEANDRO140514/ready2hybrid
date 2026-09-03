@@ -84,6 +84,9 @@ export function createHttpMercadoPagoClient(fetchImpl: typeof fetch = fetch): Me
       })
 
       if (!response.ok) {
+        // TEMPORARY DIAGNOSTIC: log MP error before throwing generic error
+        const mpErrorBody = await response.text().catch(() => 'no-body')
+        console.error('[MP_PREF_ERROR]', response.status, mpErrorBody)
         throw new CheckoutError('CHECKOUT_CREATION_FAILED')
       }
 
