@@ -119,7 +119,9 @@ function createHttpMercadoPagoClient(fetchImpl = fetch) {
           journey: input.price.journey
         },
         ...input.expiresAt ? {
-          expiration_date_to: input.expiresAt
+          // MP requires ISO 8601 with milliseconds (3 decimals); Postgres emits microseconds (5+).
+          // toISOString() normalizes to "YYYY-MM-DDTHH:mm:ss.sssZ" which MP accepts.
+          expiration_date_to: new Date(input.expiresAt).toISOString()
         } : {}
       };
       const response = await fetchImpl("https://api.mercadopago.com/checkout/preferences", {
