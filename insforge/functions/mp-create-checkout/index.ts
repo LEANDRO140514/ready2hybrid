@@ -138,7 +138,11 @@ function createPorts() {
           waiver_accepted: input.waiverAccepted,
         },
       })
-      if (error) throw new CheckoutError('INTERNAL_ERROR')
+      if (error) {
+        // TEMPORARY DIAGNOSTIC: log RPC error before throwing
+        console.error('[CHECKOUT_TX_ERROR]', JSON.stringify(error))
+        throw new CheckoutError('INTERNAL_ERROR')
+      }
       const row = data as Record<string, unknown>
       if (!row?.ok) {
         throw new CheckoutError((row?.error_code as never) || 'INTERNAL_ERROR')
@@ -277,6 +281,8 @@ export default async function handler(req: Request): Promise<Response> {
     if (error instanceof CheckoutError) {
       return jsonResponse(error.status, error.toPublicBody(), gate.headers)
     }
+    // TEMPORARY DIAGNOSTIC: log unexpected error before converting to INTERNAL_ERROR
+    console.error('[CHECKOUT_HANDLER_ERROR]', error instanceof Error ? error.stack ?? error.message : JSON.stringify(error))
     return jsonResponse(500, new CheckoutError('INTERNAL_ERROR').toPublicBody(), gate.headers)
   }
 }
