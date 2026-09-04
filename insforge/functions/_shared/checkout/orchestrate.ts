@@ -115,6 +115,22 @@ function publicSuccess(body: CheckoutSuccessResponse): { status: number; body: C
   return { status: 200, body }
 }
 
+/**
+ * Carries the public order reference back from Mercado Pago in the return URL.
+ * Without it the confirmation page can only resolve the order from
+ * sessionStorage, which does not survive the round trip in mobile WebViews.
+ */
+function withPublicOrderReference(baseUrl: string, trackingRef: string): string {
+  try {
+    const url = new URL(baseUrl)
+    url.searchParams.set('ref', trackingRef)
+    return url.toString()
+  } catch {
+    const separator = baseUrl.includes('?') ? '&' : '?'
+    return `${baseUrl}${separator}ref=${encodeURIComponent(trackingRef)}`
+  }
+}
+
 export async function orchestrateCheckoutStart(
   rawBody: unknown,
   deps: OrchestrateDeps,
@@ -274,9 +290,9 @@ export async function orchestrateCheckoutStart(
         price,
         paymentPolicy,
         backUrls: {
-          success: config.backUrlSuccess,
-          failure: config.backUrlFailure,
-          pending: config.backUrlPending,
+          success: withPublicOrderReference(config.backUrlSuccess, tx.trackingRef),
+          failure: withPublicOrderReference(config.backUrlFailure, tx.trackingRef),
+          pending: withPublicOrderReference(config.backUrlPending, tx.trackingRef),
         },
         notificationUrl: config.notificationUrl,
         expiresAt: tx.expiresAt,

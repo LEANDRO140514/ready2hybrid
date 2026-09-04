@@ -11870,6 +11870,16 @@ function assertSelectedProvider(selected, enablement) {
 function publicSuccess(body) {
   return { status: 200, body };
 }
+function withPublicOrderReference(baseUrl, trackingRef) {
+  try {
+    const url2 = new URL(baseUrl);
+    url2.searchParams.set("ref", trackingRef);
+    return url2.toString();
+  } catch {
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}ref=${encodeURIComponent(trackingRef)}`;
+  }
+}
 async function orchestrateCheckoutStart(rawBody, deps) {
   try {
     const req = parseCheckoutRequest(rawBody);
@@ -12002,9 +12012,9 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         price,
         paymentPolicy,
         backUrls: {
-          success: config2.backUrlSuccess,
-          failure: config2.backUrlFailure,
-          pending: config2.backUrlPending
+          success: withPublicOrderReference(config2.backUrlSuccess, tx.trackingRef),
+          failure: withPublicOrderReference(config2.backUrlFailure, tx.trackingRef),
+          pending: withPublicOrderReference(config2.backUrlPending, tx.trackingRef)
         },
         notificationUrl: config2.notificationUrl,
         expiresAt: tx.expiresAt
