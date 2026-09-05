@@ -327,8 +327,6 @@ export async function orchestrateCheckoutStart(
     if (isCheckoutError(error)) {
       return { status: error.status, body: error.toPublicBody() }
     }
-    // TEMPORARY DIAGNOSTIC: log unexpected error before converting to INTERNAL_ERROR
-    console.error('[CHECKOUT_ORCH_ERROR]', error instanceof Error ? error.stack ?? error.message : JSON.stringify(error))
     return {
       status: 500,
       body: new CheckoutError('INTERNAL_ERROR').toPublicBody(),

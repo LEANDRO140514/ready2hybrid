@@ -134,8 +134,6 @@ function createHttpMercadoPagoClient(fetchImpl = fetch) {
         body: JSON.stringify(body)
       });
       if (!response.ok) {
-        const mpErrorBody = await response.text().catch(() => "no-body");
-        console.error("[MP_PREF_ERROR]", response.status, mpErrorBody);
         throw new CheckoutError("CHECKOUT_CREATION_FAILED");
       }
       const json2 = await response.json();
@@ -12047,7 +12045,6 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     if (isCheckoutError(error40)) {
       return { status: error40.status, body: error40.toPublicBody() };
     }
-    console.error("[CHECKOUT_ORCH_ERROR]", error40 instanceof Error ? error40.stack ?? error40.message : JSON.stringify(error40));
     return {
       status: 500,
       body: new CheckoutError("INTERNAL_ERROR").toPublicBody()
@@ -12236,10 +12233,7 @@ function createPorts() {
           waiver_accepted: input.waiverAccepted
         }
       });
-      if (error40) {
-        console.error("[CHECKOUT_TX_ERROR]", JSON.stringify(error40));
-        throw new CheckoutError("INTERNAL_ERROR");
-      }
+      if (error40) throw new CheckoutError("INTERNAL_ERROR");
       const row2 = data;
       if (!row2?.ok) {
         throw new CheckoutError(row2?.error_code || "INTERNAL_ERROR");
@@ -12364,7 +12358,6 @@ async function handler(req) {
     if (error40 instanceof CheckoutError) {
       return jsonResponse(error40.status, error40.toPublicBody(), gate.headers);
     }
-    console.error("[CHECKOUT_HANDLER_ERROR]", error40 instanceof Error ? error40.stack ?? error40.message : JSON.stringify(error40));
     return jsonResponse(500, new CheckoutError("INTERNAL_ERROR").toPublicBody(), gate.headers);
   }
 }
