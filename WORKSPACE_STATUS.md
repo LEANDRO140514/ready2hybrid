@@ -9,6 +9,10 @@
 - Aplicacion: PWA offline-first
 - Backend: InsForge
 - Pagos: Mercado Pago Checkout Pro
+- TICKET-PDF-PALETTE: DEPLOYED TO MAIN (2026-09-12 America/Merida)
+  `send-ticket-email` desplegada desde el bundle del commit `3f90fbe`;
+  código vivo verificado idéntico al bundle, con cabecera lima `#E6F2B1`
+  y texto `#111111`. Commit publicado en `origin/main`. Sin invocar SEND/SWEEP.
 - Evento (contrato efectivo SPEC-030 v0.3.0): 2026-11-13 → 2026-11-15
   America/Merida. Last clean committed historical baseline remains
   “viernes 9 de octubre de 2026” in git HEAD / docs/02 (stale; later
