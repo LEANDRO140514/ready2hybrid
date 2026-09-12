@@ -49,9 +49,9 @@ async function generateTicketPdf(input) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
-  doc.setFillColor(0, 51, 102);
+  doc.setFillColor(230, 242, 177);
   doc.rect(0, 0, pageWidth, 35, "F");
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(17, 17, 17);
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.text("HYBRID EXPERIENCE", pageWidth / 2, 18, { align: "center" });
