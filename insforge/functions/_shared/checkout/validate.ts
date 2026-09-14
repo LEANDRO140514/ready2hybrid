@@ -82,6 +82,12 @@ export const checkoutRequestSchema = z
      * team_size - 1 after catalog resolve; forbidden on non-team products.
      */
     teammate_names: z.array(z.string().max(200)).max(8).optional(),
+    /**
+     * Optional affiliate code. Shape-checked here (max 32) only so unknown
+     * keys stay .strict(). Invalid/inactive codes become null later; never 400
+     * for charset/length under 32.
+     */
+    affiliate_code: z.string().max(32).nullish(),
   })
   .strict()
 
@@ -91,6 +97,18 @@ export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>
 export function resolveCaptainDisplayName(buyerName: string, captainName?: string): string {
   const trimmed = captainName?.trim() ?? ''
   return trimmed.length > 0 ? trimmed : buyerName.trim()
+}
+
+const AFFILIATE_CODE_RE = /^[A-Z0-9]{3,12}$/
+
+/**
+ * Optional affiliate attribution. Never throws. Invalid / missing → null.
+ */
+export function normalizeAffiliateCode(raw: string | null | undefined): string | null {
+  if (typeof raw !== 'string') return null
+  const code = raw.trim().toUpperCase()
+  if (!AFFILIATE_CODE_RE.test(code)) return null
+  return code
 }
 
 /**

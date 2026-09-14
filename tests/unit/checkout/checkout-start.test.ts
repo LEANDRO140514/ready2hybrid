@@ -12,6 +12,7 @@ import { buildPriceSnapshot } from '../../../insforge/functions/_shared/checkout
 import { assertSalesOpen } from '../../../insforge/functions/_shared/checkout/sales'
 import {
   assertTeammateNamesForTeamSize,
+  normalizeAffiliateCode,
   parseCheckoutRequest,
   resolveCaptainDisplayName,
 } from '../../../insforge/functions/_shared/checkout/validate'
@@ -183,6 +184,25 @@ describe('checkout validate', () => {
     )
     expect(parsed.captain_name).toBe('Capitan UI')
     expect(parsed.teammate_names).toEqual(['Pareja Uno'])
+  })
+
+  it('accepts optional affiliate_code without 400; only max 32 is a parse error', () => {
+    expect(parseCheckoutRequest(validBody({ affiliate_code: 'ab12' })).affiliate_code).toBe('ab12')
+    expect(parseCheckoutRequest(validBody({ affiliate_code: null })).affiliate_code).toBeNull()
+    expect(parseCheckoutRequest(validBody({ affiliate_code: 'no-dash!' })).affiliate_code).toBe(
+      'no-dash!',
+    )
+    expect(() => parseCheckoutRequest(validBody({ affiliate_code: 'X'.repeat(33) }))).toThrow(
+      CheckoutError,
+    )
+  })
+
+  it('normalizes affiliate_code to A-Z0-9 3-12 or null without throwing', () => {
+    expect(normalizeAffiliateCode('  ab12  ')).toBe('AB12')
+    expect(normalizeAffiliateCode('no-dash!')).toBeNull()
+    expect(normalizeAffiliateCode('')).toBeNull()
+    expect(normalizeAffiliateCode(undefined)).toBeNull()
+    expect(normalizeAffiliateCode('AB')).toBeNull()
   })
 
   it('fail-closed teammate_names vs team_size', () => {
@@ -392,6 +412,7 @@ describe('orchestrateCheckoutStart', () => {
       expect.objectContaining({
         captainName: 'Buyer Example',
         teammateNames: [],
+        affiliateCode: null,
       }),
     )
   })
@@ -424,8 +445,42 @@ describe('orchestrateCheckoutStart', () => {
       expect.objectContaining({
         captainName: 'Buyer Example',
         teammateNames: ['Pareja Uno'],
+        affiliateCode: null,
       }),
     )
+  })
+
+  it('passes a valid affiliate_code through and drops an invalid one without error', async () => {
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const ok = await orchestrateCheckoutStart(validBody({ affiliate_code: '  enforma1  ' }), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: launchNow,
+    })
+    expect(ok.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(expect.objectContaining({ affiliateCode: 'ENFORMA1' }))
+
+    startSpy.mockClear()
+    const dropped = await orchestrateCheckoutStart(validBody({ affiliate_code: 'no-dash!' }), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: launchNow,
+    })
+    expect(dropped.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(expect.objectContaining({ affiliateCode: null }))
   })
 
   it('rejects teammate_names on individual product (INVALID_REQUEST)', async () => {

@@ -131,6 +131,7 @@ function createPorts() {
           participant_public_ref: input.participantPublicRef,
           captain_name: input.captainName,
           teammate_names: input.teammateNames,
+          affiliate_code: input.affiliateCode,
           commercial_snapshot: input.commercialSnapshot,
           invitation_ttl_seconds: input.invitationTtlSeconds,
           waiver_document_type: input.waiverDocumentType,

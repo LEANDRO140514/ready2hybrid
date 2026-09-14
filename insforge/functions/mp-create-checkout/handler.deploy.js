@@ -11771,11 +11771,24 @@ var checkoutRequestSchema = external_exports.object({
    * Teammate display names only (no email/phone/ID). Length must equal
    * team_size - 1 after catalog resolve; forbidden on non-team products.
    */
-  teammate_names: external_exports.array(external_exports.string().max(200)).max(8).optional()
+  teammate_names: external_exports.array(external_exports.string().max(200)).max(8).optional(),
+  /**
+   * Optional affiliate code. Shape-checked here (max 32) only so unknown
+   * keys stay .strict(). Invalid/inactive codes become null later; never 400
+   * for charset/length under 32.
+   */
+  affiliate_code: external_exports.string().max(32).nullish()
 }).strict();
 function resolveCaptainDisplayName(buyerName, captainName) {
   const trimmed = captainName?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : buyerName.trim();
+}
+var AFFILIATE_CODE_RE = /^[A-Z0-9]{3,12}$/;
+function normalizeAffiliateCode(raw) {
+  if (typeof raw !== "string") return null;
+  const code = raw.trim().toUpperCase();
+  if (!AFFILIATE_CODE_RE.test(code)) return null;
+  return code;
 }
 function assertTeammateNamesForTeamSize(teamSize, teammateNames) {
   const raw = teammateNames ?? [];
@@ -11905,6 +11918,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       found.product.team_size,
       req.teammate_names
     );
+    const affiliateCode = normalizeAffiliateCode(req.affiliate_code);
     const now = deps.now?.() ?? /* @__PURE__ */ new Date();
     const consumed = await deps.catalog.getConsumedCapacityUnits?.(found.product.id) ?? 0;
     const commercial = resolveCommercialOffer({
@@ -11937,7 +11951,8 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       participant: req.participant ?? null,
       waiver: req.waiver ?? null,
       captain_name: captainName,
-      teammate_names: teammateNames
+      teammate_names: teammateNames,
+      affiliate_code: affiliateCode
     };
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key);
     const requestFingerprint = await fingerprintRequest(normalized);
@@ -11969,6 +11984,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       participantPublicRef: req.participant?.public_ref ?? null,
       captainName,
       teammateNames,
+      affiliateCode,
       invitationTtlSeconds: config2.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,
       waiverDocumentVersion: req.waiver?.version ?? null,
@@ -12226,6 +12242,7 @@ function createPorts() {
           participant_public_ref: input.participantPublicRef,
           captain_name: input.captainName,
           teammate_names: input.teammateNames,
+          affiliate_code: input.affiliateCode,
           commercial_snapshot: input.commercialSnapshot,
           invitation_ttl_seconds: input.invitationTtlSeconds,
           waiver_document_type: input.waiverDocumentType,

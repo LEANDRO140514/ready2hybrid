@@ -25,6 +25,7 @@ import {
   assertSelectedProvider,
   assertTeammateNamesForTeamSize,
   loadRuntimeProviderEnablement,
+  normalizeAffiliateCode,
   parseCheckoutRequest,
   resolveCaptainDisplayName,
 } from './validate'
@@ -62,6 +63,7 @@ export type CheckoutTxInput = {
   participantPublicRef: string | null
   captainName: string
   teammateNames: string[]
+  affiliateCode: string | null
   commercialSnapshot: Record<string, unknown>
   invitationTtlSeconds: number | null
   waiverDocumentType: string | null
@@ -169,6 +171,7 @@ export async function orchestrateCheckoutStart(
       found.product.team_size,
       req.teammate_names,
     )
+    const affiliateCode = normalizeAffiliateCode(req.affiliate_code)
 
     const now = deps.now?.() ?? new Date()
     const consumed =
@@ -211,6 +214,7 @@ export async function orchestrateCheckoutStart(
       waiver: req.waiver ?? null,
       captain_name: captainName,
       teammate_names: teammateNames,
+      affiliate_code: affiliateCode,
     }
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key)
     const requestFingerprint = await fingerprintRequest(normalized)
@@ -246,6 +250,7 @@ export async function orchestrateCheckoutStart(
       participantPublicRef: req.participant?.public_ref ?? null,
       captainName,
       teammateNames,
+      affiliateCode,
       invitationTtlSeconds: config.invitationTtlSeconds,
       waiverDocumentType: req.waiver?.document_type ?? null,
       waiverDocumentVersion: req.waiver?.version ?? null,
