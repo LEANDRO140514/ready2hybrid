@@ -11951,8 +11951,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       participant: req.participant ?? null,
       waiver: req.waiver ?? null,
       captain_name: captainName,
-      teammate_names: teammateNames,
-      affiliate_code: affiliateCode
+      teammate_names: teammateNames
     };
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key);
     const requestFingerprint = await fingerprintRequest(normalized);

@@ -483,6 +483,83 @@ describe('orchestrateCheckoutStart', () => {
     expect(startSpy).toHaveBeenCalledWith(expect.objectContaining({ affiliateCode: null }))
   })
 
+  it('replays the original order when only affiliate_code changes under the same key', async () => {
+    const prior = {
+      checkout_url: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_first',
+      public_order_reference: 'trk_first',
+      expires_at: '2026-07-25T12:00:00.000Z',
+    }
+    /** Mirrors checkout_start_tx: same key_hash + different fingerprint = CONFLICT. */
+    const fingerprintsByKey = new Map<string, string>()
+    const repo: CheckoutRepository = {
+      async startCheckoutTx(input) {
+        const known = fingerprintsByKey.get(input.idempotencyKeyHash)
+        if (known === undefined) {
+          fingerprintsByKey.set(input.idempotencyKeyHash, input.requestFingerprint)
+          return {
+            orderId: '22222222-2222-2222-2222-222222222222',
+            trackingRef: 'trk_first',
+            orderItemId: '33333333-3333-3333-3333-333333333333',
+            holdId: '44444444-4444-4444-4444-444444444444',
+            expiresAt: prior.expires_at,
+            replay: false,
+            priorResponse: null,
+            invitationTokens: [],
+          }
+        }
+        if (known !== input.requestFingerprint) throw new CheckoutError('CONFLICT')
+        return {
+          orderId: '22222222-2222-2222-2222-222222222222',
+          trackingRef: 'trk_first',
+          orderItemId: '33333333-3333-3333-3333-333333333333',
+          holdId: '44444444-4444-4444-4444-444444444444',
+          expiresAt: prior.expires_at,
+          replay: true,
+          priorResponse: prior,
+          invitationTokens: [],
+        }
+      },
+      async attachPreference() {},
+      async compensatePreferenceFailure() {},
+    }
+    const deps = () => ({
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: launchNow,
+    })
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+
+    const first = await orchestrateCheckoutStart(
+      validBody({ affiliate_code: 'ENFORMA1' }),
+      deps(),
+    )
+    expect(first.status).toBe(200)
+
+    // Same idempotency_key, different affiliate: replay, never CONFLICT.
+    const retry = await orchestrateCheckoutStart(validBody({ affiliate_code: 'OTRO99' }), deps())
+    expect(retry.status).toBe(200)
+    expect(retry.body).toEqual(prior)
+    expect(startSpy.mock.calls[1][0].requestFingerprint).toBe(
+      startSpy.mock.calls[0][0].requestFingerprint,
+    )
+    // The code still reaches the RPC; only the fingerprint ignores it.
+    expect(startSpy.mock.calls[1][0].affiliateCode).toBe('OTRO99')
+
+    // Control: a field that IS part of the fingerprint still conflicts.
+    const conflicting = await orchestrateCheckoutStart(
+      validBody({ buyer: { email: 'other@example.com', name: 'Otro Comprador' } }),
+      deps(),
+    )
+    expect(conflicting.status).toBe(409)
+    expect(conflicting.body).toMatchObject({ error: { code: 'CONFLICT' } })
+  })
+
   it('rejects teammate_names on individual product (INVALID_REQUEST)', async () => {
     const repo = memoryRepo()
     const startSpy = vi.spyOn(repo, 'startCheckoutTx')

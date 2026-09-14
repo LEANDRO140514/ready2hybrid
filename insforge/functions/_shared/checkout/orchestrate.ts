@@ -206,6 +206,9 @@ export async function orchestrateCheckoutStart(
 
     const price = buildPriceSnapshot(found.product, journey, req.quantity, commercial)
     const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity)
+    // affiliate_code is deliberately absent: the fingerprint decides replay vs
+    // CONFLICT in checkout_start_tx, and a retry that only changes attribution
+    // must still return the original order.
     const normalized = {
       product_code: req.product_code,
       quantity: req.quantity,
@@ -214,7 +217,6 @@ export async function orchestrateCheckoutStart(
       waiver: req.waiver ?? null,
       captain_name: captainName,
       teammate_names: teammateNames,
-      affiliate_code: affiliateCode,
     }
     const idempotencyKeyHash = await hashIdempotencyKey(req.idempotency_key)
     const requestFingerprint = await fingerprintRequest(normalized)
