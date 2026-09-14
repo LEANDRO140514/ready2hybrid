@@ -60,7 +60,7 @@ WITH paid AS (
       SELECT 1 FROM public.registrations r
       JOIN public.tickets t ON t.registration_id = r.id
       WHERE r.order_id = o.id
-        AND t.state <> 'REVOKED' AND t.revoked_at IS NULL
+        AND t.state NOT IN ('REVOKED', 'CANCELLED') AND t.revoked_at IS NULL
     )
 ),
 valid_tickets AS (
@@ -69,13 +69,15 @@ valid_tickets AS (
   JOIN public.registrations r ON r.order_id = o.id
   JOIN public.tickets t ON t.registration_id = r.id
   WHERE o.state = 'PAID' AND o.affiliate_code IS NOT NULL
-    AND t.state <> 'REVOKED' AND t.revoked_at IS NULL
+    AND t.state NOT IN ('REVOKED', 'CANCELLED') AND t.revoked_at IS NULL
   GROUP BY o.affiliate_code
 )
 SELECT a.code, a.name, a.active, a.commission_bps,
        count(p.id)                                  AS orders_paid,
        coalesce(vt.tickets_valid, 0)                AS tickets_valid,
        coalesce(sum(p.total_cents), 0)              AS gross_cents,
+       -- Integer division: the sub-cent fraction is truncated, never rounded.
+       -- Intentional — the payable amount must not exceed the earned commission.
        coalesce(sum(p.total_cents), 0) * a.commission_bps / 10000
                                                     AS commission_cents
 FROM public.affiliates a
