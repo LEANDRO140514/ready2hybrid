@@ -280,7 +280,8 @@ function buildPriceSnapshot(product, journey, quantity, commercial) {
     commercial_stage: commercial?.commercial_stage,
     msi_eligible: commercial?.msi_eligible,
     pricing_rules_version: commercial?.pricing_rules_version,
-    stage_resolved_at: commercial?.stage_resolved_at
+    stage_resolved_at: commercial?.stage_resolved_at,
+    price_basis: commercial?.price_basis
   };
 }
 
@@ -499,16 +500,19 @@ function resolveCommercialOffer(input) {
   );
   if (effective === "SALES_CLOSED") return { error: "SALES_CLOSED" };
   if (effective === "SALES_NOT_OPEN") return { error: "SALES_NOT_OPEN" };
+  const priceLock = input.priceLock ?? null;
+  const lockedToLaunch = priceLock === "LAUNCH";
   return {
     product_code: input.productCode,
     commercial_stage: effective,
-    unit_price_cents: priceCentsForStage(priceRow, effective),
+    unit_price_cents: lockedToLaunch ? priceRow.launch_cents : priceCentsForStage(priceRow, effective),
     currency: "MXN",
     msi_eligible: priceRow.msi_eligible,
     pricing_rules_version: PRICING_RULES_VERSION,
     stage_resolved_at: now.toISOString(),
     sale_state: "AVAILABLE",
-    consumed_units: input.consumedUnits
+    consumed_units: input.consumedUnits,
+    price_basis: lockedToLaunch ? "AFFILIATE_LAUNCH_LOCK" : "CALENDAR"
   };
 }
 function buildOrderCommercialSnapshot(input) {
@@ -523,7 +527,8 @@ function buildOrderCommercialSnapshot(input) {
     msi_eligible: input.resolution.msi_eligible,
     pricing_rules_version: input.resolution.pricing_rules_version,
     stage_resolved_at: input.resolution.stage_resolved_at,
-    hold_expires_at: input.holdExpiresAt ?? null
+    hold_expires_at: input.holdExpiresAt ?? null,
+    price_basis: input.resolution.price_basis
   };
 }
 function assertClientExpectedPrice(expectedUnitPriceCents, canonicalUnitPriceCents) {
@@ -11920,6 +11925,8 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     );
     const affiliateCode = normalizeAffiliateCode(req.affiliate_code);
     const now = deps.now?.() ?? /* @__PURE__ */ new Date();
+    const affiliate = affiliateCode != null ? await deps.catalog.getAffiliate?.(affiliateCode) : null;
+    const priceLock = affiliate?.active === true && affiliate.locks_launch_price === true && found.product.kind === "competitor" ? "LAUNCH" : null;
     const consumed = await deps.catalog.getConsumedCapacityUnits?.(found.product.id) ?? 0;
     const commercial = resolveCommercialOffer({
       productCode: found.product.code,
@@ -11927,6 +11934,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       consumedUnits: consumed,
       persistedStage: found.product.commercial_stage_high_water,
       now,
+      priceLock,
       productDisabled: found.product.visibility === "HIDDEN" || found.product.sale_state === "CANCELLED" || found.product.sale_state === "INACTIVE",
       multidayBlocked: isMultidayCheckoutBlocked(found.product)
     });
@@ -12007,7 +12015,8 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         commercial_stage: orderSnap.commercial_stage,
         msi_eligible: orderSnap.msi_eligible,
         pricing_rules_version: orderSnap.pricing_rules_version,
-        stage_resolved_at: orderSnap.stage_resolved_at
+        stage_resolved_at: orderSnap.stage_resolved_at,
+        price_basis: orderSnap.price_basis
       }
     });
     if (tx.replay && tx.priorResponse) {
@@ -12214,6 +12223,25 @@ function createPorts() {
       if (error40 || !data?.length) return null;
       const saleState = data[0].sale_state;
       return saleState == null || saleState === "" ? null : String(saleState);
+    },
+    async getAffiliate(code) {
+      try {
+        const { data, error: error40 } = await admin.database.from("affiliates").select("code,active,locks_launch_price").eq("code", code).limit(1);
+        if (error40) {
+          console.error(error40.message);
+          return null;
+        }
+        if (!data?.length) return null;
+        const row2 = data[0];
+        return {
+          code: String(row2.code ?? code),
+          active: row2.active === true,
+          locks_launch_price: row2.locks_launch_price === true
+        };
+      } catch (caught) {
+        console.error(caught instanceof Error ? caught.message : String(caught));
+        return null;
+      }
     }
   };
   const repo = {

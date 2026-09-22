@@ -38,6 +38,13 @@ export type CatalogPort = {
   getConsumedCapacityUnits?: (productId: string) => Promise<number>
   /** Organizer category/offer SOLD_OUT for products.block (COMPITE/EXPERIENCE/ASISTE). */
   getCategoryOfferSaleState?: (eventCode: string, block: string) => Promise<string | null>
+  /**
+   * Affiliate row for launch-price lock. Missing method, missing row, or a
+   * lookup error must not block checkout — callers treat null as no lock.
+   */
+  getAffiliate?: (
+    code: string,
+  ) => Promise<{ code: string; active: boolean; locks_launch_price: boolean } | null>
 }
 
 export type CheckoutTxInput = {
@@ -174,6 +181,14 @@ export async function orchestrateCheckoutStart(
     const affiliateCode = normalizeAffiliateCode(req.affiliate_code)
 
     const now = deps.now?.() ?? new Date()
+    const affiliate =
+      affiliateCode != null ? await deps.catalog.getAffiliate?.(affiliateCode) : null
+    const priceLock =
+      affiliate?.active === true &&
+      affiliate.locks_launch_price === true &&
+      found.product.kind === 'competitor'
+        ? 'LAUNCH'
+        : null
     const consumed =
       (await deps.catalog.getConsumedCapacityUnits?.(found.product.id)) ?? 0
     const commercial = resolveCommercialOffer({
@@ -182,6 +197,7 @@ export async function orchestrateCheckoutStart(
       consumedUnits: consumed,
       persistedStage: found.product.commercial_stage_high_water,
       now,
+      priceLock,
       productDisabled:
         found.product.visibility === 'HIDDEN' ||
         found.product.sale_state === 'CANCELLED' ||
@@ -277,6 +293,7 @@ export async function orchestrateCheckoutStart(
         msi_eligible: orderSnap.msi_eligible,
         pricing_rules_version: orderSnap.pricing_rules_version,
         stage_resolved_at: orderSnap.stage_resolved_at,
+        price_basis: orderSnap.price_basis,
       },
     })
 

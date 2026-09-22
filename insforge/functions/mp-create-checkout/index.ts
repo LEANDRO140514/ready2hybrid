@@ -104,6 +104,33 @@ function createPorts() {
       const saleState = (data[0] as { sale_state?: string | null }).sale_state
       return saleState == null || saleState === '' ? null : String(saleState)
     },
+    async getAffiliate(code) {
+      try {
+        const { data, error } = await admin.database
+          .from('affiliates')
+          .select('code,active,locks_launch_price')
+          .eq('code', code)
+          .limit(1)
+        if (error) {
+          console.error(error.message)
+          return null
+        }
+        if (!data?.length) return null
+        const row = data[0] as {
+          code?: unknown
+          active?: unknown
+          locks_launch_price?: unknown
+        }
+        return {
+          code: String(row.code ?? code),
+          active: row.active === true,
+          locks_launch_price: row.locks_launch_price === true,
+        }
+      } catch (caught) {
+        console.error(caught instanceof Error ? caught.message : String(caught))
+        return null
+      }
+    },
   }
 
   const repo: CheckoutRepository = {

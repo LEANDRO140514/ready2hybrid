@@ -21,6 +21,7 @@ export type PriceSnapshot = {
   msi_eligible?: boolean
   pricing_rules_version?: string
   stage_resolved_at?: string
+  price_basis?: CommercialResolution['price_basis']
 }
 
 /**
@@ -55,5 +56,6 @@ export function buildPriceSnapshot(
     msi_eligible: commercial?.msi_eligible,
     pricing_rules_version: commercial?.pricing_rules_version,
     stage_resolved_at: commercial?.stage_resolved_at,
+    price_basis: commercial?.price_basis,
   }
 }

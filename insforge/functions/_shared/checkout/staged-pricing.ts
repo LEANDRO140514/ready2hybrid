@@ -166,6 +166,8 @@ export function priceCentsForStage(priceRow: StagePriceRow, stage: CommercialSta
   }
 }
 
+export type PriceBasis = 'AFFILIATE_LAUNCH_LOCK' | 'CALENDAR'
+
 export type CommercialResolution = {
   product_code: string
   commercial_stage: CommercialStage
@@ -176,6 +178,8 @@ export type CommercialResolution = {
   stage_resolved_at: string
   sale_state: CommercialSaleState
   consumed_units: number
+  /** Why unit_price_cents was chosen. Stage name stays on commercial_stage. */
+  price_basis: PriceBasis
 }
 
 export type ResolveCommercialInput = {
@@ -187,6 +191,11 @@ export type ResolveCommercialInput = {
   now?: Date
   productDisabled?: boolean
   multidayBlocked?: boolean
+  /**
+   * 'LAUNCH' bills launch_cents regardless of the calendar stage.
+   * commercial_stage is unchanged. null (default) bills the calendar price.
+   */
+  priceLock?: 'LAUNCH' | null
 }
 
 export function resolveCommercialOffer(
@@ -214,16 +223,22 @@ export function resolveCommercialOffer(
   if (effective === 'SALES_CLOSED') return { error: 'SALES_CLOSED' }
   if (effective === 'SALES_NOT_OPEN') return { error: 'SALES_NOT_OPEN' }
 
+  const priceLock = input.priceLock ?? null
+  const lockedToLaunch = priceLock === 'LAUNCH'
+
   return {
     product_code: input.productCode,
     commercial_stage: effective,
-    unit_price_cents: priceCentsForStage(priceRow, effective),
+    unit_price_cents: lockedToLaunch
+      ? priceRow.launch_cents
+      : priceCentsForStage(priceRow, effective),
     currency: 'MXN',
     msi_eligible: priceRow.msi_eligible,
     pricing_rules_version: PRICING_RULES_VERSION,
     stage_resolved_at: now.toISOString(),
     sale_state: 'AVAILABLE',
     consumed_units: input.consumedUnits,
+    price_basis: lockedToLaunch ? 'AFFILIATE_LAUNCH_LOCK' : 'CALENDAR',
   }
 }
 
@@ -238,6 +253,7 @@ export type OrderCommercialSnapshot = {
   pricing_rules_version: typeof PRICING_RULES_VERSION
   stage_resolved_at: string
   hold_expires_at: string | null
+  price_basis: PriceBasis
 }
 
 export function buildOrderCommercialSnapshot(input: {
@@ -257,6 +273,7 @@ export function buildOrderCommercialSnapshot(input: {
     pricing_rules_version: input.resolution.pricing_rules_version,
     stage_resolved_at: input.resolution.stage_resolved_at,
     hold_expires_at: input.holdExpiresAt ?? null,
+    price_basis: input.resolution.price_basis,
   }
 }
 
