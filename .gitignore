@@ -28,6 +28,10 @@ logs
 .cursor/*
 !.cursor/mcp.json
 !.cursor/rules/
+# InsForge CLI working dir: `db migrations up` reads ./migrations/.
+# Versioned source is insforge/migrations/.
+migrations/
+
 # InsForge & AI agent skills
 .insforge
 .agent
