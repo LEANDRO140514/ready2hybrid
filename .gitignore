@@ -29,8 +29,9 @@ logs
 !.cursor/mcp.json
 !.cursor/rules/
 # InsForge CLI working dir: `db migrations up` reads ./migrations/.
-# Versioned source is insforge/migrations/.
-migrations/
+# Versioned source is insforge/migrations/. The leading slash keeps that
+# tree visible; a bare `migrations/` also hid new files under insforge/.
+/migrations/
 
 # InsForge & AI agent skills
 .insforge
