@@ -90,6 +90,8 @@ export default defineConfig(({ command, mode }) => {
           rootDir,
           'src/test/pwa-register-stub.ts',
         ),
+        'npm:jspdf@3.0.1': 'jspdf',
+        'npm:qrcode@1.5.4': 'qrcode',
       },
     },
   }

@@ -1,6 +1,6 @@
 /**
  * Local embedded-Postgres harness for Pricing-A FIX-1.
- * Uses npm package `embedded-postgres` (not saved to package.json).
+ * Uses the pinned devDependency `embedded-postgres` from package.json.
  * Never targets remote InsForge / Main.
  */
 import EmbeddedPostgres from 'embedded-postgres'
