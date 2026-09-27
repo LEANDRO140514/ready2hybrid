@@ -306,7 +306,7 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(clockCapture).toBeLessThan(inventorySum)
   })
 
-  it('keeps the canonical checkout_start_tx as 0028 (affiliates) without cupo SOLD_OUT', () => {
+  it('keeps the canonical checkout_start_tx as 0035 without cupo SOLD_OUT', () => {
     const definitions = readdirSync(migDir)
       .filter((n) => /^\d{4}_.+\.sql$/.test(n))
       .sort()
@@ -317,11 +317,11 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
       )
     expect(definitions.length).toBeGreaterThan(0)
 
-    // 0011 introduced the null-safe predicate; 0020 v0.4 commercial; 0025 team capture; 0028 affiliates.
+    // 0011 introduced the null-safe predicate; 0020 v0.4 commercial; 0025 team capture; 0028 affiliates; 0035 optional digital waiver.
     expect(definitions).toContain(MIGRATION_FILE)
     expect(definitions).not.toContain('0018_staged-commercial-pricing.sql')
     const canonical = definitions[definitions.length - 1]
-    expect(canonical).toBe('0028_affiliates.sql')
+    expect(canonical).toBe('0035_ticket-issuance-without-digital-waiver.sql')
 
     const canonicalCode = stripSqlComments(
       readFileSync(resolve(migDir, canonical), 'utf8'),
@@ -333,7 +333,10 @@ describe('0011 logical capacity expiry exclusion SQL contract', () => {
     expect(canonicalCode).not.toMatch(
       /IF v_active_holds\s*\+\s*v_units\s*>\s*v_product\.cupo/i,
     )
-    expect(canonicalCode).toMatch(/cupo\/holds are not commercial SOLD_OUT/i)
+    const canonicalRaw = readFileSync(resolve(migDir, canonical), 'utf8')
+    expect(canonicalRaw).toMatch(
+      /cupo and ACTIVE holds are transactional integrity, not commercial SOLD_OUT/i,
+    )
     expect(canonicalCode).toContain('CONTACT_REQUIRED')
     expect(canonicalCode).toContain('contact_consent_at')
     expect(canonicalCode).toContain('teammate_names')

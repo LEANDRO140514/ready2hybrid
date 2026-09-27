@@ -171,7 +171,10 @@ export async function orchestrateCheckoutStart(
     }
 
     const config = loadCheckoutRuntimeConfig(deps.env)
-    assertWaiverConfig(config, journey, req.waiver)
+    // Sports waiver is collected physically at kit pickup/check-in.
+    // Absence of a digital waiver must not block checkout. A supplied
+    // payload stays optional evidence and is never invented here.
+    assertOptionalWaiver(config, req.waiver)
 
     const captainName = resolveCaptainDisplayName(req.buyer.name, req.captain_name)
     const teammateNames = assertTeammateNamesForTeamSize(
@@ -358,23 +361,38 @@ export async function orchestrateCheckoutStart(
   }
 }
 
-function assertWaiverConfig(
+function waiverPayloadSupplied(
+  waiver: { document_type?: string; version?: string; accepted?: boolean } | undefined,
+): boolean {
+  if (waiver == null) return false
+  return (
+    waiver.accepted !== undefined ||
+    (waiver.document_type != null && waiver.document_type !== '') ||
+    (waiver.version != null && waiver.version !== '')
+  )
+}
+
+/**
+ * Digital waiver is optional. The operational rule is physical collection
+ * at kit pickup/check-in. This does not set accepted=true and does not
+ * create waiver_acceptances.
+ *
+ * A supplied payload must be an explicit acceptance of a type and version.
+ * When the server still has CHECKOUT_WAIVER_DOCUMENT_TYPE and
+ * CHECKOUT_WAIVER_VERSION, the payload must match that pair.
+ */
+function assertOptionalWaiver(
   config: CheckoutRuntimeConfig,
-  journey: string,
   waiver: { document_type?: string; version?: string; accepted?: boolean } | undefined,
 ): void {
-  const competitive = journey === 'J1' || journey === 'J2' || journey === 'J3'
-  if (!competitive) return
-  if (!config.waiverRequiredDocumentType || !config.waiverRequiredVersion) {
-    throw new CheckoutError('CONFIGURATION_ERROR', 'Waiver configuration missing')
-  }
-  if (!waiver?.accepted) {
+  if (!waiverPayloadSupplied(waiver)) return
+  if (!waiver?.accepted || !waiver.document_type || !waiver.version) {
     throw new CheckoutError('WAIVER_REQUIRED')
   }
-  if (
-    waiver.document_type !== config.waiverRequiredDocumentType ||
-    waiver.version !== config.waiverRequiredVersion
-  ) {
+  const configuredType = config.waiverRequiredDocumentType
+  const configuredVersion = config.waiverRequiredVersion
+  if (!configuredType && !configuredVersion) return
+  if (waiver.document_type !== configuredType || waiver.version !== configuredVersion) {
     throw new CheckoutError('WAIVER_REQUIRED')
   }
 }
