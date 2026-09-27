@@ -5,6 +5,7 @@ import { journeyForProductCode } from './journeys'
 import type { MercadoPagoClient } from './mp-client'
 import {
   assertCanonicalMsiEligible,
+  publicEventCardsOnly,
   toCheckoutPaymentPolicy,
 } from './payment-policy'
 import { buildPriceSnapshot } from './pricing'
@@ -306,7 +307,10 @@ export async function orchestrateCheckoutStart(
 
     try {
       assertCanonicalMsiEligible(orderSnap.msi_eligible)
-      const paymentPolicy = toCheckoutPaymentPolicy(orderSnap.msi_eligible)
+      const paymentPolicy = toCheckoutPaymentPolicy(
+        orderSnap.msi_eligible,
+        publicEventCardsOnly(found.product.code, now),
+      )
 
       const preference = await deps.mp.createCheckoutProPreference({
         accessToken: config.mpAccessToken,

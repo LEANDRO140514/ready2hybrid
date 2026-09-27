@@ -164,16 +164,16 @@ export const PRODUCT_STAGE_PRICES: Readonly<Record<string, StagePriceRow>> = Obj
   'HALF-DOB-MM': row(160000, 180000, 200000, true),
   'HALF-DOB-HH': row(160000, 180000, 200000, true),
   'HALF-DOB-MH': row(160000, 180000, 200000, true),
-  'WOD-M': row(35000, 35000, 35000, false),
-  'WOD-H': row(35000, 35000, 35000, false),
+  'WOD-M': row(35000, 35000, 35000, false, false),
+  'WOD-H': row(35000, 35000, 35000, false, false),
   'PUB-VIE': row(25000, 25000, 25000, false),
   'PUB-SAB': row(25000, 25000, 25000, false),
   'PUB-DOM': row(25000, 25000, 25000, false),
   'PUB-3D': row(60000, 60000, 60000, false, true, false),
-  'FOT-VIE': row(35000, 35000, 35000, false),
-  'FOT-SAB': row(35000, 35000, 35000, false),
-  'FOT-DOM': row(35000, 35000, 35000, false),
-  'FOT-3D': row(80000, 80000, 80000, false, true, false),
+  'FOT-VIE': row(35000, 35000, 35000, false, false),
+  'FOT-SAB': row(35000, 35000, 35000, false, false),
+  'FOT-DOM': row(35000, 35000, 35000, false, false),
+  'FOT-3D': row(80000, 80000, 80000, false, false, false),
 })
 
 export function getProductStagePriceRow(productCode: string): StagePriceRow | null {

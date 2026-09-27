@@ -22,7 +22,8 @@ const ELIGIBLE = [
   'IND-H',
 ] as const
 
-const EXCLUDED = ['WOD-M', 'PUB-VIE', 'FOT-SAB'] as const
+const EXCLUDED = ['PUB-VIE'] as const
+const NOT_FOR_SALE = ['WOD-M', 'FOT-SAB', 'FOT-3D'] as const
 
 describe('toCheckoutPaymentPolicy (domain)', () => {
   it('true → maximumInstallments 3 + ticket exclusion required', () => {
@@ -80,7 +81,7 @@ describe('commercial matrix → payment policy (families)', () => {
     }
   })
 
-  it('Workout / público / fotógrafo → policy 1', () => {
+  it('público → policy 1; workout and fotógrafo are not offered', () => {
     for (const code of EXCLUDED) {
       expect(getProductStagePriceRow(code)?.msi_eligible).toBe(false)
       const offer = resolveCommercialOffer({
@@ -93,21 +94,40 @@ describe('commercial matrix → payment policy (families)', () => {
       if ('error' in offer) continue
       expect(toCheckoutPaymentPolicy(offer.msi_eligible).maximumInstallments).toBe(1)
     }
+    for (const code of NOT_FOR_SALE) {
+      expect(getProductStagePriceRow(code)?.msi_eligible).toBe(false)
+      expect(getProductStagePriceRow(code)?.checkout_enabled).toBe(false)
+      expect(
+        resolveCommercialOffer({
+          productCode: code,
+          totalCupo: 100,
+          consumedUnits: 0,
+          now: launchNow(),
+        }),
+      ).toEqual({ error: 'PRODUCT_DISABLED' })
+    }
   })
 
-  it('PUB-3D / FOT-3D are allowed (not MULTIDAY_FAIL_CLOSED); MSI policy remains 1', () => {
-    for (const code of ['PUB-3D', 'FOT-3D'] as const) {
-      const offer = resolveCommercialOffer({
-        productCode: code,
+  it('PUB-3D stays allowed; FOT-3D is not for sale and is not MULTIDAY_FAIL_CLOSED', () => {
+    const pub = resolveCommercialOffer({
+      productCode: 'PUB-3D',
+      totalCupo: 10,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect('error' in pub).toBe(false)
+    if (!('error' in pub)) {
+      expect(pub.msi_eligible).toBe(false)
+      expect(toCheckoutPaymentPolicy(pub.msi_eligible).maximumInstallments).toBe(1)
+    }
+    expect(getProductStagePriceRow('FOT-3D')?.multiday_fail_closed).toBe(false)
+    expect(
+      resolveCommercialOffer({
+        productCode: 'FOT-3D',
         totalCupo: 10,
         consumedUnits: 0,
         now: launchNow(),
-      })
-      expect('error' in offer).toBe(false)
-      if ('error' in offer) continue
-      expect(offer.product_code).toBe(code)
-      expect(offer.msi_eligible).toBe(false)
-      expect(toCheckoutPaymentPolicy(offer.msi_eligible).maximumInstallments).toBe(1)
-    }
+      }),
+    ).toEqual({ error: 'PRODUCT_DISABLED' })
   })
 })

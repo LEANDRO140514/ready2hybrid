@@ -42,7 +42,7 @@ describe('v0.4 multiday entitlement expectations — PUB-3D / FOT-3D', () => {
       const row = getProductStagePriceRow(code)
       expect(row).not.toBeNull()
       expect(row?.multiday_fail_closed).toBe(false)
-      expect(row?.checkout_enabled).toBe(true)
+      expect(row?.checkout_enabled).toBe(code === 'PUB-3D')
     }
   })
 
@@ -57,17 +57,22 @@ describe('v0.4 multiday entitlement expectations — PUB-3D / FOT-3D', () => {
     expect(() => assertCheckoutProductAvailable(pub3d)).not.toThrow(CheckoutError)
   })
 
-  it('must not fail-close commercial offer for PUB-3D / FOT-3D', () => {
-    for (const code of MULTIDAY_CODES) {
-      const offer = resolveCommercialOffer({
-        productCode: code,
-        totalCupo: 100,
-        consumedUnits: 0,
-        now: launchNow(),
-      })
-      expect('error' in offer && offer.error === 'MULTIDAY_FAIL_CLOSED').toBe(false)
-      expect('error' in offer && offer.error === 'PRODUCT_DISABLED').toBe(false)
-    }
+  it('must not fail-close PUB-3D; FOT-3D is disabled for this edition, not as a multiday hole', () => {
+    const pub = resolveCommercialOffer({
+      productCode: 'PUB-3D',
+      totalCupo: 100,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect('error' in pub).toBe(false)
+    const fot = resolveCommercialOffer({
+      productCode: 'FOT-3D',
+      totalCupo: 100,
+      consumedUnits: 0,
+      now: launchNow(),
+    })
+    expect(fot).toEqual({ error: 'PRODUCT_DISABLED' })
+    expect(getProductStagePriceRow('FOT-3D')?.multiday_fail_closed).toBe(false)
   })
 
   it('issues three date-scoped entitlements for one PUB-3D / FOT-3D ticket', () => {

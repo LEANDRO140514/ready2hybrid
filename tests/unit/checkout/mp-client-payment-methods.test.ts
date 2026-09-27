@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createHttpMercadoPagoClient } from '../../../insforge/functions/_shared/checkout/mp-client'
-import { toCheckoutPaymentPolicy } from '../../../insforge/functions/_shared/checkout/payment-policy'
+import {
+  CARD_ONLY_EXCLUDED_PAYMENT_TYPES,
+  publicEventCardsOnly,
+  toCheckoutPaymentPolicy,
+} from '../../../insforge/functions/_shared/checkout/payment-policy'
 import type { PriceSnapshot } from '../../../insforge/functions/_shared/checkout/pricing'
+import { dateFromMeridaWall } from '../../../insforge/functions/_shared/checkout/staged-pricing'
 
 const basePrice: PriceSnapshot = {
   currency: 'MXN',
@@ -18,6 +23,33 @@ const basePrice: PriceSnapshot = {
   chip_extra_cents: 0,
   insurance_extra_cents: 0,
   msi_eligible: true,
+}
+
+async function capturePolicy(productCode: string, now: Date, msiEligible = false) {
+  let captured: string | null = null
+  const client = createHttpMercadoPagoClient(async (_url, init) => {
+    captured = String(init?.body ?? '')
+    return new Response(JSON.stringify({ id: 'pref_x', init_point: 'https://example.test/p' }), {
+      status: 201,
+    })
+  })
+  await client.createCheckoutProPreference({
+    accessToken: 'TEST_TOKEN_NOT_REAL',
+    siteId: 'MLM',
+    orderId: '22222222-2222-2222-2222-222222222222',
+    productCode,
+    productName: productCode,
+    price: { ...basePrice, msi_eligible: msiEligible, unit_price_cents: 25000 },
+    paymentPolicy: toCheckoutPaymentPolicy(msiEligible, publicEventCardsOnly(productCode, now)),
+    backUrls: {
+      success: 'https://example.com/s',
+      failure: 'https://example.com/f',
+      pending: 'https://example.com/p',
+    },
+    notificationUrl: 'https://example.com/n',
+  })
+  expect(captured).toBeTruthy()
+  return JSON.parse(captured!) as { payment_methods: { excluded_payment_types: Array<{ id: string }> } }
 }
 
 async function captureBody(msiEligible: boolean) {
@@ -74,6 +106,26 @@ describe('mp-client payment_methods serialization', () => {
     const types = (body.payment_methods as { excluded_payment_types: Array<{ id: string }> })
       .excluded_payment_types
     expect(types.filter((t) => t.id === 'ticket')).toHaveLength(1)
+  })
+
+  it('public passes are card-only from 13 nov 00:00 Merida; everything else still excludes only ticket', async () => {
+    const ticketOnly = [{ id: 'ticket' }]
+    const cardOnly = [...CARD_ONLY_EXCLUDED_PAYMENT_TYPES]
+    expect(cardOnly.map((type) => type.id)).not.toContain('credit_card')
+    expect(cardOnly.map((type) => type.id)).not.toContain('debit_card')
+    expect(cardOnly.map((type) => type.id)).not.toContain('prepaid_card')
+
+    const before = await capturePolicy('PUB-VIE', dateFromMeridaWall(2026, 11, 12, 12, 0, 0))
+    expect(before.payment_methods.excluded_payment_types).toEqual(ticketOnly)
+
+    const atClose = await capturePolicy('PUB-VIE', dateFromMeridaWall(2026, 11, 13, 0, 0, 0))
+    expect(atClose.payment_methods.excluded_payment_types).toEqual(cardOnly)
+
+    const competition = await capturePolicy('IND-H', dateFromMeridaWall(2026, 11, 13, 10, 0, 0), true)
+    expect(competition.payment_methods.excluded_payment_types).toEqual(ticketOnly)
+
+    const sunday = await capturePolicy('PUB-DOM', dateFromMeridaWall(2026, 11, 15, 12, 0, 0))
+    expect(sunday.payment_methods.excluded_payment_types).toEqual(cardOnly)
   })
 
   it('excluded policy → installments 1 + ticket', async () => {

@@ -2,6 +2,7 @@ import { CheckoutError } from './errors'
 import type { PriceSnapshot } from './pricing'
 import {
   assertCheckoutPaymentPolicy,
+  CARD_ONLY_EXCLUDED_PAYMENT_TYPES,
   type CheckoutPaymentPolicy,
 } from './payment-policy'
 
@@ -33,7 +34,9 @@ function serializePaymentMethods(policy: CheckoutPaymentPolicy) {
   assertCheckoutPaymentPolicy(policy)
   return {
     installments: policy.maximumInstallments,
-    excluded_payment_types: [{ id: 'ticket' }],
+    excluded_payment_types: policy.cardsOnly
+      ? [...CARD_ONLY_EXCLUDED_PAYMENT_TYPES]
+      : [{ id: 'ticket' }],
   }
 }
 

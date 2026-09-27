@@ -17,7 +17,7 @@ const ELIGIBLE = [
   'HALF-DOB-MM',
 ] as const
 
-const EXCLUDED = ['WOD-M', 'PUB-VIE', 'FOT-SAB'] as const
+const EXCLUDED = ['PUB-VIE'] as const
 
 describe('MSI Checkout Pro preference spike (structural, no network)', () => {
   it('eligible competitive families → installments=3 + ticket excluded', () => {
@@ -47,18 +47,19 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
     }
   })
 
-  it('PUB-3D / FOT-3D are sellable MSI-excluded; unknown / incomplete still fail-closed', () => {
-    for (const code of ['PUB-3D', 'FOT-3D'] as const) {
-      const r = buildMsiPreferencePaymentMethods(code)
-      expect(r).toMatchObject({
-        ok: true,
-        commercial_msi_eligible: false,
-        payment_methods: {
-          installments: 1,
-          excluded_payment_types: [{ id: 'ticket' }],
-        },
-      })
-    }
+  it('PUB-3D is sellable MSI-excluded; FOT-3D and unknown codes stay closed', () => {
+    expect(buildMsiPreferencePaymentMethods('PUB-3D')).toMatchObject({
+      ok: true,
+      commercial_msi_eligible: false,
+      payment_methods: {
+        installments: 1,
+        excluded_payment_types: [{ id: 'ticket' }],
+      },
+    })
+    expect(buildMsiPreferencePaymentMethods('FOT-3D')).toMatchObject({
+      ok: false,
+      error: 'PRODUCT_DISABLED',
+    })
     expect(buildMsiPreferencePaymentMethods('NOPE')).toMatchObject({
       ok: false,
       error: 'PRODUCT_DISABLED',
@@ -71,7 +72,7 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
 
   it('eligible vs excluded preference payloads differ only in installments policy', () => {
     const eligible = buildMsiPreferencePaymentMethods('IND-H')
-    const excluded = buildMsiPreferencePaymentMethods('WOD-H')
+    const excluded = buildMsiPreferencePaymentMethods('PUB-VIE')
     expect(eligible.ok && excluded.ok).toBe(true)
     if (!eligible.ok || !excluded.ok) return
 
@@ -85,9 +86,9 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
     })
     const bodyExcluded = buildSpikePreferenceBody({
       orderId: 'order-excl',
-      productCode: 'WOD-H',
-      productName: 'Workout',
-      unitPriceMxn: 350,
+      productCode: 'PUB-VIE',
+      productName: 'Público viernes',
+      unitPriceMxn: 250,
       quantity: 1,
       paymentMethods: excluded.payment_methods,
     })

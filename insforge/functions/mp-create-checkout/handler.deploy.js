@@ -203,15 +203,196 @@ function isCheckoutError(error40) {
   return error40 instanceof CheckoutError;
 }
 
+// insforge/functions/_shared/checkout/staged-pricing.ts
+var PRICING_RULES_VERSION = "r2h-commercial-2026.1";
+var MERIDA_OFFSET_MS = -6 * 60 * 60 * 1e3;
+function meridaWallToUtcMs(y, m, d, hh = 0, mm = 0, ss = 0) {
+  return Date.UTC(y, m - 1, d, hh, mm, ss) - MERIDA_OFFSET_MS;
+}
+var STAGE_WINDOWS = {
+  LAUNCH: {
+    startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0)
+  },
+  PRESALE: {
+    startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0)
+  },
+  REGULAR: {
+    startMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
+  }
+};
+var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
+var EVENT_DAY_SALES_CLOSE_MS = Object.freeze({
+  "PUB-VIE": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  "PUB-3D": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  "PUB-SAB": meridaWallToUtcMs(2026, 11, 15, 0, 0, 0),
+  "PUB-DOM": meridaWallToUtcMs(2026, 11, 16, 0, 0, 0)
+});
+function isEventDaySaleOpen(productCode, now) {
+  const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode];
+  const t = now.getTime();
+  return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs;
+}
+function resolveCalendarStage(now) {
+  const t = now.getTime();
+  if (t < STAGE_WINDOWS.LAUNCH.startMs) return null;
+  if (t >= SALES_CLOSED_AT_MS) return null;
+  if (t < STAGE_WINDOWS.LAUNCH.endMs) return "LAUNCH";
+  if (t < STAGE_WINDOWS.PRESALE.endMs) return "PRESALE";
+  return "REGULAR";
+}
+function normalizePersistedStage(value) {
+  if (value === "PRESALE" || value === "REGULAR" || value === "LAUNCH") return value;
+  return "LAUNCH";
+}
+function resolveEffectiveStage(now, _totalCupo, _consumedUnits, _persistedStage = "LAUNCH") {
+  const t = now.getTime();
+  if (t >= SALES_CLOSED_AT_MS) return "SALES_CLOSED";
+  const calendar = resolveCalendarStage(now);
+  if (calendar == null) return "SALES_NOT_OPEN";
+  return calendar;
+}
+function row(launch, presale, regular, msi, checkoutEnabled = true, multidayFailClosed = false) {
+  return {
+    launch_cents: launch,
+    presale_cents: presale,
+    regular_cents: regular,
+    msi_eligible: msi,
+    checkout_enabled: checkoutEnabled && !multidayFailClosed,
+    multiday_fail_closed: multidayFailClosed
+  };
+}
+var PRODUCT_STAGE_PRICES = Object.freeze({
+  "DOB-VIE-MM": row(25e4, 275e3, 3e5, true),
+  "DOB-VIE-HH": row(25e4, 275e3, 3e5, true, false),
+  "DOB-VIE-MH": row(25e4, 275e3, 3e5, true, false),
+  "DOB-SAB-MM": row(25e4, 275e3, 3e5, true, false),
+  "DOB-SAB-HH": row(25e4, 275e3, 3e5, true),
+  "DOB-SAB-MH": row(25e4, 275e3, 3e5, true),
+  "REL-4H": row(32e4, 35e4, 38e4, true),
+  "REL-4M": row(32e4, 35e4, 38e4, true),
+  "REL-2H2M": row(32e4, 35e4, 38e4, true),
+  "IND-H": row(15e4, 165e3, 18e4, true),
+  "IND-M": row(15e4, 165e3, 18e4, true),
+  "IND-PRO-H": row(15e4, 165e3, 18e4, true, false),
+  "IND-PRO-M": row(15e4, 165e3, 18e4, true, false),
+  "HALF-IND-M": row(8e4, 9e4, 1e5, true),
+  "HALF-IND-H": row(8e4, 9e4, 1e5, true),
+  "HALF-DOB-MM": row(16e4, 18e4, 2e5, true),
+  "HALF-DOB-HH": row(16e4, 18e4, 2e5, true),
+  "HALF-DOB-MH": row(16e4, 18e4, 2e5, true),
+  "WOD-M": row(35e3, 35e3, 35e3, false, false),
+  "WOD-H": row(35e3, 35e3, 35e3, false, false),
+  "PUB-VIE": row(25e3, 25e3, 25e3, false),
+  "PUB-SAB": row(25e3, 25e3, 25e3, false),
+  "PUB-DOM": row(25e3, 25e3, 25e3, false),
+  "PUB-3D": row(6e4, 6e4, 6e4, false, true, false),
+  "FOT-VIE": row(35e3, 35e3, 35e3, false, false),
+  "FOT-SAB": row(35e3, 35e3, 35e3, false, false),
+  "FOT-DOM": row(35e3, 35e3, 35e3, false, false),
+  "FOT-3D": row(8e4, 8e4, 8e4, false, false, false)
+});
+function getProductStagePriceRow(productCode) {
+  return PRODUCT_STAGE_PRICES[productCode] ?? null;
+}
+function priceCentsForStage(priceRow, stage) {
+  switch (stage) {
+    case "LAUNCH":
+      return priceRow.launch_cents;
+    case "PRESALE":
+      return priceRow.presale_cents;
+    case "REGULAR":
+      return priceRow.regular_cents;
+  }
+}
+function resolveCommercialOffer(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const priceRow = getProductStagePriceRow(input.productCode);
+  if (!priceRow) {
+    return { error: "PRODUCT_DISABLED" };
+  }
+  if (priceRow.multiday_fail_closed || input.multidayBlocked) {
+    return { error: "MULTIDAY_FAIL_CLOSED" };
+  }
+  if (input.productDisabled || !priceRow.checkout_enabled) {
+    return { error: "PRODUCT_DISABLED" };
+  }
+  const persisted = normalizePersistedStage(input.persistedStage);
+  let effective = resolveEffectiveStage(
+    now,
+    input.totalCupo,
+    input.consumedUnits,
+    persisted
+  );
+  if (effective === "SALES_CLOSED" && isEventDaySaleOpen(input.productCode, now)) {
+    effective = "REGULAR";
+  }
+  if (effective === "SALES_CLOSED") return { error: "SALES_CLOSED" };
+  if (effective === "SALES_NOT_OPEN") return { error: "SALES_NOT_OPEN" };
+  const priceLock = input.priceLock ?? null;
+  const lockedToLaunch = priceLock === "LAUNCH";
+  return {
+    product_code: input.productCode,
+    commercial_stage: effective,
+    unit_price_cents: lockedToLaunch ? priceRow.launch_cents : priceCentsForStage(priceRow, effective),
+    currency: "MXN",
+    msi_eligible: priceRow.msi_eligible,
+    pricing_rules_version: PRICING_RULES_VERSION,
+    stage_resolved_at: now.toISOString(),
+    sale_state: "AVAILABLE",
+    consumed_units: input.consumedUnits,
+    price_basis: lockedToLaunch ? "AFFILIATE_LAUNCH_LOCK" : "CALENDAR"
+  };
+}
+function buildOrderCommercialSnapshot(input) {
+  const qty = input.quantity;
+  return {
+    product_code: input.resolution.product_code,
+    commercial_stage: input.resolution.commercial_stage,
+    unit_price_cents: input.resolution.unit_price_cents,
+    quantity: qty,
+    total_price_cents: input.resolution.unit_price_cents * qty,
+    currency: "MXN",
+    msi_eligible: input.resolution.msi_eligible,
+    pricing_rules_version: input.resolution.pricing_rules_version,
+    stage_resolved_at: input.resolution.stage_resolved_at,
+    hold_expires_at: input.holdExpiresAt ?? null,
+    price_basis: input.resolution.price_basis
+  };
+}
+function assertClientExpectedPrice(expectedUnitPriceCents, canonicalUnitPriceCents) {
+  if (expectedUnitPriceCents === void 0) return;
+  if (expectedUnitPriceCents !== canonicalUnitPriceCents) {
+    throw new Error("PRICE_CHANGED");
+  }
+}
+
 // insforge/functions/_shared/checkout/payment-policy.ts
-function toCheckoutPaymentPolicy(msiEligible) {
-  if (msiEligible === true) {
-    return { maximumInstallments: 3, excludeTicketPayments: true };
+var PUBLIC_PASS_CODES = /* @__PURE__ */ new Set(["PUB-VIE", "PUB-SAB", "PUB-DOM", "PUB-3D"]);
+var CARD_ONLY_EXCLUDED_PAYMENT_TYPES = [
+  { id: "ticket" },
+  { id: "bank_transfer" },
+  { id: "atm" },
+  { id: "account_money" },
+  { id: "digital_wallet" },
+  { id: "digital_currency" }
+];
+function publicEventCardsOnly(productCode, now) {
+  return PUBLIC_PASS_CODES.has(productCode) && now.getTime() >= SALES_CLOSED_AT_MS;
+}
+function toCheckoutPaymentPolicy(msiEligible, cardsOnly = false) {
+  const maximumInstallments = msiEligible === true ? 3 : msiEligible === false ? 1 : null;
+  if (maximumInstallments == null) {
+    throw new CheckoutError("CONFIGURATION_ERROR", "msi_eligible must be boolean");
   }
-  if (msiEligible === false) {
-    return { maximumInstallments: 1, excludeTicketPayments: true };
-  }
-  throw new CheckoutError("CONFIGURATION_ERROR", "msi_eligible must be boolean");
+  const policy = {
+    maximumInstallments,
+    excludeTicketPayments: true
+  };
+  if (cardsOnly) return { ...policy, cardsOnly: true };
+  return policy;
 }
 function assertCanonicalMsiEligible(value) {
   if (typeof value !== "boolean") {
@@ -219,7 +400,7 @@ function assertCanonicalMsiEligible(value) {
   }
 }
 function assertCheckoutPaymentPolicy(policy) {
-  if (policy.maximumInstallments !== 1 && policy.maximumInstallments !== 3 || policy.excludeTicketPayments !== true) {
+  if (policy.maximumInstallments !== 1 && policy.maximumInstallments !== 3 || policy.excludeTicketPayments !== true || policy.cardsOnly != null && policy.cardsOnly !== true) {
     throw new CheckoutError("CONFIGURATION_ERROR", "invalid checkout payment policy");
   }
 }
@@ -229,7 +410,7 @@ function serializePaymentMethods(policy) {
   assertCheckoutPaymentPolicy(policy);
   return {
     installments: policy.maximumInstallments,
-    excluded_payment_types: [{ id: "ticket" }]
+    excluded_payment_types: policy.cardsOnly ? [...CARD_ONLY_EXCLUDED_PAYMENT_TYPES] : [{ id: "ticket" }]
   };
 }
 function createHttpMercadoPagoClient(fetchImpl = fetch) {
@@ -523,172 +704,6 @@ function assertProductSellable(product, scope) {
   }
   if (!Number.isInteger(product.price_cents) || product.price_cents < 0) {
     throw new CheckoutError("CONFIGURATION_ERROR");
-  }
-}
-
-// insforge/functions/_shared/checkout/staged-pricing.ts
-var PRICING_RULES_VERSION = "r2h-commercial-2026.1";
-var MERIDA_OFFSET_MS = -6 * 60 * 60 * 1e3;
-function meridaWallToUtcMs(y, m, d, hh = 0, mm = 0, ss = 0) {
-  return Date.UTC(y, m - 1, d, hh, mm, ss) - MERIDA_OFFSET_MS;
-}
-var STAGE_WINDOWS = {
-  LAUNCH: {
-    startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0)
-  },
-  PRESALE: {
-    startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0)
-  },
-  REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
-  }
-};
-var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
-var EVENT_DAY_SALES_CLOSE_MS = Object.freeze({
-  "PUB-VIE": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
-  "PUB-3D": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
-  "PUB-SAB": meridaWallToUtcMs(2026, 11, 15, 0, 0, 0),
-  "PUB-DOM": meridaWallToUtcMs(2026, 11, 16, 0, 0, 0)
-});
-function isEventDaySaleOpen(productCode, now) {
-  const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode];
-  const t = now.getTime();
-  return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs;
-}
-function resolveCalendarStage(now) {
-  const t = now.getTime();
-  if (t < STAGE_WINDOWS.LAUNCH.startMs) return null;
-  if (t >= SALES_CLOSED_AT_MS) return null;
-  if (t < STAGE_WINDOWS.LAUNCH.endMs) return "LAUNCH";
-  if (t < STAGE_WINDOWS.PRESALE.endMs) return "PRESALE";
-  return "REGULAR";
-}
-function normalizePersistedStage(value) {
-  if (value === "PRESALE" || value === "REGULAR" || value === "LAUNCH") return value;
-  return "LAUNCH";
-}
-function resolveEffectiveStage(now, _totalCupo, _consumedUnits, _persistedStage = "LAUNCH") {
-  const t = now.getTime();
-  if (t >= SALES_CLOSED_AT_MS) return "SALES_CLOSED";
-  const calendar = resolveCalendarStage(now);
-  if (calendar == null) return "SALES_NOT_OPEN";
-  return calendar;
-}
-function row(launch, presale, regular, msi, checkoutEnabled = true, multidayFailClosed = false) {
-  return {
-    launch_cents: launch,
-    presale_cents: presale,
-    regular_cents: regular,
-    msi_eligible: msi,
-    checkout_enabled: checkoutEnabled && !multidayFailClosed,
-    multiday_fail_closed: multidayFailClosed
-  };
-}
-var PRODUCT_STAGE_PRICES = Object.freeze({
-  "DOB-VIE-MM": row(25e4, 275e3, 3e5, true),
-  "DOB-VIE-HH": row(25e4, 275e3, 3e5, true, false),
-  "DOB-VIE-MH": row(25e4, 275e3, 3e5, true, false),
-  "DOB-SAB-MM": row(25e4, 275e3, 3e5, true, false),
-  "DOB-SAB-HH": row(25e4, 275e3, 3e5, true),
-  "DOB-SAB-MH": row(25e4, 275e3, 3e5, true),
-  "REL-4H": row(32e4, 35e4, 38e4, true),
-  "REL-4M": row(32e4, 35e4, 38e4, true),
-  "REL-2H2M": row(32e4, 35e4, 38e4, true),
-  "IND-H": row(15e4, 165e3, 18e4, true),
-  "IND-M": row(15e4, 165e3, 18e4, true),
-  "IND-PRO-H": row(15e4, 165e3, 18e4, true, false),
-  "IND-PRO-M": row(15e4, 165e3, 18e4, true, false),
-  "HALF-IND-M": row(8e4, 9e4, 1e5, true),
-  "HALF-IND-H": row(8e4, 9e4, 1e5, true),
-  "HALF-DOB-MM": row(16e4, 18e4, 2e5, true),
-  "HALF-DOB-HH": row(16e4, 18e4, 2e5, true),
-  "HALF-DOB-MH": row(16e4, 18e4, 2e5, true),
-  "WOD-M": row(35e3, 35e3, 35e3, false),
-  "WOD-H": row(35e3, 35e3, 35e3, false),
-  "PUB-VIE": row(25e3, 25e3, 25e3, false),
-  "PUB-SAB": row(25e3, 25e3, 25e3, false),
-  "PUB-DOM": row(25e3, 25e3, 25e3, false),
-  "PUB-3D": row(6e4, 6e4, 6e4, false, true, false),
-  "FOT-VIE": row(35e3, 35e3, 35e3, false),
-  "FOT-SAB": row(35e3, 35e3, 35e3, false),
-  "FOT-DOM": row(35e3, 35e3, 35e3, false),
-  "FOT-3D": row(8e4, 8e4, 8e4, false, true, false)
-});
-function getProductStagePriceRow(productCode) {
-  return PRODUCT_STAGE_PRICES[productCode] ?? null;
-}
-function priceCentsForStage(priceRow, stage) {
-  switch (stage) {
-    case "LAUNCH":
-      return priceRow.launch_cents;
-    case "PRESALE":
-      return priceRow.presale_cents;
-    case "REGULAR":
-      return priceRow.regular_cents;
-  }
-}
-function resolveCommercialOffer(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
-  const priceRow = getProductStagePriceRow(input.productCode);
-  if (!priceRow) {
-    return { error: "PRODUCT_DISABLED" };
-  }
-  if (priceRow.multiday_fail_closed || input.multidayBlocked) {
-    return { error: "MULTIDAY_FAIL_CLOSED" };
-  }
-  if (input.productDisabled || !priceRow.checkout_enabled) {
-    return { error: "PRODUCT_DISABLED" };
-  }
-  const persisted = normalizePersistedStage(input.persistedStage);
-  let effective = resolveEffectiveStage(
-    now,
-    input.totalCupo,
-    input.consumedUnits,
-    persisted
-  );
-  if (effective === "SALES_CLOSED" && isEventDaySaleOpen(input.productCode, now)) {
-    effective = "REGULAR";
-  }
-  if (effective === "SALES_CLOSED") return { error: "SALES_CLOSED" };
-  if (effective === "SALES_NOT_OPEN") return { error: "SALES_NOT_OPEN" };
-  const priceLock = input.priceLock ?? null;
-  const lockedToLaunch = priceLock === "LAUNCH";
-  return {
-    product_code: input.productCode,
-    commercial_stage: effective,
-    unit_price_cents: lockedToLaunch ? priceRow.launch_cents : priceCentsForStage(priceRow, effective),
-    currency: "MXN",
-    msi_eligible: priceRow.msi_eligible,
-    pricing_rules_version: PRICING_RULES_VERSION,
-    stage_resolved_at: now.toISOString(),
-    sale_state: "AVAILABLE",
-    consumed_units: input.consumedUnits,
-    price_basis: lockedToLaunch ? "AFFILIATE_LAUNCH_LOCK" : "CALENDAR"
-  };
-}
-function buildOrderCommercialSnapshot(input) {
-  const qty = input.quantity;
-  return {
-    product_code: input.resolution.product_code,
-    commercial_stage: input.resolution.commercial_stage,
-    unit_price_cents: input.resolution.unit_price_cents,
-    quantity: qty,
-    total_price_cents: input.resolution.unit_price_cents * qty,
-    currency: "MXN",
-    msi_eligible: input.resolution.msi_eligible,
-    pricing_rules_version: input.resolution.pricing_rules_version,
-    stage_resolved_at: input.resolution.stage_resolved_at,
-    hold_expires_at: input.holdExpiresAt ?? null,
-    price_basis: input.resolution.price_basis
-  };
-}
-function assertClientExpectedPrice(expectedUnitPriceCents, canonicalUnitPriceCents) {
-  if (expectedUnitPriceCents === void 0) return;
-  if (expectedUnitPriceCents !== canonicalUnitPriceCents) {
-    throw new Error("PRICE_CHANGED");
   }
 }
 
@@ -12183,7 +12198,10 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     }
     try {
       assertCanonicalMsiEligible(orderSnap.msi_eligible);
-      const paymentPolicy = toCheckoutPaymentPolicy(orderSnap.msi_eligible);
+      const paymentPolicy = toCheckoutPaymentPolicy(
+        orderSnap.msi_eligible,
+        publicEventCardsOnly(found.product.code, now)
+      );
       const preference = await deps.mp.createCheckoutProPreference({
         accessToken: config2.mpAccessToken,
         siteId: config2.mpSiteId,

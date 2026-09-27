@@ -833,43 +833,49 @@ describe('orchestrateCheckoutStart', () => {
     })
   })
 
-  it('passes installments=1 policy for Workout (no MSI)', async () => {
-    const mpCalls: Array<unknown> = []
-    const result = await orchestrateCheckoutStart(
-      validBody({ product_code: 'WOD-M' }),
-      {
-        env: envMap(requiredEnv),
-        catalog: {
-          async getProductWithEvent() {
-            return {
-              product: {
-                ...baseProduct,
-                code: 'WOD-M',
-                name: 'Workout',
-                block: 'ENTRENA',
-                kind: 'workout',
-                price_cents: 35000,
-                has_chip: false,
-                has_insurance: false,
-              },
-              event: openEvent,
-            }
+  it.each(['WOD-M', 'WOD-H', 'FOT-VIE', 'FOT-SAB', 'FOT-DOM', 'FOT-3D'] as const)(
+    '%s is PRODUCT_NOT_AVAILABLE on every calendar date',
+    async (code) => {
+      const dates = [
+        dateFromMeridaWall(2026, 8, 1, 12, 0, 0),
+        dateFromMeridaWall(2026, 8, 15, 12, 0, 0),
+        dateFromMeridaWall(2026, 10, 1, 12, 0, 0),
+        dateFromMeridaWall(2026, 11, 10, 12, 0, 0),
+        dateFromMeridaWall(2026, 11, 14, 12, 0, 0),
+      ]
+      for (const now of dates) {
+        const repo = memoryRepo()
+        const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+        const result = await orchestrateCheckoutStart(validBody({ product_code: code }), {
+          env: envMap(requiredEnv),
+          catalog: {
+            async getProductWithEvent() {
+              return {
+                product: {
+                  ...baseProduct,
+                  code,
+                  name: code,
+                  block: code.startsWith('WOD') ? 'EXPERIENCE' : 'ASISTE',
+                  kind: code.startsWith('WOD') ? 'workout' : 'press',
+                  team_size: 1,
+                  day: code.endsWith('3D') ? null : '2026-11-13',
+                  price_cents: code === 'FOT-3D' ? 80000 : 35000,
+                  has_chip: false,
+                  has_insurance: false,
+                },
+                event: openEvent,
+              }
+            },
           },
-        },
-        repo: memoryRepo(),
-        mp: createMockMercadoPagoClient(async (input) => {
-          mpCalls.push(input.paymentPolicy)
-          return {
-            preferenceId: 'pref_wod',
-            initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_wod',
-          }
-        }),
-        now: launchNow,
-      },
-    )
-    expect(result.status).toBe(200)
-    expect(mpCalls[0]).toEqual({ maximumInstallments: 1, excludeTicketPayments: true })
-  })
+          repo,
+          mp: createMockMercadoPagoClient(),
+          now: () => now,
+        })
+        expect(result.body).toMatchObject({ error: { code: 'PRODUCT_NOT_AVAILABLE' } })
+        expect(startSpy).not.toHaveBeenCalled()
+      }
+    },
+  )
 
   it('compensates when Mercado Pago fails', async () => {
     const repo = memoryRepo()

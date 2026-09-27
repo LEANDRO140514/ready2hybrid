@@ -126,18 +126,23 @@ describe('staged pricing — prices and MSI', () => {
     expect(getProductStagePriceRow('HALF-DOB-MH')?.msi_eligible).toBe(true)
   })
 
-  it('PUB-3D / FOT-3D are checkout-eligible (not MULTIDAY_FAIL_CLOSED)', () => {
-    for (const code of ['PUB-3D', 'FOT-3D'] as const) {
-      expect(getProductStagePriceRow(code)?.multiday_fail_closed).toBe(false)
-      const offer = resolveCommercialOffer({
-        productCode: code,
-        totalCupo: 300,
-        consumedUnits: 0,
-        now: dateFromMeridaWall(2026, 8, 15),
-      })
-      expect('error' in offer && offer.error === 'MULTIDAY_FAIL_CLOSED').toBe(false)
-      expect('error' in offer).toBe(false)
-    }
+  it('PUB-3D stays checkout-eligible; FOT-3D is not for sale this edition', () => {
+    expect(getProductStagePriceRow('PUB-3D')?.multiday_fail_closed).toBe(false)
+    expect(getProductStagePriceRow('FOT-3D')?.multiday_fail_closed).toBe(false)
+    const pub = resolveCommercialOffer({
+      productCode: 'PUB-3D',
+      totalCupo: 300,
+      consumedUnits: 0,
+      now: dateFromMeridaWall(2026, 8, 15),
+    })
+    const fot = resolveCommercialOffer({
+      productCode: 'FOT-3D',
+      totalCupo: 300,
+      consumedUnits: 0,
+      now: dateFromMeridaWall(2026, 8, 15),
+    })
+    expect('error' in pub).toBe(false)
+    expect(fot).toEqual({ error: 'PRODUCT_DISABLED' })
   })
 
   it('rejects client expected price mismatch', () => {
