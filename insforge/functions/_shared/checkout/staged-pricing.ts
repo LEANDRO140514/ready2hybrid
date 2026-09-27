@@ -34,19 +34,25 @@ function meridaWallToUtcMs(y: number, m: number, d: number, hh = 0, mm = 0, ss =
   return Date.UTC(y, m - 1, d, hh, mm, ss) - MERIDA_OFFSET_MS
 }
 
-/** Half-open [start, end) in UTC instants for America/Merida walls. SPEC-030-R201/R202 v0.3.0. */
+/**
+ * Half-open [start, end) in UTC instants for America/Merida walls.
+ * Commercial calendar approved by ENFORMA (2026-09-23):
+ *   LAUNCH   through 24 sep 2026 inclusive
+ *   PRESALE  25 sep – 16 oct 2026 inclusive
+ *   REGULAR  17 oct – 12 nov 2026 inclusive; sales close 13 nov 00:00 Merida
+ */
 export const STAGE_WINDOWS = {
   LAUNCH: {
     startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
   },
   PRESALE: {
-    startMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0),
+    startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
   },
   REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 11, 8, 0, 0, 0),
+    startMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0),
   },
 } as const
 

@@ -484,7 +484,7 @@ describe('orchestrateCheckoutStart', () => {
   })
 
   describe('affiliate launch price lock', () => {
-    const presaleNow = () => dateFromMeridaWall(2026, 9, 21, 12, 0, 0)
+    const presaleNow = () => dateFromMeridaWall(2026, 10, 1, 12, 0, 0)
     const launchCents = 150000
     const presaleCents = 165000
     const locking = { code: 'ENFORMA1', active: true, locks_launch_price: true }
