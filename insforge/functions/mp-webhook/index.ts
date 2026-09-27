@@ -106,7 +106,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (
       result.order_id &&
       result.outcome &&
-      (result.outcome === 'PAID' || result.outcome === 'ALREADY_PAID')
+      result.outcome === 'PAID'
     ) {
       fireAndForgetTicketEmail(result.order_id)
     }

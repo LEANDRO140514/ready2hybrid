@@ -440,7 +440,7 @@ async function handler(req) {
       payments: createHttpPaymentClient(),
       repo: createLazyRepo()
     });
-    if (result.order_id && result.outcome && (result.outcome === "PAID" || result.outcome === "ALREADY_PAID")) {
+    if (result.order_id && result.outcome && result.outcome === "PAID") {
       fireAndForgetTicketEmail(result.order_id);
     }
     return jsonResponse(result.status, result.body);
