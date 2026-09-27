@@ -114,6 +114,34 @@ describe('evaluateOperationalAccess', () => {
     expect(decision).toEqual({ outcome: 'allow', reason: 'authorized' })
   })
 
+  it('allows FINANCE on the sales dashboard without a door assignment', () => {
+    const decision = evaluateOperationalAccess({
+      session: authed,
+      role: 'FINANCE',
+      roleResolved: true,
+      assignment: null,
+      assignmentResolved: true,
+      path: '/ops/finance',
+      requireAssignment: false,
+      nowIso: '2026-07-31T12:00:00.000Z',
+    })
+    expect(decision).toEqual({ outcome: 'allow', reason: 'authorized' })
+  })
+
+  it('denies CHECKIN_STAFF on the sales dashboard', () => {
+    const decision = evaluateOperationalAccess({
+      session: authed,
+      role: 'CHECKIN_STAFF',
+      roleResolved: true,
+      assignment,
+      assignmentResolved: true,
+      path: '/ops/finance',
+      requireAssignment: false,
+      nowIso: '2026-07-31T12:00:00.000Z',
+    })
+    expect(decision).toEqual({ outcome: 'deny', reason: 'role_denied' })
+  })
+
   it('denies assignment scope mismatch', () => {
     const decision = evaluateOperationalAccess({
       session: authed,

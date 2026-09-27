@@ -88,6 +88,11 @@ export const checkoutRequestSchema = z
      * for charset/length under 32.
      */
     affiliate_code: z.string().max(32).nullish(),
+    /**
+     * Optional first-party attribution. Invalid shapes are ignored later.
+     * They must not fail checkout. Buyer identity stays on `buyer`.
+     */
+    marketing_context: z.unknown().optional(),
   })
   .strict()
 

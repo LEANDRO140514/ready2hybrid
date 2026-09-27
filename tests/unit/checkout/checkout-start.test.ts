@@ -484,7 +484,7 @@ describe('orchestrateCheckoutStart', () => {
   })
 
   describe('affiliate launch price lock', () => {
-    const presaleNow = () => dateFromMeridaWall(2026, 9, 21, 12, 0, 0)
+    const presaleNow = () => dateFromMeridaWall(2026, 10, 1, 12, 0, 0)
     const launchCents = 150000
     const presaleCents = 165000
     const locking = { code: 'ENFORMA1', active: true, locks_launch_price: true }
@@ -925,5 +925,197 @@ describe('orchestrateCheckoutStart', () => {
     expect(journeyForProductCode('REL-4H')).toBe('J3')
     expect(journeyForProductCode('WOD-M')).toBe('J4')
     expect(journeyForProductCode('PUB-VIE')).toBe('J5')
+  })
+})
+
+describe('physical waiver at kit pickup', () => {
+  const presaleNow = () => dateFromMeridaWall(2026, 9, 25, 12, 0, 0)
+
+  function envWithoutDigitalWaiver() {
+    const env = { ...requiredEnv }
+    delete (env as { CHECKOUT_WAIVER_DOCUMENT_TYPE?: string }).CHECKOUT_WAIVER_DOCUMENT_TYPE
+    delete (env as { CHECKOUT_WAIVER_VERSION?: string }).CHECKOUT_WAIVER_VERSION
+    return envMap(env)
+  }
+
+  function bodyWithoutWaiver(overrides: Record<string, unknown> = {}) {
+    const body = validBody(overrides)
+    delete (body as { waiver?: unknown }).waiver
+    return body
+  }
+
+  function productFor(code: string, teamSize: number, kind = 'competitor') {
+    return { ...baseProduct, code, team_size: teamSize, kind }
+  }
+
+  async function startWithoutWaiver(
+    code: string,
+    teamSize: number,
+    extra: Record<string, unknown> = {},
+    kind = 'competitor',
+  ) {
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const mpInputs: Array<Record<string, unknown>> = []
+    const result = await orchestrateCheckoutStart(
+      bodyWithoutWaiver({
+        product_code: code,
+        ...(teamSize > 1
+          ? { teammate_names: Array.from({ length: teamSize - 1 }, (_, i) => `Atleta ${i + 2}`) }
+          : {}),
+        ...extra,
+      }),
+      {
+        env: envWithoutDigitalWaiver(),
+        catalog: {
+          async getProductWithEvent() {
+            return { product: productFor(code, teamSize, kind), event: openEvent }
+          },
+          async getAffiliate(affiliateCode: string) {
+            if (affiliateCode === 'PRUEBA') return { code: 'PRUEBA', active: true, locks_launch_price: true }
+            return null
+          },
+        },
+        repo,
+        mp: createMockMercadoPagoClient(async (input) => {
+          mpInputs.push(input as unknown as Record<string, unknown>)
+          return {
+            preferenceId: 'pref_physical',
+            initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_physical',
+          }
+        }),
+        now: presaleNow,
+      },
+    )
+    return { result, startSpy, mpInputs }
+  }
+
+  it('J1 Individual without a waiver reaches the Mercado Pago preference path', async () => {
+    const { result, startSpy, mpInputs } = await startWithoutWaiver('IND-H', 1)
+    expect(result.status).toBe(200)
+    expect(result.body).not.toMatchObject({ error: { code: 'CONFIGURATION_ERROR' } })
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        journey: 'J1',
+        totalCents: 165000,
+        waiverAccepted: false,
+        waiverDocumentType: null,
+        waiverDocumentVersion: null,
+      }),
+    )
+    expect(mpInputs[0]).toEqual(
+      expect.objectContaining({
+        productCode: 'IND-H',
+        price: expect.objectContaining({ total_cents: 165000, commercial_stage: 'PRESALE' }),
+      }),
+    )
+    expect(mpInputs[0]).not.toHaveProperty('waiver')
+  })
+
+  it('J2 Dobles without a waiver reaches preference creation and does not fabricate acceptance', async () => {
+    const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2)
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        journey: 'J2',
+        totalCents: 275000,
+        waiverAccepted: false,
+        waiverDocumentType: null,
+        waiverDocumentVersion: null,
+      }),
+    )
+  })
+
+  it('J3 Relay without a waiver reaches preference creation and does not fabricate acceptance', async () => {
+    const { result, startSpy } = await startWithoutWaiver('REL-4H', 4)
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        journey: 'J3',
+        totalCents: 350000,
+        waiverAccepted: false,
+      }),
+    )
+  })
+
+  it('spectator checkout stays unchanged without a waiver', async () => {
+    const { result, startSpy } = await startWithoutWaiver('PUB-VIE', 1, {}, 'spectator')
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ journey: 'J5', totalCents: 25000, waiverAccepted: false }),
+    )
+  })
+
+  it('rejects a malformed waiver and does not start checkout', async () => {
+    expect(() => parseCheckoutRequest(validBody({ waiver: { accepted: true, surprise: true } }))).toThrow(
+      CheckoutError,
+    )
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const result = await orchestrateCheckoutStart(validBody({ waiver: { accepted: true } }), {
+      env: envWithoutDigitalWaiver(),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: presaleNow,
+    })
+    expect(result.body).toMatchObject({ error: { code: 'WAIVER_REQUIRED' } })
+    expect(startSpy).not.toHaveBeenCalled()
+  })
+
+  it('still matches a supplied waiver to the configured type and version', async () => {
+    const repo = memoryRepo()
+    const startSpy = vi.spyOn(repo, 'startCheckoutTx')
+    const matched = await orchestrateCheckoutStart(validBody(), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp: createMockMercadoPagoClient(),
+      now: presaleNow,
+    })
+    expect(matched.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        waiverAccepted: true,
+        waiverDocumentType: 'SPORTS_WAIVER',
+        waiverDocumentVersion: '2026.1',
+      }),
+    )
+
+    const mismatched = await orchestrateCheckoutStart(
+      validBody({ waiver: { document_type: 'OTHER', version: '0', accepted: true } }),
+      {
+        env: envMap(requiredEnv),
+        catalog: {
+          async getProductWithEvent() {
+            return { product: baseProduct, event: openEvent }
+          },
+        },
+        repo: memoryRepo(),
+        mp: createMockMercadoPagoClient(),
+        now: presaleNow,
+      },
+    )
+    expect(mismatched.body).toMatchObject({ error: { code: 'WAIVER_REQUIRED' } })
+  })
+
+  it('keeps Community Partner Dobles on the launch price during Presale', async () => {
+    const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, { affiliate_code: 'PRUEBA' })
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalCents: 250000,
+        affiliateCode: 'PRUEBA',
+        waiverAccepted: false,
+      }),
+    )
   })
 })

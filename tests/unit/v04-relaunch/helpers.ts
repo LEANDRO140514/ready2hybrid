@@ -6,8 +6,8 @@ import {
 } from '../../../insforge/functions/_shared/checkout/sales'
 
 export const launchNow = () => dateFromMeridaWall(2026, 8, 15, 12, 0, 0)
-export const presaleNow = () => dateFromMeridaWall(2026, 9, 15, 12, 0, 0)
-export const regularNow = () => dateFromMeridaWall(2026, 10, 15, 12, 0, 0)
+export const presaleNow = () => dateFromMeridaWall(2026, 10, 1, 12, 0, 0)
+export const regularNow = () => dateFromMeridaWall(2026, 10, 20, 12, 0, 0)
 
 export const configuredEvent: EventSalesRow = {
   code: 'HEX-2026',

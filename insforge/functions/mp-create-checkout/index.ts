@@ -1,4 +1,5 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
+import { attachMarketingAfterOrder } from '../../../src/marketing/persist.ts'
 import { CheckoutError } from '../_shared/checkout/errors'
 import { createHttpMercadoPagoClient } from '../_shared/checkout/mp-client'
 import {
@@ -251,6 +252,70 @@ function createPorts() {
   return { catalog: catalogWithCapacity, repo }
 }
 
+async function rememberMarketing(trackingRef: string | undefined, context: unknown): Promise<void> {
+  try {
+    if (!trackingRef) return
+    const baseUrl = env('INSFORGE_BASE_URL')
+    const apiKey = env('API_KEY')
+    if (!baseUrl || !apiKey) return
+    const admin = createAdminClient({ baseUrl, apiKey })
+    const { data: orders } = await admin.database
+      .from('orders')
+      .select('id,buyer_contact_id,affiliate_code')
+      .eq('tracking_ref', trackingRef)
+      .limit(1)
+    const order = (orders?.[0] ?? null) as { id?: string; buyer_contact_id?: string; affiliate_code?: string | null } | null
+    if (!order?.id || !order.buyer_contact_id) return
+    const { data: items } = await admin.database.from('order_items').select('product_code').eq('order_id', order.id).limit(1)
+    const productCode = (items?.[0] as { product_code?: string } | undefined)?.product_code
+    if (!productCode) return
+    const { data: products } = await admin.database.from('products').select('event_code').eq('code', productCode).limit(1)
+    const eventCode = (products?.[0] as { event_code?: string } | undefined)?.event_code
+    if (!eventCode) return
+    const { data: events } = await admin.database.from('events').select('id,code').eq('code', eventCode).limit(1)
+    const event = (events?.[0] ?? null) as { id?: string; code?: string } | null
+    if (!event?.id || event.code !== eventCode) return
+    const outcome = await attachMarketingAfterOrder({
+      context,
+      knownEvents: [{ eventId: event.id, eventCode }],
+      order: {
+        orderId: order.id,
+        eventId: event.id,
+        eventCode,
+        buyerContactId: order.buyer_contact_id,
+        affiliateCode: order.affiliate_code ?? null,
+      },
+      capturedAt: new Date().toISOString(),
+      write: async (row) => {
+        await admin.database.from('marketing_visitors').insert([{ id: row.visitorId }])
+        await admin.database.from('marketing_sessions').insert([{ id: row.sessionId, visitor_id: row.visitorId }])
+        await admin.database.from('marketing_identity_links').insert([{
+          visitor_id: row.visitorId,
+          buyer_contact_id: row.buyerContactId,
+        }])
+        const { data: prior } = await admin.database
+          .from('order_attribution_snapshots')
+          .select('order_id')
+          .eq('order_id', row.snapshot.orderId)
+          .limit(1)
+        if (Array.isArray(prior) && prior.length > 0) return
+        await admin.database.from('order_attribution_snapshots').insert([{
+          order_id: row.snapshot.orderId,
+          event_id: row.snapshot.eventId,
+          event_code: row.snapshot.eventCode,
+          visitor_id: row.snapshot.visitorId,
+          first_touch: row.snapshot.firstTouch ?? {},
+          last_touch: row.snapshot.lastTouch ?? {},
+          affiliate_code: row.snapshot.affiliateCode,
+        }])
+      },
+    })
+    if (outcome === 'failed') console.warn('marketing attribution skipped')
+  } catch {
+    console.warn('marketing attribution skipped')
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     const gate = gateOrigin(req)
@@ -300,6 +365,11 @@ export default async function handler(req: Request): Promise<Response> {
       repo,
       mp: createHttpMercadoPagoClient(),
     })
+    if (result.status === 200) {
+      const reference = (result.body as { public_order_reference?: string }).public_order_reference
+      const context = (raw as { marketing_context?: unknown }).marketing_context
+      await rememberMarketing(reference, context)
+    }
     return jsonResponse(result.status, result.body, gate.headers)
   } catch (error) {
     if (error instanceof CheckoutError) {

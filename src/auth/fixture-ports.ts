@@ -7,9 +7,48 @@ import { isOperationalRole } from './roles'
 import type {
   AuthPort,
   AuthSession,
+  AuthStepFailure,
   AuthorizationPort,
   OperationalAssignment,
+  PublicSignupConfig,
 } from './types'
+
+const HARNESS_SIGNUP_CONFIG: PublicSignupConfig = {
+  policy: {
+    passwordMinLength: 6,
+    requireNumber: false,
+    requireLowercase: false,
+    requireUppercase: false,
+    requireSpecialChar: false,
+  },
+  signupOpen: true,
+  verifyEmailMethod: 'code',
+}
+
+/** Satisfies AuthPort in tests that never open signup. */
+export function closedAccountAuth(): Pick<
+  AuthPort,
+  'getSignupConfig' | 'signUp' | 'verifyEmail' | 'resendVerificationEmail'
+> {
+  const closed: AuthStepFailure = {
+    ok: false,
+    message: 'Alta no disponible en esta prueba.',
+  }
+  return {
+    async getSignupConfig() {
+      return closed
+    },
+    async signUp() {
+      return closed
+    },
+    async verifyEmail() {
+      return closed
+    },
+    async resendVerificationEmail() {
+      return closed
+    },
+  }
+}
 
 export const FIXTURE_SESSION_KEY = 'r2h.e2e.session'
 export const FIXTURE_ROLE_KEY = 'r2h.e2e.role'
@@ -55,6 +94,21 @@ export function createFixtureAuthPort(): AuthPort {
       localStorage.removeItem(FIXTURE_SESSION_KEY)
       localStorage.removeItem(FIXTURE_ROLE_KEY)
       localStorage.removeItem(FIXTURE_ASSIGNMENT_KEY)
+    },
+    async getSignupConfig() {
+      return { ok: true, config: HARNESS_SIGNUP_CONFIG }
+    },
+    async signUp() {
+      return { ok: true, needsVerification: true }
+    },
+    async verifyEmail(_email, code) {
+      if (code === '000000') {
+        return { ok: false, message: 'El código no es válido o expiró.' }
+      }
+      return { ok: true }
+    },
+    async resendVerificationEmail() {
+      return { ok: true }
     },
   }
 }

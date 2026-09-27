@@ -384,6 +384,7 @@ async function sendForOrder(
     try {
       const pdfBase64 = await generateTicketPdf({
         ticketFolio: ticket.folio,
+        productCode: ticket.productCode,
         productName: ticket.productName,
         teamName: ticket.teamName,
         rosterNames: ticket.rosterNames,

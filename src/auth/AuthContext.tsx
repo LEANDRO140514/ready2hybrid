@@ -15,9 +15,11 @@ import {
 import type {
   AuthPort,
   AuthSession,
+  AuthStepFailure,
   AuthorizationPort,
   OperationalAssignment,
   OperationalRole,
+  PublicSignupConfig,
 } from './types'
 
 type AuthContextValue = {
@@ -32,6 +34,20 @@ type AuthContextValue = {
     password: string,
   ) => Promise<{ ok: true } | { ok: false; message: string }>
   signOut: () => Promise<void>
+  getSignupConfig: () => Promise<
+    { ok: true; config: PublicSignupConfig } | AuthStepFailure
+  >
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: true; needsVerification: boolean } | AuthStepFailure>
+  verifyEmail: (
+    email: string,
+    code: string,
+  ) => Promise<{ ok: true } | AuthStepFailure>
+  resendVerificationEmail: (
+    email: string,
+  ) => Promise<{ ok: true } | AuthStepFailure>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -116,6 +132,27 @@ export function AuthProvider({
     })
   }, [auth])
 
+  const getSignupConfig = useCallback(() => auth.getSignupConfig(), [auth])
+
+  const signUp = useCallback(
+    (email: string, password: string) => auth.signUp(email, password),
+    [auth],
+  )
+
+  const verifyEmail = useCallback(
+    async (email: string, code: string) => {
+      const result = await auth.verifyEmail(email, code)
+      if (result.ok) await signOut()
+      return result
+    },
+    [auth, signOut],
+  )
+
+  const resendVerificationEmail = useCallback(
+    (email: string) => auth.resendVerificationEmail(email),
+    [auth],
+  )
+
   const value = useMemo(
     () => ({
       session,
@@ -126,6 +163,10 @@ export function AuthProvider({
       refresh,
       signIn,
       signOut,
+      getSignupConfig,
+      signUp,
+      verifyEmail,
+      resendVerificationEmail,
     }),
     [
       session,
@@ -136,6 +177,10 @@ export function AuthProvider({
       refresh,
       signIn,
       signOut,
+      getSignupConfig,
+      signUp,
+      verifyEmail,
+      resendVerificationEmail,
     ],
   )
 

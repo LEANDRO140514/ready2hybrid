@@ -2,9 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import App from './App'
+import { closedAccountAuth } from './auth/fixture-ports'
 import type { AuthPort, AuthorizationPort } from './auth/types'
 
 const unauthPort: AuthPort = {
+  ...closedAccountAuth(),
   async getSession() {
     return { status: 'unauthenticated', user: null, errorMessage: null }
   },
@@ -28,7 +30,7 @@ describe('App', () => {
     render(<App authPort={unauthPort} authorizationPort={emptyAuthz} />)
 
     expect(
-      await screen.findByRole('heading', { name: 'Ready2Hybrid' }),
+      await screen.findByRole('heading', { name: 'HYBRID EVENT EXPERIENCE 2026' }),
     ).toBeTruthy()
   })
 })

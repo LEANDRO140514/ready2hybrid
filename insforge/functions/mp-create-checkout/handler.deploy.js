@@ -7,6 +7,146 @@ var __export = (target, all) => {
 // insforge/functions/mp-create-checkout/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 
+// src/marketing/foundation.ts
+var ANONYMOUS_FUNNEL_EVENT_TYPES = [
+  "LANDING_VIEW",
+  "EXPERIENCE_SELECTED",
+  "CATEGORY_SELECTED",
+  "CHECKOUT_STARTED"
+];
+var FUNNEL_EVENT_TYPES = [
+  ...ANONYMOUS_FUNNEL_EVENT_TYPES,
+  "LEAD_IDENTIFIED",
+  "PAYMENT_PENDING",
+  "PURCHASE"
+];
+var CAPTURE_LIMITS = {
+  maxBodyBytes: 4096,
+  maxMetadataBytes: 512,
+  maxValueLength: 200
+};
+var PII_KEYS = /* @__PURE__ */ new Set(["email", "phone", "name", "nombre", "correo", "telefono", "whatsapp"]);
+var TOUCH_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "fbclid",
+  "gclid",
+  "referrer",
+  "landing_path",
+  "capturedAt"
+];
+function isOpaqueId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value) && !value.includes("@");
+}
+function hasPiiKey(value) {
+  if (!value || typeof value !== "object") return false;
+  for (const [key, child] of Object.entries(value)) {
+    if (PII_KEYS.has(key.toLowerCase())) return true;
+    if (hasPiiKey(child)) return true;
+  }
+  return false;
+}
+function sanitizeTouch(value) {
+  if (value == null) return null;
+  if (typeof value !== "object" || Array.isArray(value)) return void 0;
+  if (hasPiiKey(value)) return void 0;
+  const out = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!TOUCH_KEYS.includes(key)) continue;
+    if (typeof raw !== "string") return void 0;
+    const trimmed = raw.slice(0, CAPTURE_LIMITS.maxValueLength);
+    if (!trimmed) continue;
+    out[key] = trimmed;
+  }
+  return out;
+}
+function sanitizeMarketingContext(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (hasPiiKey(raw)) return null;
+  const body = raw;
+  if (!isOpaqueId(String(body.visitor_id ?? ""))) return null;
+  if (!isOpaqueId(String(body.session_id ?? ""))) return null;
+  const first = sanitizeTouch(body.first_touch);
+  const last = sanitizeTouch(body.last_touch);
+  if (first === void 0 || last === void 0) return null;
+  return {
+    visitor_id: String(body.visitor_id),
+    session_id: String(body.session_id),
+    first_touch: first,
+    last_touch: last
+  };
+}
+function createMarketingStore() {
+  return {
+    visitors: /* @__PURE__ */ new Map(),
+    sessions: /* @__PURE__ */ new Map(),
+    visitorSession: /* @__PURE__ */ new Map(),
+    touches: /* @__PURE__ */ new Map(),
+    events: [],
+    links: /* @__PURE__ */ new Map(),
+    snapshots: /* @__PURE__ */ new Map()
+  };
+}
+function knownEvent(known, eventId, eventCode) {
+  return known.some((row2) => row2.eventId === eventId && row2.eventCode === eventCode);
+}
+function prepareCheckoutAttribution(store, input) {
+  const existing = store.snapshots.get(input.orderId);
+  if (existing) return { blocked: false, snapshot: existing, reason: "ok" };
+  if (hasPiiKey(input.marketingContext)) {
+    return { blocked: false, snapshot: null, reason: "pii" };
+  }
+  if (!knownEvent(input.knownEvents, input.eventId, input.eventCode)) {
+    return { blocked: false, snapshot: null, reason: "unknown_event" };
+  }
+  const context = sanitizeMarketingContext(input.marketingContext);
+  if (!context) return { blocked: false, snapshot: null, reason: "invalid_context" };
+  const row2 = {
+    orderId: input.orderId,
+    eventId: input.eventId,
+    eventCode: input.eventCode,
+    visitorId: context.visitor_id,
+    firstTouch: context.first_touch,
+    lastTouch: context.last_touch,
+    affiliateCode: input.affiliateCode,
+    capturedAt: input.capturedAt
+  };
+  store.snapshots.set(input.orderId, row2);
+  return { blocked: false, snapshot: row2, reason: "ok" };
+}
+
+// src/marketing/persist.ts
+async function attachMarketingAfterOrder(input) {
+  try {
+    if (!input.order) return "skipped";
+    const context = sanitizeMarketingContext(input.context);
+    if (!context) return "skipped";
+    const store = createMarketingStore();
+    const result = prepareCheckoutAttribution(store, {
+      orderId: input.order.orderId,
+      eventId: input.order.eventId,
+      eventCode: input.order.eventCode,
+      affiliateCode: input.order.affiliateCode,
+      marketingContext: context,
+      knownEvents: input.knownEvents,
+      capturedAt: input.capturedAt
+    });
+    if (!result.snapshot) return "skipped";
+    await input.write({
+      visitorId: context.visitor_id,
+      sessionId: context.session_id,
+      buyerContactId: input.order.buyerContactId,
+      snapshot: result.snapshot
+    });
+    return "attached";
+  } catch {
+    return "failed";
+  }
+}
+
 // insforge/functions/_shared/checkout/errors.ts
 var MESSAGES = {
   INVALID_REQUEST: { message: "Invalid checkout request.", retry: "NO", status: 400 },
@@ -395,15 +535,15 @@ function meridaWallToUtcMs(y, m, d, hh = 0, mm = 0, ss = 0) {
 var STAGE_WINDOWS = {
   LAUNCH: {
     startMs: meridaWallToUtcMs(2026, 8, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0)
+    endMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0)
   },
   PRESALE: {
-    startMs: meridaWallToUtcMs(2026, 9, 11, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0)
+    startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0)
   },
   REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 1, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 11, 8, 0, 0, 0)
+    startMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
   }
 };
 var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
@@ -11782,7 +11922,12 @@ var checkoutRequestSchema = external_exports.object({
    * keys stay .strict(). Invalid/inactive codes become null later; never 400
    * for charset/length under 32.
    */
-  affiliate_code: external_exports.string().max(32).nullish()
+  affiliate_code: external_exports.string().max(32).nullish(),
+  /**
+   * Optional first-party attribution. Invalid shapes are ignored later.
+   * They must not fail checkout. Buyer identity stays on `buyer`.
+   */
+  marketing_context: external_exports.unknown().optional()
 }).strict();
 function resolveCaptainDisplayName(buyerName, captainName) {
   const trimmed = captainName?.trim() ?? "";
@@ -11917,7 +12062,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       throw new CheckoutError("UNSUPPORTED_PROVIDER");
     }
     const config2 = loadCheckoutRuntimeConfig(deps.env);
-    assertWaiverConfig(config2, journey, req.waiver);
+    assertOptionalWaiver(config2, req.waiver);
     const captainName = resolveCaptainDisplayName(req.buyer.name, req.captain_name);
     const teammateNames = assertTeammateNamesForTeamSize(
       found.product.team_size,
@@ -12075,16 +12220,19 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     };
   }
 }
-function assertWaiverConfig(config2, journey, waiver) {
-  const competitive = journey === "J1" || journey === "J2" || journey === "J3";
-  if (!competitive) return;
-  if (!config2.waiverRequiredDocumentType || !config2.waiverRequiredVersion) {
-    throw new CheckoutError("CONFIGURATION_ERROR", "Waiver configuration missing");
-  }
-  if (!waiver?.accepted) {
+function waiverPayloadSupplied(waiver) {
+  if (waiver == null) return false;
+  return waiver.accepted !== void 0 || waiver.document_type != null && waiver.document_type !== "" || waiver.version != null && waiver.version !== "";
+}
+function assertOptionalWaiver(config2, waiver) {
+  if (!waiverPayloadSupplied(waiver)) return;
+  if (!waiver?.accepted || !waiver.document_type || !waiver.version) {
     throw new CheckoutError("WAIVER_REQUIRED");
   }
-  if (waiver.document_type !== config2.waiverRequiredDocumentType || waiver.version !== config2.waiverRequiredVersion) {
+  const configuredType = config2.waiverRequiredDocumentType;
+  const configuredVersion = config2.waiverRequiredVersion;
+  if (!configuredType && !configuredVersion) return;
+  if (waiver.document_type !== configuredType || waiver.version !== configuredVersion) {
     throw new CheckoutError("WAIVER_REQUIRED");
   }
 }
@@ -12352,6 +12500,61 @@ function createPorts() {
   };
   return { catalog: catalogWithCapacity, repo };
 }
+async function rememberMarketing(trackingRef, context) {
+  try {
+    if (!trackingRef) return;
+    const baseUrl = env("INSFORGE_BASE_URL");
+    const apiKey = env("API_KEY");
+    if (!baseUrl || !apiKey) return;
+    const admin = createAdminClient({ baseUrl, apiKey });
+    const { data: orders } = await admin.database.from("orders").select("id,buyer_contact_id,affiliate_code").eq("tracking_ref", trackingRef).limit(1);
+    const order = orders?.[0] ?? null;
+    if (!order?.id || !order.buyer_contact_id) return;
+    const { data: items } = await admin.database.from("order_items").select("product_code").eq("order_id", order.id).limit(1);
+    const productCode = items?.[0]?.product_code;
+    if (!productCode) return;
+    const { data: products } = await admin.database.from("products").select("event_code").eq("code", productCode).limit(1);
+    const eventCode = products?.[0]?.event_code;
+    if (!eventCode) return;
+    const { data: events } = await admin.database.from("events").select("id,code").eq("code", eventCode).limit(1);
+    const event = events?.[0] ?? null;
+    if (!event?.id || event.code !== eventCode) return;
+    const outcome = await attachMarketingAfterOrder({
+      context,
+      knownEvents: [{ eventId: event.id, eventCode }],
+      order: {
+        orderId: order.id,
+        eventId: event.id,
+        eventCode,
+        buyerContactId: order.buyer_contact_id,
+        affiliateCode: order.affiliate_code ?? null
+      },
+      capturedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      write: async (row2) => {
+        await admin.database.from("marketing_visitors").insert([{ id: row2.visitorId }]);
+        await admin.database.from("marketing_sessions").insert([{ id: row2.sessionId, visitor_id: row2.visitorId }]);
+        await admin.database.from("marketing_identity_links").insert([{
+          visitor_id: row2.visitorId,
+          buyer_contact_id: row2.buyerContactId
+        }]);
+        const { data: prior } = await admin.database.from("order_attribution_snapshots").select("order_id").eq("order_id", row2.snapshot.orderId).limit(1);
+        if (Array.isArray(prior) && prior.length > 0) return;
+        await admin.database.from("order_attribution_snapshots").insert([{
+          order_id: row2.snapshot.orderId,
+          event_id: row2.snapshot.eventId,
+          event_code: row2.snapshot.eventCode,
+          visitor_id: row2.snapshot.visitorId,
+          first_touch: row2.snapshot.firstTouch ?? {},
+          last_touch: row2.snapshot.lastTouch ?? {},
+          affiliate_code: row2.snapshot.affiliateCode
+        }]);
+      }
+    });
+    if (outcome === "failed") console.warn("marketing attribution skipped");
+  } catch {
+    console.warn("marketing attribution skipped");
+  }
+}
 async function handler(req) {
   if (req.method === "OPTIONS") {
     const gate2 = gateOrigin(req);
@@ -12397,6 +12600,11 @@ async function handler(req) {
       repo,
       mp: createHttpMercadoPagoClient()
     });
+    if (result.status === 200) {
+      const reference = result.body.public_order_reference;
+      const context = raw.marketing_context;
+      await rememberMarketing(reference, context);
+    }
     return jsonResponse(result.status, result.body, gate.headers);
   } catch (error40) {
     if (error40 instanceof CheckoutError) {
