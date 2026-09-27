@@ -214,6 +214,8 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
     for (const productCode of PRODUCTS) {
       const offer = resolveCommercialOffer({ productCode, totalCupo: 60, consumedUnits: 0, now })
       if (expected === 'SALES_CLOSED') {
+        // Spectator passes stay on sale during the event — covered below.
+        if (productCode.startsWith('PUB-')) continue
         expect(offer).toEqual({ error: 'SALES_CLOSED' })
         continue
       }
@@ -237,5 +239,37 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
       expect(!('error' in offer) && offer.unit_price_cents).toBe(150000)
       expect(!('error' in offer) && offer.price_basis).toBe('AFFILIATE_LAUNCH_LOCK')
     }
+  })
+})
+
+describe('staged pricing — spectator sales during the event (ENFORMA 2026-09-26)', () => {
+  const offer = (productCode: string, now: Date) =>
+    resolveCommercialOffer({ productCode, totalCupo: 60, consumedUnits: 0, now })
+
+  it('competition closes at 13 nov 00:00 while spectator passes stay on sale', () => {
+    const now = dateFromMeridaWall(2026, 11, 13, 10, 0, 0)
+    for (const code of ['IND-H', 'DOB-SAB-MH', 'REL-2H2M', 'HALF-IND-M', 'HALF-DOB-MH']) {
+      expect(offer(code, now)).toEqual({ error: 'SALES_CLOSED' })
+    }
+    for (const [code, cents] of [['PUB-VIE', 25000], ['PUB-SAB', 25000], ['PUB-DOM', 25000], ['PUB-3D', 60000]] as const) {
+      const o = offer(code, now)
+      expect(!('error' in o) && o.unit_price_cents).toBe(cents)
+    }
+  })
+
+  it.each([
+    ['PUB-VIE', dateFromMeridaWall(2026, 11, 13, 23, 59, 0), dateFromMeridaWall(2026, 11, 14, 0, 1, 0)],
+    ['PUB-3D', dateFromMeridaWall(2026, 11, 13, 23, 59, 0), dateFromMeridaWall(2026, 11, 14, 0, 1, 0)],
+    ['PUB-SAB', dateFromMeridaWall(2026, 11, 14, 23, 59, 0), dateFromMeridaWall(2026, 11, 15, 0, 1, 0)],
+    ['PUB-DOM', dateFromMeridaWall(2026, 11, 15, 23, 59, 0), dateFromMeridaWall(2026, 11, 16, 0, 1, 0)],
+  ])('%s sells until the end of its first day', (code, lastMinute, after) => {
+    expect('error' in offer(code, lastMinute)).toBe(false)
+    expect(offer(code, after)).toEqual({ error: 'SALES_CLOSED' })
+  })
+
+  it('spectator price before close is unchanged', () => {
+    const o = offer('PUB-3D', dateFromMeridaWall(2026, 11, 12, 12, 0, 0))
+    expect(!('error' in o) && o.commercial_stage).toBe('REGULAR')
+    expect(!('error' in o) && o.unit_price_cents).toBe(60000)
   })
 })

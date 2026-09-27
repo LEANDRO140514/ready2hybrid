@@ -547,6 +547,17 @@ var STAGE_WINDOWS = {
   }
 };
 var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
+var EVENT_DAY_SALES_CLOSE_MS = Object.freeze({
+  "PUB-VIE": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  "PUB-3D": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  "PUB-SAB": meridaWallToUtcMs(2026, 11, 15, 0, 0, 0),
+  "PUB-DOM": meridaWallToUtcMs(2026, 11, 16, 0, 0, 0)
+});
+function isEventDaySaleOpen(productCode, now) {
+  const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode];
+  const t = now.getTime();
+  return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs;
+}
 function resolveCalendarStage(now) {
   const t = now.getTime();
   if (t < STAGE_WINDOWS.LAUNCH.startMs) return null;
@@ -632,12 +643,15 @@ function resolveCommercialOffer(input) {
     return { error: "PRODUCT_DISABLED" };
   }
   const persisted = normalizePersistedStage(input.persistedStage);
-  const effective = resolveEffectiveStage(
+  let effective = resolveEffectiveStage(
     now,
     input.totalCupo,
     input.consumedUnits,
     persisted
   );
+  if (effective === "SALES_CLOSED" && isEventDaySaleOpen(input.productCode, now)) {
+    effective = "REGULAR";
+  }
   if (effective === "SALES_CLOSED") return { error: "SALES_CLOSED" };
   if (effective === "SALES_NOT_OPEN") return { error: "SALES_NOT_OPEN" };
   const priceLock = input.priceLock ?? null;

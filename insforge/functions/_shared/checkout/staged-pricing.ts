@@ -58,6 +58,25 @@ export const STAGE_WINDOWS = {
 
 export const SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs
 
+/**
+ * Spectator passes stay on sale during the event (ENFORMA 2026-09-26), each
+ * until the end of its first valid day (America/Merida). Competition sales
+ * still close at SALES_CLOSED_AT_MS. Spectator prices are flat, so these are
+ * billed at the REGULAR row.
+ */
+export const EVENT_DAY_SALES_CLOSE_MS: Readonly<Record<string, number>> = Object.freeze({
+  'PUB-VIE': meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  'PUB-3D': meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
+  'PUB-SAB': meridaWallToUtcMs(2026, 11, 15, 0, 0, 0),
+  'PUB-DOM': meridaWallToUtcMs(2026, 11, 16, 0, 0, 0),
+})
+
+export function isEventDaySaleOpen(productCode: string, now: Date): boolean {
+  const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode]
+  const t = now.getTime()
+  return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs
+}
+
 const STAGE_ORDER: CommercialStage[] = ['LAUNCH', 'PRESALE', 'REGULAR']
 
 function stageIndex(stage: CommercialStage): number {
@@ -220,12 +239,15 @@ export function resolveCommercialOffer(
   }
 
   const persisted = normalizePersistedStage(input.persistedStage)
-  const effective = resolveEffectiveStage(
+  let effective = resolveEffectiveStage(
     now,
     input.totalCupo,
     input.consumedUnits,
     persisted,
   )
+  if (effective === 'SALES_CLOSED' && isEventDaySaleOpen(input.productCode, now)) {
+    effective = 'REGULAR'
+  }
   if (effective === 'SALES_CLOSED') return { error: 'SALES_CLOSED' }
   if (effective === 'SALES_NOT_OPEN') return { error: 'SALES_NOT_OPEN' }
 
