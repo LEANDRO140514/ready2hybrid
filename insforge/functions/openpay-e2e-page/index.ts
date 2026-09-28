@@ -1,6 +1,6 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 
-const RESERVED_ORDER_ID = '247b96ef-bb13-4733-8792-a3695a54c1fb'
+const RESERVED_ORDER_ID = 'e427b48c-9352-40b2-bf00-adc4df47a499'
 const CREATE_PATH = '/functions/openpay-create-charge'
 
 function env(key: string): string | undefined {
