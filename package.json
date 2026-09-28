@@ -19,6 +19,7 @@
     "bundle:ticket-credentials": "node scripts/bundle-ticket-credentials.mjs",
     "bundle:send-ticket-email": "node scripts/bundle-send-ticket-email.mjs",
     "bundle:sales-read": "node scripts/bundle-ops-sales-read.mjs",
+    "bundle:openpay-e2e-page": "node scripts/bundle-openpay-e2e-page.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
