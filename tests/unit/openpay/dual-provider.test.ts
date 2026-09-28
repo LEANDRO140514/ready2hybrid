@@ -69,14 +69,28 @@ describe('openpay charge and verification', () => {
 
   it('maps charge statuses and ignores the event name as financial truth', () => {
     expect(normalizeOpenpayChargeStatus('COMPLETED')).toBe('APPROVED')
+    expect(normalizeOpenpayChargeStatus('completed')).toBe('APPROVED')
+    expect(normalizeOpenpayChargeStatus(' completed ')).toBe('APPROVED')
     expect(normalizeOpenpayChargeStatus('IN_PROGRESS')).toBe('PENDING')
+    expect(normalizeOpenpayChargeStatus('in_progress')).toBe('PENDING')
     expect(normalizeOpenpayChargeStatus('CHARGE_PENDING')).toBe('PENDING')
+    expect(normalizeOpenpayChargeStatus('charge_pending')).toBe('PENDING')
     expect(normalizeOpenpayChargeStatus('FAILED')).toBe('REJECTED')
+    expect(normalizeOpenpayChargeStatus('failed')).toBe('REJECTED')
     expect(normalizeOpenpayChargeStatus('CANCELLED')).toBe('CANCELLED')
+    expect(normalizeOpenpayChargeStatus('cancelled')).toBe('CANCELLED')
     expect(normalizeOpenpayChargeStatus('REFUNDED')).toBe('REFUNDED')
+    expect(normalizeOpenpayChargeStatus('refunded')).toBe('REFUNDED')
     expect(normalizeOpenpayChargeStatus('CHARGEBACK_PENDING')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_pending')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('CHARGEBACK_ACCEPTED')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_accepted')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('CHARGEBACK_ADJUSTMENT')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_adjustment')).toBe('CHARGED_BACK')
     expect(openpayEventShouldFetch('charge.succeeded')).toBe(true)
     expect(normalizeOpenpayChargeStatus('charge.succeeded')).toBe('UNKNOWN')
+    expect(normalizeOpenpayChargeStatus('not-a-status')).toBe('UNKNOWN')
+    expect(normalizeOpenpayChargeStatus('')).toBe('UNKNOWN')
   })
 
   it('allows 3 MSI only at or above MXN 300 and never 6, 9, 12, or 18', () => {

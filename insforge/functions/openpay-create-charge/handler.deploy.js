@@ -203,7 +203,8 @@ var CHARGE_STATUS = {
   CHARGEBACK_ADJUSTMENT: "CHARGED_BACK"
 };
 function normalizeOpenpayChargeStatus(status) {
-  return CHARGE_STATUS[status] ?? "UNKNOWN";
+  if (typeof status !== "string") return "UNKNOWN";
+  return CHARGE_STATUS[status.trim().toUpperCase()] ?? "UNKNOWN";
 }
 
 // insforge/functions/_shared/openpay/verify.ts

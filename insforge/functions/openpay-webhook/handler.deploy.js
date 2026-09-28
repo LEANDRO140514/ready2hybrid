@@ -64,7 +64,8 @@ var OPENPAY_WEBHOOK_EVENTS = [
   "chargeback.accepted"
 ];
 function normalizeOpenpayChargeStatus(status) {
-  return CHARGE_STATUS[status] ?? "UNKNOWN";
+  if (typeof status !== "string") return "UNKNOWN";
+  return CHARGE_STATUS[status.trim().toUpperCase()] ?? "UNKNOWN";
 }
 function openpayEventShouldFetch(eventType) {
   return OPENPAY_WEBHOOK_EVENTS.includes(eventType);
