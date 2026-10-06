@@ -89,6 +89,13 @@ export const checkoutRequestSchema = z
      */
     affiliate_code: z.string().max(32).nullish(),
     /**
+     * LINK: this checkout is inside a QR or partner-link visit.
+     * STORED or omitted: the code, if any, is attribution only.
+     * Never a price. The server still requires an active affiliate with
+     * locks_launch_price on a competitor product before billing launch cents.
+     */
+    affiliate_entry: z.enum(['LINK', 'STORED']).optional(),
+    /**
      * Optional first-party attribution. Invalid shapes are ignored later.
      * They must not fail checkout. Buyer identity stays on `buyer`.
      */
