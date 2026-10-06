@@ -6,6 +6,7 @@ export type PublicErrorCode =
   | 'SALES_CLOSED'
   | 'SOLD_OUT'
   | 'PRICE_CHANGED'
+  | 'RESERVATION_EXPIRED'
   | 'WAIVER_REQUIRED'
   | 'CONTACT_REQUIRED'
   | 'ORIGIN_NOT_ALLOWED'
@@ -36,6 +37,11 @@ const MESSAGES: Record<PublicErrorCode, { message: string; retry: PublicErrorBod
   SALES_CLOSED: { message: 'Sales are closed.', retry: 'NO', status: 409 },
   SOLD_OUT: { message: 'Product is sold out.', retry: 'AFTER_STATE_CHANGE', status: 409 },
   PRICE_CHANGED: { message: 'Product price changed.', retry: 'AFTER_STATE_CHANGE', status: 409 },
+  RESERVATION_EXPIRED: {
+    message: 'This checkout reservation has expired.',
+    retry: 'AFTER_STATE_CHANGE',
+    status: 409,
+  },
   WAIVER_REQUIRED: { message: 'Waiver acceptance is required.', retry: 'NO', status: 409 },
   CONTACT_REQUIRED: {
     message: 'Buyer contact email and name are required.',

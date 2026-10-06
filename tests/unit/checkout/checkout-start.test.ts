@@ -534,7 +534,7 @@ describe('orchestrateCheckoutStart', () => {
 
     it('bills launch cents for an active locking affiliate on a competitor during PRESALE', async () => {
       const { result, startSpy } = await startAt(
-        { affiliate_code: 'ENFORMA1' },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
         baseProduct,
         locking,
         presaleNow,
@@ -554,7 +554,7 @@ describe('orchestrateCheckoutStart', () => {
 
     it('keeps the calendar price for a spectator even with a locking affiliate', async () => {
       const { result, startSpy } = await startAt(
-        { product_code: 'PUB-VIE', affiliate_code: 'ENFORMA1' },
+        { product_code: 'PUB-VIE', affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
         publico,
         locking,
         presaleNow,
@@ -571,9 +571,107 @@ describe('orchestrateCheckoutStart', () => {
       )
     })
 
+    it('accepts a pre-transition request that omits affiliate_entry', async () => {
+      const accepted = await startAt(
+        { affiliate_code: 'ENFORMA1', expected_unit_price_cents: presaleCents },
+        baseProduct,
+        locking,
+        presaleNow,
+      )
+      expect(accepted.result.status).toBe(200)
+      expect(accepted.startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          affiliateCode: 'ENFORMA1',
+          unitPriceCents: presaleCents,
+          commercialSnapshot: expect.objectContaining({ price_basis: 'CALENDAR' }),
+        }),
+      )
+
+      const quotedLaunch = await startAt(
+        { affiliate_code: 'ENFORMA1', expected_unit_price_cents: launchCents },
+        baseProduct,
+        locking,
+        presaleNow,
+      )
+      expect(quotedLaunch.result.status).toBe(409)
+      expect(quotedLaunch.result.body).toMatchObject({
+        error: { code: 'PRICE_CHANGED', unit_price_cents: presaleCents },
+      })
+      expect(quotedLaunch.startSpy).not.toHaveBeenCalled()
+    })
+
+    it('keeps the calendar price and the partner code when the code is only stored', async () => {
+      const { result, startSpy } = await startAt(
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'STORED' },
+        baseProduct,
+        locking,
+        presaleNow,
+      )
+      expect(result.status).toBe(200)
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          affiliateCode: 'ENFORMA1',
+          unitPriceCents: presaleCents,
+          commercialSnapshot: expect.objectContaining({
+            price_basis: 'CALENDAR',
+            commercial_stage: 'PRESALE',
+          }),
+        }),
+      )
+    })
+
+    it('ignores a launch-price claim when the partner does not lock the price', async () => {
+      const { result, startSpy } = await startAt(
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
+        baseProduct,
+        { code: 'ENFORMA1', active: true, locks_launch_price: false },
+        presaleNow,
+      )
+      expect(result.status).toBe(200)
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unitPriceCents: presaleCents,
+          commercialSnapshot: expect.objectContaining({ price_basis: 'CALENDAR' }),
+        }),
+      )
+    })
+
+    it('rejects a browser launch price on a direct entry and returns the calendar cents', async () => {
+      const { result, startSpy } = await startAt(
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'STORED', expected_unit_price_cents: launchCents },
+        baseProduct,
+        locking,
+        presaleNow,
+      )
+      expect(result.status).toBe(409)
+      expect(result.body).toMatchObject({
+        error: { code: 'PRICE_CHANGED', unit_price_cents: presaleCents },
+      })
+      expect(startSpy).not.toHaveBeenCalled()
+    })
+
+    it('keeps the calendar price when the partner code does not exist', async () => {
+      const { result, startSpy } = await startAt(
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
+        baseProduct,
+        null,
+        presaleNow,
+      )
+      expect(result.status).toBe(200)
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unitPriceCents: presaleCents,
+          commercialSnapshot: expect.objectContaining({
+            price_basis: 'CALENDAR',
+            commercial_stage: 'PRESALE',
+          }),
+        }),
+      )
+    })
+
     it('keeps the calendar price when the affiliate is inactive', async () => {
       const { result, startSpy } = await startAt(
-        { affiliate_code: 'ENFORMA1' },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
         baseProduct,
         { code: 'ENFORMA1', active: false, locks_launch_price: true },
         presaleNow,
@@ -592,7 +690,7 @@ describe('orchestrateCheckoutStart', () => {
 
     it('accepts expected launch cents and rejects the presale cents under a lock', async () => {
       const accepted = await startAt(
-        { affiliate_code: 'ENFORMA1', expected_unit_price_cents: launchCents },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK', expected_unit_price_cents: launchCents },
         baseProduct,
         locking,
         presaleNow,
@@ -601,7 +699,7 @@ describe('orchestrateCheckoutStart', () => {
       expect(accepted.startSpy).toHaveBeenCalled()
 
       const rejected = await startAt(
-        { affiliate_code: 'ENFORMA1', expected_unit_price_cents: presaleCents },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK', expected_unit_price_cents: presaleCents },
         baseProduct,
         locking,
         presaleNow,
@@ -613,7 +711,7 @@ describe('orchestrateCheckoutStart', () => {
 
     it('sets total and item cents to launch cents for quantity 1', async () => {
       const { result, startSpy } = await startAt(
-        { affiliate_code: 'ENFORMA1', quantity: 1 },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK', quantity: 1 },
         baseProduct,
         locking,
         presaleNow,
@@ -633,7 +731,7 @@ describe('orchestrateCheckoutStart', () => {
 
     it('keeps the launch price and still marks AFFILIATE_LAUNCH_LOCK when the calendar is already LAUNCH', async () => {
       const { result, startSpy } = await startAt(
-        { affiliate_code: 'ENFORMA1' },
+        { affiliate_code: 'ENFORMA1', affiliate_entry: 'LINK' },
         baseProduct,
         locking,
         launchNow,
@@ -656,7 +754,7 @@ describe('orchestrateCheckoutStart', () => {
     const prior = {
       checkout_url: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_first',
       public_order_reference: 'trk_first',
-      expires_at: '2026-07-25T12:00:00.000Z',
+      expires_at: '2026-08-16T00:00:00.000Z',
     }
     /** Mirrors checkout_start_tx: same key_hash + different fingerprint = CONFLICT. */
     const fingerprintsByKey = new Map<string, string>()
@@ -901,7 +999,7 @@ describe('orchestrateCheckoutStart', () => {
     const prior = {
       checkout_url: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_replay',
       public_order_reference: 'trk_replay',
-      expires_at: '2026-07-25T12:00:00.000Z',
+      expires_at: '2026-08-16T00:00:00.000Z',
     }
     const repo = memoryRepo({
       replay: true,
@@ -923,6 +1021,35 @@ describe('orchestrateCheckoutStart', () => {
     })
     expect(result.status).toBe(200)
     expect(result.body).toEqual(prior)
+  })
+
+  it('does not resume payment when the idempotent order has expired', async () => {
+    const prior = {
+      checkout_url: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_old',
+      public_order_reference: 'trk_old',
+      expires_at: '2026-08-15T00:00:00.000Z',
+    }
+    const repo = memoryRepo({
+      replay: true,
+      priorResponse: prior,
+    })
+    const mp = createMockMercadoPagoClient(async () => {
+      throw new Error('should not create a new preference for an expired order')
+    })
+    const result = await orchestrateCheckoutStart(validBody(), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp,
+      now: launchNow,
+    })
+    expect(result.status).toBe(409)
+    expect(result.body).toMatchObject({ error: { code: 'RESERVATION_EXPIRED' } })
+    expect(JSON.stringify(result.body)).not.toContain('checkout_url')
   })
 
   it('maps journeys for catalog codes', () => {
@@ -1113,14 +1240,31 @@ describe('physical waiver at kit pickup', () => {
     expect(mismatched.body).toMatchObject({ error: { code: 'WAIVER_REQUIRED' } })
   })
 
-  it('keeps Community Partner Dobles on the launch price during Presale', async () => {
-    const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, { affiliate_code: 'PRUEBA' })
+  it('keeps Community Partner Dobles on the launch price during a link visit in Presale', async () => {
+    const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, {
+      affiliate_code: 'PRUEBA',
+      affiliate_entry: 'LINK',
+    })
     expect(result.status).toBe(200)
     expect(startSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         totalCents: 250000,
         affiliateCode: 'PRUEBA',
         waiverAccepted: false,
+      }),
+    )
+  })
+
+  it('attributes a stored partner code on Dobles without the launch price', async () => {
+    const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, {
+      affiliate_code: 'PRUEBA',
+      affiliate_entry: 'STORED',
+    })
+    expect(result.status).toBe(200)
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalCents: 275000,
+        affiliateCode: 'PRUEBA',
       }),
     )
   })

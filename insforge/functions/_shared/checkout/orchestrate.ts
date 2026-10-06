@@ -18,7 +18,6 @@ import {
   type ProductSalesRow,
 } from './sales'
 import {
-  assertClientExpectedPrice,
   buildOrderCommercialSnapshot,
   resolveCommercialOffer,
 } from './staged-pricing'
@@ -187,7 +186,11 @@ export async function orchestrateCheckoutStart(
     const now = deps.now?.() ?? new Date()
     const affiliate =
       affiliateCode != null ? await deps.catalog.getAffiliate?.(affiliateCode) : null
+    // LINK is a claim that this visit started from a QR or partner URL.
+    // It does not set the cents. Launch price still requires an active
+    // affiliate with locks_launch_price and a competitor product.
     const priceLock =
+      req.affiliate_entry === 'LINK' &&
       affiliate?.active === true &&
       affiliate.locks_launch_price === true &&
       found.product.kind === 'competitor'
@@ -218,10 +221,21 @@ export async function orchestrateCheckoutStart(
     // Fail-closed before hold/TX: MSI policy requires a real boolean from domain.
     assertCanonicalMsiEligible(commercial.msi_eligible)
 
-    try {
-      assertClientExpectedPrice(req.expected_unit_price_cents, commercial.unit_price_cents)
-    } catch {
-      throw new CheckoutError('PRICE_CHANGED')
+    if (
+      req.expected_unit_price_cents !== undefined &&
+      req.expected_unit_price_cents !== commercial.unit_price_cents
+    ) {
+      return {
+        status: 409,
+        body: {
+          error: {
+            code: 'PRICE_CHANGED' as const,
+            message: 'Product price changed.',
+            retry: 'AFTER_STATE_CHANGE' as const,
+            unit_price_cents: commercial.unit_price_cents,
+          },
+        },
+      }
     }
 
     const price = buildPriceSnapshot(found.product, journey, req.quantity, commercial)
@@ -302,6 +316,10 @@ export async function orchestrateCheckoutStart(
     })
 
     if (tx.replay && tx.priorResponse) {
+      const expiresMs = Date.parse(tx.priorResponse.expires_at)
+      if (!Number.isFinite(expiresMs) || expiresMs <= now.getTime()) {
+        throw new CheckoutError('RESERVATION_EXPIRED')
+      }
       return publicSuccess(tx.priorResponse)
     }
 

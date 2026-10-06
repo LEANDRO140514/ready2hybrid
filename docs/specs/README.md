@@ -37,7 +37,8 @@ Record it as an open decision and stop the affected implementation.
 | SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.1.0 | SALE-1 | SPEC-000 v0.2.0, SPEC-001, SPEC-011 | `archive/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.1.0.md` |
 | SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.2.0 | SALES-GO-LIVE-0C-SPEC | Operational APPROVED, never committed as a clean artifact; see historical note | `holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE evidence, not a clean archive) |
 | SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.3.0 | RELAUNCH-DELTA-SPEC-DRAFT | Historical approved contract, superseded by v0.4.0; not rejected | `archive/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.3.0.md` |
-| SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.4.0 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | SPEC-000 v0.2.0, SPEC-001, SPEC-011; compatible with SPEC-040 v0.1.1; supersedes SPEC-030 v0.3.0; Project Owner explicit approval 2026-08-23 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | SUPERSEDED | 0.4.0 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | Superseded by v0.4.1; calendar windows in v0.4.0 are not the effective dates | `archive/SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS-v0.4.0.md` |
+| SPEC-030 | Public Sales Catalog and Registration Journeys | APPROVED | 0.4.1 | RELAUNCH-V0-4-COMMERCIAL-CONTRACT | SPEC-000 v0.2.0, SPEC-001, SPEC-011; supersedes SPEC-030 v0.4.0; commercial owner confirmed the calendar and partner benefit 2026-10-06 | `SPEC-030-PUBLIC-SALES-CATALOG-AND-REGISTRATION-JOURNEYS.md` |
 | SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.1.0 | SALE-2 | SPEC-000 v0.2.0, SPEC-001, SPEC-030; compatible with SPEC-011 | `archive/SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT-v0.1.0.md` |
 | SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.2.0 | SALES-GO-LIVE-0C-SPEC | Operational APPROVED, never committed as a clean artifact; see historical note | `holding/SALES-GO-LIVE-0C-WIP-2026-08-21/` (NON_AUTHORITATIVE evidence, not a clean archive) |
 | SPEC-031 | Public Sales API and Backend Contract | SUPERSEDED | 0.3.0 | RELAUNCH-DELTA-SPEC-DRAFT | Historical approved contract, superseded by v0.4.0; not rejected; depends on SPEC-030 v0.3.0 | `archive/SPEC-031-PUBLIC-SALES-API-AND-BACKEND-CONTRACT-v0.3.0.md` |
@@ -72,9 +73,14 @@ SPEC-001 and SPEC-011 retain their versions, requirements, acceptance criteria,
 and approval states; their governance authority reference now resolves to
 SPEC-000 v0.2.0.
 
-SPEC-030 / SPEC-031 / SPEC-032 v0.4.0 are the approved and **effective** public
-sales contracts after explicit human authorization by the Project Owner on
-2026-08-23 (`"APRUEBO SPEC-030, SPEC-031 Y SPEC-032 v0.4.0"`). This approval
+SPEC-030 v0.4.1 is the effective catalog contract. It keeps the v0.4.0
+commercial rules and replaces the stage windows plus the partner price
+benefit (R416). SPEC-031 and SPEC-032 remain v0.4.0. SPEC-031 R203 follows
+the calendar in the current SPEC-030. v0.4.0 of SPEC-030 / SPEC-031 / SPEC-032
+were approved by the Project Owner on
+2026-08-23 (`"APRUEBO SPEC-030, SPEC-031 Y SPEC-032 v0.4.0"`). The v0.4.1
+calendar and benefit rules were confirmed by the commercial owner on
+2026-10-06. This registry update
 does **not** authorize code, SQL, migrations, Main, landing, Mercado Pago,
 Clip, Openpay, PayPal, secrets, deploy, real payments, commit, push, or
 `SALES_STATUS=OPEN`. `SALES_STATUS` remains CLOSED / PRÓXIMAMENTE.
