@@ -36,7 +36,7 @@ function meridaWallToUtcMs(y: number, m: number, d: number, hh = 0, mm = 0, ss =
 
 /**
  * Half-open [start, end) in UTC instants for America/Merida walls.
- * Commercial calendar approved by ENFORMA (2026-09-23):
+ * Commercial calendar confirmed 2026-10-06 (SPEC-030 v0.4.1):
  *   LAUNCH   through 24 sep 2026 inclusive
  *   PRESALE  25 sep – 16 oct 2026 inclusive
  *   REGULAR  17 oct – 12 nov 2026 inclusive; sales close 13 nov 00:00 Merida

@@ -2,14 +2,14 @@
 id: SPEC-030
 title: Public Sales Catalog and Registration Journeys
 status: APPROVED
-version: 0.4.1
+version: 0.4.0
 phase: RELAUNCH-V0-4-COMMERCIAL-CONTRACT
 created_at: 2026-08-22
-approved_at: 2026-10-06
-approved_by: Commercial owner
-approval_basis: Calendar and Community Partner benefit confirmed 2026-10-06. Lanzamiento through 24 sep 2026 inclusive, preventa 25 sep–16 oct, regular 17 oct–12 nov, close 13 nov 2026 00:00 America/Merida. Launch price only on a QR or partner-link visit.
+approved_at: 2026-08-23
+approved_by: Project Owner
+approval_basis: Explicit human approval ("APRUEBO SPEC-030, SPEC-031 Y SPEC-032 v0.4.0")
 supersedes:
-  - SPEC-030 v0.4.0
+  - SPEC-030 v0.3.0
 depends_on:
   - SPEC-000 v0.2.0
   - SPEC-001 v0.1.0
@@ -20,13 +20,13 @@ compatible_with:
   - SPEC-032 v0.4.0
 ---
 
-# SPEC-030 v0.4.1 — Public Sales Catalog and Registration Journeys
+# SPEC-030 v0.4.0 — Public Sales Catalog and Registration Journeys
 
 ```text
 STATUS: APPROVED — Effective commercial contract
-Approved: 2026-10-06 by the commercial owner (calendar and partner benefit)
+Approved: 2026-08-23 by Project Owner
 Effective: YES
-Supersedes: SPEC-030 v0.4.0
+Supersedes: SPEC-030 v0.3.0
 This approval does NOT authorize code, SQL, migrations, seeds, bundle regen,
 Main, landing writes, InsForge, Mercado Pago, Clip, Openpay, PayPal,
 secrets, deploy, payments, commit, push, or SALES_STATUS=OPEN.
@@ -249,15 +249,15 @@ authority.
 
 | Stage | Inclusive commercial reading | Half-open `[start, end)` |
 |---|---|---|
-| LANZAMIENTO | 2026-08-11 00:00 through 2026-09-24 | `[2026-08-11 00:00:00, 2026-09-25 00:00:00)` |
-| PREVENTA | 2026-09-25 00:00 through 2026-10-16 | `[2026-09-25 00:00:00, 2026-10-17 00:00:00)` |
-| REGULAR | 2026-10-17 00:00 through 2026-11-12 | `[2026-10-17 00:00:00, 2026-11-13 00:00:00)` |
+| LANZAMIENTO | 2026-08-11 00:00 through 2026-08-31 | `[2026-08-11 00:00:00, 2026-09-01 00:00:00)` |
+| PREVENTA | 2026-09-01 00:00 through 2026-09-30 | `[2026-09-01 00:00:00, 2026-10-01 00:00:00)` |
+| REGULAR | 2026-10-01 00:00 through 2026-11-07 | `[2026-10-01 00:00:00, 2026-11-08 00:00:00)` |
 
 ### SPEC-030-R202 (UNCHANGED close)
 
 Online sales MUST be `SALES_CLOSED` for new checkouts when
-`now >= 2026-11-13 00:00:00 America/Merida`. Commercial close date is
-**2026-11-12**. This spec MUST NOT set `SALES_STATUS=OPEN`.
+`now >= 2026-11-08 00:00:00 America/Merida`. Commercial close date is
+**2026-11-07**. This spec MUST NOT set `SALES_STATUS=OPEN`.
 
 ### SPEC-030-R203 (REPLACED)
 
@@ -504,31 +504,6 @@ monetary amount is currently guaranteed. Relay prizes MUST NOT be counted
 inside the 65000 MXN total until a later Project Owner decision. This MUST
 NOT block approval of the public-sales contract.
 
-### SPEC-030-R416 (NEW)
-
-Community Partner attribution and the launch-price benefit are different.
-
-A valid `aff` on the landing URL (QR or partner link) starts a benefit
-session for that browser tab. The session survives reload and in-page
-navigation. A later top-level visit without `aff`, including opening the
-app at `/`, ends it. The stored code may last 30 days for attribution.
-That lifetime MUST NOT by itself select launch price.
-
-Checkout applies `locks_launch_price` only when the request says this visit
-is that link session, the affiliate is active, `locks_launch_price` is true,
-and the product kind is competitor. The server computes the cents. A client
-price, or a benefit flag without that affiliate check, MUST NOT set the
-amount. The stored stage name remains the calendar stage (R203). R416 is
-the only authorized exception to the amount.
-
-On `PRICE_CHANGED` the displayed price updates to the server amount and
-payment does not continue until the visitor confirms. Attribution stays.
-
-An order already created keeps its snapshot until `expires_at`. Replaying
-it after `expires_at` MUST NOT return a payable checkout URL. The provider
-preference expires at that same instant. A new checkout uses the current
-calendar, plus launch price only if the link session is still active.
-
 ## 8. Functional requirements
 
 ### 8.1 Official sellable catalog
@@ -683,7 +658,7 @@ Contract-correctness criteria for v0.4.0 (defined, not executed):
 **Requirements:** R201, R202, R203, R215, R216, R307.
 
 **Pass (contract):** Half-open windows as in R201; close at
-`2026-11-13 00:00 America/Merida`; no 23:59:59 authority; no quantity-driven
+`2026-11-08 00:00 America/Merida`; no 23:59:59 authority; no quantity-driven
 stage. This specification MUST NOT set `SALES_STATUS=OPEN`.
 
 ### SPEC-030-AC301 (CARRIED)
@@ -832,7 +807,6 @@ JSON-LD name/venue; display-name variants.
 | 0.4.0 | 2026-08-22 | DRAFT | Cursor, authorized by Project Owner | Material commercial correction: identity/venue, retired vs superseded, PUB/FOT day access, 3-day sellable, calendar-only pricing, no commercial cap, manual SOLD_OUT, prize policy, program vs operational schedule. No implementation. |
 | 0.4.0 | 2026-08-23 | DRAFT | Cursor, R1 independent-review correction | Normative precision only: separate confirmed sales from pending checkout/PAYMENT_PENDING; distinguish SELLABLE_IDENTITY from CURRENTLY_PAYABLE_CHECKOUT_ELIGIBLE. Product authority unchanged. Still DRAFT. |
 | 0.4.0 | 2026-08-23 | APPROVED | Project Owner | Explicit human approval: "APRUEBO SPEC-030, SPEC-031 Y SPEC-032 v0.4.0". Effective commercial contract. Does not authorize implementation or SALES_STATUS=OPEN. |
-| 0.4.1 | 2026-10-06 | APPROVED | Commercial owner | Calendar windows aligned to the confirmed dates (lanzamiento through 24 sep 2026, preventa through 16 oct, regular through 12 nov, close 13 nov 00:00 America/Merida). R416 separates partner attribution from the launch-price benefit. Amounts unchanged. |
 
 ### Change impact (SPEC-000)
 

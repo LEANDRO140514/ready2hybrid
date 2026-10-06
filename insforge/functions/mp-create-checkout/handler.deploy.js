@@ -160,6 +160,11 @@ var MESSAGES = {
   SALES_CLOSED: { message: "Sales are closed.", retry: "NO", status: 409 },
   SOLD_OUT: { message: "Product is sold out.", retry: "AFTER_STATE_CHANGE", status: 409 },
   PRICE_CHANGED: { message: "Product price changed.", retry: "AFTER_STATE_CHANGE", status: 409 },
+  RESERVATION_EXPIRED: {
+    message: "This checkout reservation has expired.",
+    retry: "AFTER_STATE_CHANGE",
+    status: 409
+  },
   WAIVER_REQUIRED: { message: "Waiver acceptance is required.", retry: "NO", status: 409 },
   CONTACT_REQUIRED: {
     message: "Buyer contact email and name are required.",
@@ -361,12 +366,6 @@ function buildOrderCommercialSnapshot(input) {
     hold_expires_at: input.holdExpiresAt ?? null,
     price_basis: input.resolution.price_basis
   };
-}
-function assertClientExpectedPrice(expectedUnitPriceCents, canonicalUnitPriceCents) {
-  if (expectedUnitPriceCents === void 0) return;
-  if (expectedUnitPriceCents !== canonicalUnitPriceCents) {
-    throw new Error("PRICE_CHANGED");
-  }
 }
 
 // insforge/functions/_shared/checkout/payment-policy.ts
@@ -11953,6 +11952,13 @@ var checkoutRequestSchema = external_exports.object({
    */
   affiliate_code: external_exports.string().max(32).nullish(),
   /**
+   * LINK: this checkout is inside a QR or partner-link visit.
+   * STORED or omitted: the code, if any, is attribution only.
+   * Never a price. The server still requires an active affiliate with
+   * locks_launch_price on a competitor product before billing launch cents.
+   */
+  affiliate_entry: external_exports.enum(["LINK", "STORED"]).optional(),
+  /**
    * Optional first-party attribution. Invalid shapes are ignored later.
    * They must not fail checkout. Buyer identity stays on `buyer`.
    */
@@ -12100,7 +12106,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     const affiliateCode = normalizeAffiliateCode(req.affiliate_code);
     const now = deps.now?.() ?? /* @__PURE__ */ new Date();
     const affiliate = affiliateCode != null ? await deps.catalog.getAffiliate?.(affiliateCode) : null;
-    const priceLock = affiliate?.active === true && affiliate.locks_launch_price === true && found.product.kind === "competitor" ? "LAUNCH" : null;
+    const priceLock = req.affiliate_entry === "LINK" && affiliate?.active === true && affiliate.locks_launch_price === true && found.product.kind === "competitor" ? "LAUNCH" : null;
     const consumed = await deps.catalog.getConsumedCapacityUnits?.(found.product.id) ?? 0;
     const commercial = resolveCommercialOffer({
       productCode: found.product.code,
@@ -12119,10 +12125,18 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       throw new CheckoutError(commercial.error);
     }
     assertCanonicalMsiEligible(commercial.msi_eligible);
-    try {
-      assertClientExpectedPrice(req.expected_unit_price_cents, commercial.unit_price_cents);
-    } catch {
-      throw new CheckoutError("PRICE_CHANGED");
+    if (req.expected_unit_price_cents !== void 0 && req.expected_unit_price_cents !== commercial.unit_price_cents) {
+      return {
+        status: 409,
+        body: {
+          error: {
+            code: "PRICE_CHANGED",
+            message: "Product price changed.",
+            retry: "AFTER_STATE_CHANGE",
+            unit_price_cents: commercial.unit_price_cents
+          }
+        }
+      };
     }
     const price = buildPriceSnapshot(found.product, journey, req.quantity, commercial);
     const capacityUnits = capacityUnitsForQuantity(found.product, req.quantity);
@@ -12194,6 +12208,10 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       }
     });
     if (tx.replay && tx.priorResponse) {
+      const expiresMs = Date.parse(tx.priorResponse.expires_at);
+      if (!Number.isFinite(expiresMs) || expiresMs <= now.getTime()) {
+        throw new CheckoutError("RESERVATION_EXPIRED");
+      }
       return publicSuccess(tx.priorResponse);
     }
     try {
