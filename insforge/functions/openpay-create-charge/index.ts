@@ -9,13 +9,14 @@ import {
   parsePaymentMode,
   paymentPathAllowed,
   readCents,
+  failedChargeDisposition,
   safeTechnicalStatus,
   sandboxChargeRedirect,
   shouldApplyVerified,
   shouldSendTicketEmail,
   verifiedApplyPayload,
 } from '../_shared/openpay/attempt'
-import { buildOpenpayCharge } from '../_shared/openpay/charge'
+import { attemptIdFromOpenpayOrderId, buildOpenpayCharge, openpayOrderId } from '../_shared/openpay/charge'
 import { trustedClientIp } from '../_shared/openpay/client-ip'
 import { openpaySandboxEnabled } from '../_shared/openpay/gate'
 import { openpayChoicesForAmount } from '../_shared/openpay/msi'
@@ -262,8 +263,9 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
+  const chargeAttemptId = attemptIdFromOpenpayOrderId(attempt.openpay_order_ref) ?? order.id
   const charge = buildOpenpayCharge({
-    attemptId: order.id,
+    attemptId: chargeAttemptId,
     totalCents,
     installments: mode.installments,
     sourceId,
@@ -360,8 +362,30 @@ async function resumeExistingCharge(input: {
     payment_method?: { url?: string }
   }
   if (charge.id !== chargeId) return json(409, { error: 'CHARGE_ID_MISMATCH' }, input.headers)
-  const verified = verifyOpenpayCharge(charge, { attemptId: input.order.id, totalCents: input.totalCents })
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: input.attempt.openpay_order_ref,
+    totalCents: input.totalCents,
+  })
   if (!verified.ok) return json(409, { error: verified.code }, input.headers)
+  if (failedChargeDisposition(verified.normalized) === 'rotate') {
+    const nextRef = openpayOrderId(crypto.randomUUID())
+    await input.admin.database.from('openpay_payment_attempts').update({
+      openpay_order_ref: nextRef,
+      openpay_charge_id: null,
+      last_verified_status: safeTechnicalStatus(charge.status),
+      updated_at: new Date().toISOString(),
+    }).eq('id', input.attempt.id).eq('openpay_charge_id', chargeId)
+    return json(200, {
+      order_id: input.order.id,
+      openpay_order_ref: nextRef,
+      charge_id: null,
+      status: safeTechnicalStatus(charge.status),
+      retryable: true,
+    }, input.headers)
+  }
+  if (failedChargeDisposition(verified.normalized) === 'stop') {
+    return json(409, { error: 'CHARGE_CANCELLED' }, input.headers)
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     return json(200, {
       order_id: input.order.id,

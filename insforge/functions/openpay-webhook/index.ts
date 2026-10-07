@@ -98,7 +98,10 @@ export default async function handler(req: Request): Promise<Response> {
   const totalCents = typeof order.total_cents === 'string' ? Number(order.total_cents) : order.total_cents
   if (!Number.isSafeInteger(totalCents)) return json(409, { error: 'ORDER_AMOUNT_MISMATCH' })
 
-  const verified = verifyOpenpayCharge(charge, { attemptId: order.id, totalCents })
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: attempt.openpay_order_ref,
+    totalCents,
+  })
   if (!verified.ok) return json(409, { error: verified.code })
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from('openpay_payment_attempts').update({

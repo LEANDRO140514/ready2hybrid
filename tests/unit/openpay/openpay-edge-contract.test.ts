@@ -6,6 +6,7 @@ import {
   browserSuppliedAmount,
   browserSuppliedCard,
   chargeIdDecision,
+  failedChargeDisposition,
   nextAttemptAction,
   parsePaymentMode,
   paymentPathAllowed,
@@ -91,6 +92,15 @@ describe('openpay 0037 create-charge decisions', () => {
     expect(chargeIdDecision(null, 'tr_existing')).toBe('set')
     expect(chargeIdDecision('tr_existing', 'tr_existing')).toBe('same')
     expect(chargeIdDecision('tr_existing', 'tr_other')).toBe('mismatch')
+    const rotated = openpayOrderId('11111111-1111-4111-8111-111111111111')
+    expect(nextAttemptAction({ openpayOrderRef: rotated, openpayChargeId: null }, ORDER_ID)).toEqual({
+      action: 'create_charge',
+      openpayOrderRef: rotated,
+    })
+    expect(failedChargeDisposition('REJECTED')).toBe('rotate')
+    expect(failedChargeDisposition('FAILED')).toBe('keep')
+    expect(failedChargeDisposition('CANCELLED')).toBe('stop')
+    expect(failedChargeDisposition('IN_PROGRESS')).toBe('keep')
   })
 
   it('refuses a Mercado Pago payment and an unconvertible hold before a charge starts', () => {

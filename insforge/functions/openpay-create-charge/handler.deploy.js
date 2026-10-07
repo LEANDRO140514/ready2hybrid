@@ -23,6 +23,12 @@ function openpayChoicesForAmount(totalCents) {
 function openpayOrderId(attemptId) {
   return `r2h_${attemptId.replace(/-/g, "")}`;
 }
+function attemptIdFromOpenpayOrderId(orderId) {
+  if (!orderId.startsWith("r2h_") || orderId.length !== 36) return null;
+  const hex = orderId.slice(4);
+  if (!/^[0-9a-f]{32}$/i.test(hex)) return null;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 function buildOpenpayCharge(draft) {
   const plan = openpayInstallmentChoice(draft.totalCents, draft.installments);
   if (!plan.ok) return plan;
@@ -102,13 +108,17 @@ function paymentPathAllowed(payments) {
   return { ok: true };
 }
 function nextAttemptAction(existing, orderId) {
-  const openpayOrderRef = openpayOrderId(orderId);
-  if (!existing) return { action: "create_attempt", openpayOrderRef };
-  if (existing.openpayOrderRef !== openpayOrderRef) return { action: "ref_mismatch" };
+  if (!existing) return { action: "create_attempt", openpayOrderRef: openpayOrderId(orderId) };
+  if (!existing.openpayOrderRef) return { action: "ref_mismatch" };
   if (existing.openpayChargeId) {
-    return { action: "reuse_charge", openpayOrderRef, chargeId: existing.openpayChargeId };
+    return { action: "reuse_charge", openpayOrderRef: existing.openpayOrderRef, chargeId: existing.openpayChargeId };
   }
-  return { action: "create_charge", openpayOrderRef };
+  return { action: "create_charge", openpayOrderRef: existing.openpayOrderRef };
+}
+function failedChargeDisposition(normalized) {
+  if (normalized === "REJECTED") return "rotate";
+  if (normalized === "CANCELLED") return "stop";
+  return "keep";
 }
 function chargeIdDecision(current, incoming) {
   if (current == null || current === "") return "set";
@@ -209,7 +219,8 @@ function normalizeOpenpayChargeStatus(status) {
 
 // insforge/functions/_shared/openpay/verify.ts
 function verifyOpenpayCharge(charge, expected) {
-  if (charge.order_id !== openpayOrderId(expected.attemptId)) {
+  const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null);
+  if (!orderRef || charge.order_id !== orderRef) {
     return { ok: false, code: "REFERENCE_MISMATCH" };
   }
   if (charge.currency !== "MXN") return { ok: false, code: "CURRENCY_MISMATCH" };
@@ -456,8 +467,9 @@ async function handler(req) {
       headers: gate.headers
     });
   }
+  const chargeAttemptId = attemptIdFromOpenpayOrderId(attempt.openpay_order_ref) ?? order.id;
   const charge = buildOpenpayCharge({
-    attemptId: order.id,
+    attemptId: chargeAttemptId,
     totalCents,
     installments: mode.installments,
     sourceId,
@@ -523,8 +535,30 @@ async function resumeExistingCharge(input) {
   if (!response.ok) return json(502, { error: "PROVIDER_LOOKUP_FAILED" }, input.headers);
   const charge = await response.json();
   if (charge.id !== chargeId) return json(409, { error: "CHARGE_ID_MISMATCH" }, input.headers);
-  const verified = verifyOpenpayCharge(charge, { attemptId: input.order.id, totalCents: input.totalCents });
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: input.attempt.openpay_order_ref,
+    totalCents: input.totalCents
+  });
   if (!verified.ok) return json(409, { error: verified.code }, input.headers);
+  if (failedChargeDisposition(verified.normalized) === "rotate") {
+    const nextRef = openpayOrderId(crypto.randomUUID());
+    await input.admin.database.from("openpay_payment_attempts").update({
+      openpay_order_ref: nextRef,
+      openpay_charge_id: null,
+      last_verified_status: safeTechnicalStatus(charge.status),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", input.attempt.id).eq("openpay_charge_id", chargeId);
+    return json(200, {
+      order_id: input.order.id,
+      openpay_order_ref: nextRef,
+      charge_id: null,
+      status: safeTechnicalStatus(charge.status),
+      retryable: true
+    }, input.headers);
+  }
+  if (failedChargeDisposition(verified.normalized) === "stop") {
+    return json(409, { error: "CHARGE_CANCELLED" }, input.headers);
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     return json(200, {
       order_id: input.order.id,

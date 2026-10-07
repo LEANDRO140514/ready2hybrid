@@ -90,13 +90,19 @@ export function nextAttemptAction(
   | { action: 'create_charge'; openpayOrderRef: string }
   | { action: 'reuse_charge'; openpayOrderRef: string; chargeId: string }
   | { action: 'ref_mismatch' } {
-  const openpayOrderRef = openpayOrderId(orderId)
-  if (!existing) return { action: 'create_attempt', openpayOrderRef }
-  if (existing.openpayOrderRef !== openpayOrderRef) return { action: 'ref_mismatch' }
+  if (!existing) return { action: 'create_attempt', openpayOrderRef: openpayOrderId(orderId) }
+  if (!existing.openpayOrderRef) return { action: 'ref_mismatch' }
   if (existing.openpayChargeId) {
-    return { action: 'reuse_charge', openpayOrderRef, chargeId: existing.openpayChargeId }
+    return { action: 'reuse_charge', openpayOrderRef: existing.openpayOrderRef, chargeId: existing.openpayChargeId }
   }
-  return { action: 'create_charge', openpayOrderRef }
+  return { action: 'create_charge', openpayOrderRef: existing.openpayOrderRef }
+}
+
+/** A rejected card can try another charge. A cancellation does not. */
+export function failedChargeDisposition(normalized: string): 'rotate' | 'keep' | 'stop' {
+  if (normalized === 'REJECTED') return 'rotate'
+  if (normalized === 'CANCELLED') return 'stop'
+  return 'keep'
 }
 
 export function chargeIdDecision(current: string | null, incoming: string): 'set' | 'same' | 'mismatch' {

@@ -73,7 +73,8 @@ function openpayEventShouldFetch(eventType) {
 
 // insforge/functions/_shared/openpay/verify.ts
 function verifyOpenpayCharge(charge, expected) {
-  if (charge.order_id !== openpayOrderId(expected.attemptId)) {
+  const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null);
+  if (!orderRef || charge.order_id !== orderRef) {
     return { ok: false, code: "REFERENCE_MISMATCH" };
   }
   if (charge.currency !== "MXN") return { ok: false, code: "CURRENCY_MISMATCH" };
@@ -167,7 +168,10 @@ async function handler(req) {
   if (orderError || !order || order.currency !== "MXN") return json(409, { error: "ORDER_NOT_FOUND" });
   const totalCents = typeof order.total_cents === "string" ? Number(order.total_cents) : order.total_cents;
   if (!Number.isSafeInteger(totalCents)) return json(409, { error: "ORDER_AMOUNT_MISMATCH" });
-  const verified = verifyOpenpayCharge(charge, { attemptId: order.id, totalCents });
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: attempt.openpay_order_ref,
+    totalCents
+  });
   if (!verified.ok) return json(409, { error: verified.code });
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from("openpay_payment_attempts").update({
