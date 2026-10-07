@@ -366,8 +366,15 @@ BEGIN
       v_outcome := 'PAID';
     ELSIF v_order.state = 'PAID' THEN
       v_outcome := 'ALREADY_PAID';
+      -- A new provider payment id is a second charge. A replay of the same id is not.
+      IF NOT v_payment_found THEN
+        v_create_outbox := true;
+      END IF;
     ELSIF v_order.state = 'REQUIRES_REVIEW' THEN
       v_outcome := 'ALREADY_REVIEW';
+      IF NOT v_payment_found THEN
+        v_create_outbox := true;
+      END IF;
     END IF;
   ELSIF v_payment_target = 'PENDING' THEN
     IF v_order.state IN ('PREFERENCE_PENDING', 'CREATED') THEN

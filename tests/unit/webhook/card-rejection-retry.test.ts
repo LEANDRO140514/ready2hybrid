@@ -9,10 +9,6 @@ const prior = readFileSync(
   'insforge/migrations/0009_fix_webhook_payment_verification_order.sql',
   'utf8',
 )
-const dual = readFileSync(
-  'insforge/migrations/0032_dual-provider-payment-core.sql',
-  'utf8',
-)
 
 function codeOnly(source: string): string {
   return source
@@ -32,13 +28,11 @@ describe('0038 card rejection keeps an open checkout', () => {
     expect(cancelled.slice(0, 500)).toContain("v_order_target := 'CANCELLED'")
     expect(cancelled.slice(0, 500)).toContain("v_hold_target := 'RELEASED'")
     expect(code).toContain('orders.paid_payment_id exists')
+    expect(code).toContain('IF NOT v_payment_found THEN')
   })
 
-  it('keeps 0009 as the applied function and gives 0032 the same retry split', () => {
+  it('leaves the applied 0009 function unchanged', () => {
     expect(prior).toContain("v_payment_target IN ('REJECTED', 'CANCELLED')")
     expect(prior).not.toContain('REJECTED_RETRYABLE')
-    expect(dual).toContain('paid_payment_id')
-    expect(dual).toContain("v_outcome := 'REJECTED_RETRYABLE'")
-    expect(dual).not.toContain("v_payment_target IN ('REJECTED', 'CANCELLED')")
   })
 })

@@ -442,10 +442,34 @@ try {
   await pool.end()
   const afterRace = await snap(race)
   const raceOutcomes = raced.map((row) => row.rows[0].result.outcome).sort()
+  const raceAlerts = await client.query(
+    `SELECT count(*)::int AS n
+     FROM outbox_delivery_jobs
+     WHERE communication_type = 'INTERNAL_ALERT'
+       AND domain_event_ref = $1`,
+    [`order:${race}`],
+  )
   check(
-    'concurrent approvals leave one ticket',
-    afterRace.tickets === 1 && afterRace.approved === 2 && afterRace.order_state === 'PAID' && raceOutcomes.join(',') === 'ALREADY_PAID,PAID',
-    `${raceOutcomes.join(',')} ${JSON.stringify(afterRace)}`,
+    'concurrent approvals keep both charges and alert the second',
+    afterRace.tickets === 1 && afterRace.approved === 2 && afterRace.order_state === 'PAID' && raceOutcomes.join(',') === 'ALREADY_PAID,PAID' && raceAlerts.rows[0].n === 1,
+    `${raceOutcomes.join(',')} alerts=${raceAlerts.rows[0].n} ${JSON.stringify(afterRace)}`,
+  )
+
+  const replay = await seed({})
+  await apply(replay, 'same-pay', 'APPROVED', 'same-note-1')
+  const replayed = await apply(replay, 'same-pay', 'APPROVED', 'same-note-2')
+  const replayAlerts = await client.query(
+    `SELECT count(*)::int AS n
+     FROM outbox_delivery_jobs
+     WHERE communication_type = 'INTERNAL_ALERT'
+       AND domain_event_ref = $1`,
+    [`order:${replay}`],
+  )
+  const replaySnap = await snap(replay)
+  check(
+    'replaying the same payment does not alert a second charge',
+    replayed.outcome === 'ALREADY_PAID' && replaySnap.approved === 1 && replaySnap.tickets === 1 && replayAlerts.rows[0].n === 0,
+    JSON.stringify({ replayed, replaySnap, alerts: replayAlerts.rows[0].n }),
   )
 
   await client.query(`ALTER TABLE orders ADD COLUMN paid_payment_id uuid`)
