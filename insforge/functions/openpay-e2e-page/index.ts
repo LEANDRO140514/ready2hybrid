@@ -1,6 +1,6 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 
-const RESERVED_ORDER_ID = '7c6bd627-551c-4819-ad7c-e823fc07b737'
+const RESERVED_ORDER_ID = '8e84b53a-6a96-4b11-847e-f8bc1325bf73'
 const CREATE_PATH = '/functions/openpay-create-charge'
 
 function env(key: string): string | undefined {
@@ -102,11 +102,11 @@ export default async function handler(req: Request): Promise<Response> {
 <body>
   <main>
     <h1>Prueba Openpay sandbox</h1>
-    <p>HALF-IND-H · MXN 900</p>
+    <p>Sandbox · HALF-IND-H · MXN 900 · prueba 3 meses</p>
     <p id="device">Preparando dispositivo…</p>
     <form id="pay-form" autocomplete="off">
-      <label><input type="radio" name="mode" value="ONE_TIME" checked> Pago de contado</label>
-      <label><input type="radio" name="mode" value="THREE_MSI"> 3 meses sin intereses</label>
+      <label><input type="radio" name="mode" value="ONE_TIME"> Pago de contado</label>
+      <label><input type="radio" name="mode" value="THREE_MSI" checked> 3 meses sin intereses</label>
       <label>Titular <input data-openpay-card="holder_name" autocomplete="off" required></label>
       <label>Tarjeta <input data-openpay-card="card_number" inputmode="numeric" autocomplete="off" required></label>
       <label>Mes <input data-openpay-card="expiration_month" inputmode="numeric" autocomplete="off" required></label>

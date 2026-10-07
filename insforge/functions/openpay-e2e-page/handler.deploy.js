@@ -1,6 +1,6 @@
 // insforge/functions/openpay-e2e-page/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
-var RESERVED_ORDER_ID = "7c6bd627-551c-4819-ad7c-e823fc07b737";
+var RESERVED_ORDER_ID = "8e84b53a-6a96-4b11-847e-f8bc1325bf73";
 var CREATE_PATH = "/functions/openpay-create-charge";
 function env(key) {
   return Deno.env.get(key) ?? void 0;
@@ -89,11 +89,11 @@ async function handler(req) {
 <body>
   <main>
     <h1>Prueba Openpay sandbox</h1>
-    <p>HALF-IND-H \xB7 MXN 900</p>
+    <p>Sandbox \xB7 HALF-IND-H \xB7 MXN 900 \xB7 prueba 3 meses</p>
     <p id="device">Preparando dispositivo\u2026</p>
     <form id="pay-form" autocomplete="off">
-      <label><input type="radio" name="mode" value="ONE_TIME" checked> Pago de contado</label>
-      <label><input type="radio" name="mode" value="THREE_MSI"> 3 meses sin intereses</label>
+      <label><input type="radio" name="mode" value="ONE_TIME"> Pago de contado</label>
+      <label><input type="radio" name="mode" value="THREE_MSI" checked> 3 meses sin intereses</label>
       <label>Titular <input data-openpay-card="holder_name" autocomplete="off" required></label>
       <label>Tarjeta <input data-openpay-card="card_number" inputmode="numeric" autocomplete="off" required></label>
       <label>Mes <input data-openpay-card="expiration_month" inputmode="numeric" autocomplete="off" required></label>
