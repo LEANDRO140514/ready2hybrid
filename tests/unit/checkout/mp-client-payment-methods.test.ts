@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createHttpMercadoPagoClient } from '../../../insforge/functions/_shared/checkout/mp-client'
+import {
+  createHttpMercadoPagoClient,
+  preferenceTerm,
+} from '../../../insforge/functions/_shared/checkout/mp-client'
 import {
   CARD_ONLY_EXCLUDED_PAYMENT_TYPES,
   publicEventCardsOnly,
@@ -75,6 +78,7 @@ async function captureBody(msiEligible: boolean) {
     },
     notificationUrl: 'https://example.com/n',
     expiresAt: '2026-08-06T12:00:00.000Z',
+    now: new Date('2026-08-06T11:45:00.000Z'),
   })
   expect(captured).toBeTruthy()
   return JSON.parse(captured!) as Record<string, unknown>
@@ -96,7 +100,10 @@ describe('mp-client payment_methods serialization', () => {
       failure: 'https://example.com/f',
       pending: 'https://example.com/p',
     })
+    expect(body.expires).toBe(true)
+    expect(body.expiration_date_from).toBe('2026-08-06T11:45:00.000Z')
     expect(body.expiration_date_to).toBe('2026-08-06T12:00:00.000Z')
+    expect(body).not.toHaveProperty('date_of_expiration')
     expect((body.items as Array<Record<string, unknown>>)[0]).toMatchObject({
       currency_id: 'MXN',
       unit_price: 1500,
@@ -155,6 +162,43 @@ describe('mp-client payment_methods serialization', () => {
         notificationUrl: 'https://example.com/n',
       }),
     ).rejects.toMatchObject({ code: 'CONFIGURATION_ERROR' })
+  })
+
+  it('aligns the preference end with the Merida hold instant and refuses a closed one', () => {
+    const holdEnd = dateFromMeridaWall(2026, 10, 7, 15, 5, 54)
+    const opened = dateFromMeridaWall(2026, 10, 7, 14, 50, 54)
+    expect(preferenceTerm(holdEnd.toISOString(), opened)).toEqual({
+      expires: true,
+      expiration_date_from: '2026-10-07T20:50:54.000Z',
+      expiration_date_to: '2026-10-07T21:05:54.000Z',
+    })
+    expect(preferenceTerm(holdEnd.toISOString(), holdEnd)).toBeNull()
+    expect(preferenceTerm(holdEnd.toISOString(), new Date(holdEnd.getTime() + 1))).toBeNull()
+  })
+
+  it('does not create a preference once the hold instant has arrived', async () => {
+    const client = createHttpMercadoPagoClient(async () => {
+      throw new Error('should not call Mercado Pago')
+    })
+    await expect(
+      client.createCheckoutProPreference({
+        accessToken: 'TEST_TOKEN_NOT_REAL',
+        siteId: 'MLM',
+        orderId: '22222222-2222-2222-2222-222222222222',
+        productCode: 'IND-H',
+        productName: 'Individual',
+        price: basePrice,
+        paymentPolicy: toCheckoutPaymentPolicy(true),
+        backUrls: {
+          success: 'https://example.com/s',
+          failure: 'https://example.com/f',
+          pending: 'https://example.com/p',
+        },
+        notificationUrl: 'https://example.com/n',
+        expiresAt: '2026-08-06T12:00:00.000Z',
+        now: new Date('2026-08-06T12:00:00.000Z'),
+      }),
+    ).rejects.toMatchObject({ code: 'RESERVATION_EXPIRED' })
   })
 
   it('maps MP HTTP failure to CHECKOUT_CREATION_FAILED', async () => {

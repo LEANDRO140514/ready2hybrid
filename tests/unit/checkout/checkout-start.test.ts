@@ -1052,6 +1052,37 @@ describe('orchestrateCheckoutStart', () => {
     expect(JSON.stringify(result.body)).not.toContain('checkout_url')
   })
 
+  it('does not return the stored URL when the hold expires at this exact instant', async () => {
+    const now = launchNow()
+    const prior = {
+      checkout_url: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref_boundary',
+      public_order_reference: 'trk_boundary',
+      expires_at: now.toISOString(),
+    }
+    const repo = memoryRepo({
+      replay: true,
+      priorResponse: prior,
+    })
+    const mp = createMockMercadoPagoClient(async () => {
+      throw new Error('should not create a new preference at the expiry instant')
+    })
+    const result = await orchestrateCheckoutStart(validBody(), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return { product: baseProduct, event: openEvent }
+        },
+      },
+      repo,
+      mp,
+      now: () => now,
+    })
+    expect(result.status).toBe(409)
+    expect(result.body).toMatchObject({ error: { code: 'RESERVATION_EXPIRED' } })
+    expect(JSON.stringify(result.body)).not.toContain('pref_boundary')
+    expect(JSON.stringify(result.body)).not.toContain('checkout_url')
+  })
+
   it('maps journeys for catalog codes', () => {
     expect(journeyForProductCode('IND-H')).toBe('J1')
     expect(journeyForProductCode('DOB-VIE-MM')).toBe('J2')
