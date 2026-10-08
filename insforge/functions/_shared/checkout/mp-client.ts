@@ -17,7 +17,10 @@ export type CreatePreferenceInput = {
   paymentPolicy: CheckoutPaymentPolicy
   backUrls: { success: string; failure: string; pending: string }
   notificationUrl: string
+  /** Order expires_at. The preference stops at this same instant. */
   expiresAt?: string | null
+  /** Clock for expiration_date_from. Defaults to the real current instant. */
+  now?: Date
 }
 
 export type CreatePreferenceResult = {
@@ -28,6 +31,41 @@ export type CreatePreferenceResult = {
 
 export type MercadoPagoClient = {
   createCheckoutProPreference: (input: CreatePreferenceInput) => Promise<CreatePreferenceResult>
+}
+
+/** UTC instant with milliseconds. Z matches orders.expires_at; America/Mérida is UTC−6. */
+export function isoInstant(value: string | Date): string | null {
+  const ms = value instanceof Date ? value.getTime() : Date.parse(value)
+  if (!Number.isFinite(ms)) return null
+  return new Date(ms).toISOString()
+}
+
+/**
+ * Checkout Pro validity. México requires expires true plus both ISO-8601 dates.
+ * expiration_date_to is the order hold. from is this clock, so the preference
+ * is payable at once and ends with the hold. date_of_expiration is cash only.
+ * An open card form is outside that contract; a late approval stays a review.
+ */
+export function preferenceTerm(
+  expiresAt: string,
+  now: Date,
+): { expires: true; expiration_date_from: string; expiration_date_to: string } | null {
+  const expirationDateTo = isoInstant(expiresAt)
+  const expirationDateFrom = isoInstant(now)
+  if (!expirationDateTo || !expirationDateFrom) return null
+  if (Date.parse(expirationDateTo) <= Date.parse(expirationDateFrom)) return null
+  return {
+    expires: true,
+    expiration_date_from: expirationDateFrom,
+    expiration_date_to: expirationDateTo,
+  }
+}
+
+/** True only while expires_at is strictly after now. The boundary is already closed. */
+export function reservationStillOpen(expiresAt: string | undefined, now: Date): boolean {
+  if (!expiresAt) return false
+  const ms = Date.parse(expiresAt)
+  return Number.isFinite(ms) && ms > now.getTime()
 }
 
 function serializePaymentMethods(policy: CheckoutPaymentPolicy) {
@@ -47,6 +85,10 @@ export function createHttpMercadoPagoClient(fetchImpl: typeof fetch = fetch): Me
         throw new CheckoutError('CONFIGURATION_ERROR', 'paymentPolicy required')
       }
       const payment_methods = serializePaymentMethods(input.paymentPolicy)
+      const term = input.expiresAt
+        ? preferenceTerm(input.expiresAt, input.now ?? new Date())
+        : null
+      if (input.expiresAt && !term) throw new CheckoutError('RESERVATION_EXPIRED')
 
       const body = {
         external_reference: input.orderId,
@@ -67,13 +109,7 @@ export function createHttpMercadoPagoClient(fetchImpl: typeof fetch = fetch): Me
           product_code: input.productCode,
           journey: input.price.journey,
         },
-        ...(input.expiresAt
-          ? {
-              // MP requires ISO 8601 with milliseconds (3 decimals); Postgres emits microseconds (5+).
-              // toISOString() normalizes to "YYYY-MM-DDTHH:mm:ss.sssZ" which MP accepts.
-              expiration_date_to: new Date(input.expiresAt).toISOString(),
-            }
-          : {}),
+        ...(term ?? {}),
       }
 
       const response = await fetchImpl('https://api.mercadopago.com/checkout/preferences', {

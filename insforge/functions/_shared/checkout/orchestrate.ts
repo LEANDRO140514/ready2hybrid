@@ -1,6 +1,7 @@
 import { CheckoutError, isCheckoutError } from './errors'
 import { loadCheckoutRuntimeConfig, type CheckoutRuntimeConfig } from './config'
 import { fingerprintRequest, hashIdempotencyKey } from './idempotency'
+import { reservationStillOpen } from './mp-client'
 import { journeyForProductCode } from './journeys'
 import type { MercadoPagoClient } from './mp-client'
 import {
@@ -316,8 +317,7 @@ export async function orchestrateCheckoutStart(
     })
 
     if (tx.replay && tx.priorResponse) {
-      const expiresMs = Date.parse(tx.priorResponse.expires_at)
-      if (!Number.isFinite(expiresMs) || expiresMs <= now.getTime()) {
+      if (!reservationStillOpen(tx.priorResponse.expires_at, now)) {
         throw new CheckoutError('RESERVATION_EXPIRED')
       }
       return publicSuccess(tx.priorResponse)
@@ -345,6 +345,7 @@ export async function orchestrateCheckoutStart(
         },
         notificationUrl: config.notificationUrl,
         expiresAt: tx.expiresAt,
+        now,
       })
 
       await deps.repo.attachPreference({
