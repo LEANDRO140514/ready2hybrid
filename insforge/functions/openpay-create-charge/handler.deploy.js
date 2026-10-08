@@ -23,6 +23,12 @@ function openpayChoicesForAmount(totalCents) {
 function openpayOrderId(attemptId) {
   return `r2h_${attemptId.replace(/-/g, "")}`;
 }
+function attemptIdFromOpenpayOrderId(orderId) {
+  if (!orderId.startsWith("r2h_") || orderId.length !== 36) return null;
+  const hex = orderId.slice(4);
+  if (!/^[0-9a-f]{32}$/i.test(hex)) return null;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 function buildOpenpayCharge(draft) {
   const plan = openpayInstallmentChoice(draft.totalCents, draft.installments);
   if (!plan.ok) return plan;
@@ -102,13 +108,17 @@ function paymentPathAllowed(payments) {
   return { ok: true };
 }
 function nextAttemptAction(existing, orderId) {
-  const openpayOrderRef = openpayOrderId(orderId);
-  if (!existing) return { action: "create_attempt", openpayOrderRef };
-  if (existing.openpayOrderRef !== openpayOrderRef) return { action: "ref_mismatch" };
+  if (!existing) return { action: "create_attempt", openpayOrderRef: openpayOrderId(orderId) };
+  if (!existing.openpayOrderRef) return { action: "ref_mismatch" };
   if (existing.openpayChargeId) {
-    return { action: "reuse_charge", openpayOrderRef, chargeId: existing.openpayChargeId };
+    return { action: "reuse_charge", openpayOrderRef: existing.openpayOrderRef, chargeId: existing.openpayChargeId };
   }
-  return { action: "create_charge", openpayOrderRef };
+  return { action: "create_charge", openpayOrderRef: existing.openpayOrderRef };
+}
+function failedChargeDisposition(normalized) {
+  if (normalized === "REJECTED") return "rotate";
+  if (normalized === "CANCELLED") return "stop";
+  return "keep";
 }
 function chargeIdDecision(current, incoming) {
   if (current == null || current === "") return "set";
@@ -121,10 +131,15 @@ function safeTechnicalStatus(status) {
   if (!/^[A-Za-z0-9_]{1,64}$/.test(trimmed)) return null;
   return trimmed;
 }
-function sandboxChargeRedirect(paymentMethod) {
+var OPENPAY_REDIRECT_HOSTS = /* @__PURE__ */ new Set([
+  "https://sandbox-api.openpay.mx",
+  "https://api.openpay.mx"
+]);
+function openpayChargeRedirect(paymentMethod, apiBase) {
+  if (!OPENPAY_REDIRECT_HOSTS.has(apiBase)) return null;
   if (!paymentMethod || typeof paymentMethod !== "object" || !("url" in paymentMethod)) return null;
   const url = paymentMethod.url;
-  if (typeof url !== "string" || !url.startsWith("https://sandbox-api.openpay.mx/")) return null;
+  if (typeof url !== "string" || !url.startsWith(`${apiBase}/`)) return null;
   return url;
 }
 function shouldApplyVerified(normalized) {
@@ -186,8 +201,17 @@ function trustedClientIp(headers) {
 }
 
 // insforge/functions/_shared/openpay/gate.ts
-function openpaySandboxEnabled(env2) {
-  return env2.OPENPAY_ENABLED === "true" && env2.OPENPAY_SANDBOX === "true";
+var OPENPAY_SANDBOX_API = "https://sandbox-api.openpay.mx";
+var OPENPAY_PRODUCTION_API = "https://api.openpay.mx";
+function openpayRuntime(env2) {
+  if (env2.OPENPAY_ENABLED !== "true") return null;
+  if (env2.OPENPAY_SANDBOX === "true") {
+    return { sandbox: true, apiBase: OPENPAY_SANDBOX_API };
+  }
+  return { sandbox: false, apiBase: OPENPAY_PRODUCTION_API };
+}
+function openpayMsiEnabled(env2) {
+  return env2.OPENPAY_MSI_ENABLED === "true";
 }
 
 // insforge/functions/_shared/openpay/status.ts
@@ -203,12 +227,59 @@ var CHARGE_STATUS = {
   CHARGEBACK_ADJUSTMENT: "CHARGED_BACK"
 };
 function normalizeOpenpayChargeStatus(status) {
-  return CHARGE_STATUS[status] ?? "UNKNOWN";
+  if (typeof status !== "string") return "UNKNOWN";
+  return CHARGE_STATUS[status.trim().toUpperCase()] ?? "UNKNOWN";
+}
+
+// insforge/functions/_shared/openpay/provider-error.ts
+var PAN = /\d{12,19}/g;
+var EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+var SECRET = /\b(?:sk|pk)_[A-Za-z0-9]+\b/g;
+var CHARGE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function sanitizeErrorCode(value) {
+  const text = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof text !== "string" || !/^[0-9]{1,6}$/.test(text)) return null;
+  return text;
+}
+function sanitizeProviderDetail(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(PAN, "").replace(EMAIL, "").replace(SECRET, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  return cleaned.length > 0 ? cleaned : null;
+}
+function sanitizeChargeId(value) {
+  if (typeof value !== "string" || !CHARGE_ID.test(value)) return null;
+  return value;
+}
+function classifyOpenpayCreateBody(httpStatus, body) {
+  const chargeId = sanitizeChargeId(body.id);
+  const errorCode = sanitizeErrorCode(body.error_code);
+  const description = sanitizeProviderDetail(
+    typeof body.description === "string" ? body.description : body.error_message
+  );
+  if (chargeId) {
+    const status = typeof body.status === "string" ? body.status.trim() : null;
+    return {
+      outcome: "charge",
+      chargeId,
+      status: status && /^[A-Za-z0-9_]{1,64}$/.test(status) ? status : null,
+      errorCode,
+      description
+    };
+  }
+  if (httpStatus >= 400 && httpStatus < 500 && errorCode) {
+    return { outcome: "business", errorCode, description };
+  }
+  return { outcome: "technical" };
+}
+function chargeIsBusinessRejection(status) {
+  if (!status) return false;
+  return normalizeOpenpayChargeStatus(status) === "REJECTED";
 }
 
 // insforge/functions/_shared/openpay/verify.ts
 function verifyOpenpayCharge(charge, expected) {
-  if (charge.order_id !== openpayOrderId(expected.attemptId)) {
+  const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null);
+  if (!orderRef || charge.order_id !== orderRef) {
     return { ok: false, code: "REFERENCE_MISMATCH" };
   }
   if (charge.currency !== "MXN") return { ok: false, code: "CURRENCY_MISMATCH" };
@@ -291,7 +362,6 @@ function json(status, body, headers = {}) {
     headers: { ...headers, "Content-Type": "application/json" }
   });
 }
-var SANDBOX_API = "https://sandbox-api.openpay.mx";
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function firstRow(data) {
   return Array.isArray(data) ? data[0] ?? null : null;
@@ -306,12 +376,15 @@ function fireTicketEmail(baseUrl, orderId) {
   }).catch(() => void 0);
 }
 async function handler(req) {
-  if (!openpaySandboxEnabled({
+  const runtime = openpayRuntime({
     OPENPAY_ENABLED: env("OPENPAY_ENABLED"),
     OPENPAY_SANDBOX: env("OPENPAY_SANDBOX")
-  })) {
+  });
+  if (!runtime) {
     return json(404, { error: "OPENPAY_DISABLED" });
   }
+  const apiBase = runtime.apiBase;
+  const msiEnabled = openpayMsiEnabled({ OPENPAY_MSI_ENABLED: env("OPENPAY_MSI_ENABLED") });
   const allowedOrigin = readConfiguredOrigin(env, "CHECKOUT_CORS_ORIGIN");
   const gate = gateRequestOrigin({
     req,
@@ -354,6 +427,9 @@ async function handler(req) {
   }
   const mode = preview ? { ok: true, mode: "ONE_TIME", installments: 1 } : parsePaymentMode({ mode: body.mode, installments: body.installments });
   if (!mode.ok) return json(400, { error: mode.code }, gate.headers);
+  if (mode.mode === "THREE_MSI" && !msiEnabled) {
+    return json(400, { error: "MSI_NOT_OFFERED" }, gate.headers);
+  }
   const clientIp = trustedClientIp(req.headers);
   if (!clientIp) return json(400, { error: "MISSING_CLIENT_IP" }, gate.headers);
   const admin = createAdminClient({ baseUrl, apiKey });
@@ -365,7 +441,7 @@ async function handler(req) {
   const payable = assessOrder({ state: order.state, currency: order.currency, totalCents });
   if (!payable.ok) return json(409, { error: payable.code }, gate.headers);
   if (preview) {
-    const choices = openpayChoicesForAmount(totalCents);
+    const choices = openpayChoicesForAmount(totalCents).filter((count) => count === 1 || msiEnabled);
     return json(200, {
       ok: true,
       preview: true,
@@ -374,7 +450,7 @@ async function handler(req) {
       currency: "MXN",
       amount_cents: totalCents,
       modes: choices.map((count) => count === 3 ? "THREE_MSI" : "ONE_TIME"),
-      three_msi_eligible: choices.includes(3)
+      three_msi_eligible: msiEnabled && choices.includes(3)
     }, gate.headers);
   }
   const plan = buildOpenpayCharge({
@@ -436,6 +512,7 @@ async function handler(req) {
         privateKey,
         clientIp,
         baseUrl,
+        apiBase,
         headers: gate.headers
       });
     }
@@ -452,11 +529,13 @@ async function handler(req) {
       privateKey,
       clientIp,
       baseUrl,
+      apiBase,
       headers: gate.headers
     });
   }
+  const chargeAttemptId = attemptIdFromOpenpayOrderId(attempt.openpay_order_ref) ?? order.id;
   const charge = buildOpenpayCharge({
-    attemptId: order.id,
+    attemptId: chargeAttemptId,
     totalCents,
     installments: mode.installments,
     sourceId,
@@ -467,7 +546,7 @@ async function handler(req) {
   if (!charge.ok) return json(400, { error: charge.code }, gate.headers);
   let response;
   try {
-    response = await fetch(`${SANDBOX_API}/v1/${merchantId}/charges`, {
+    response = await fetch(`${apiBase}/v1/${merchantId}/charges`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${btoa(`${privateKey}:`)}`,
@@ -480,29 +559,68 @@ async function handler(req) {
     return json(504, { error: "PROVIDER_UNKNOWN" }, gate.headers);
   }
   const payload = await response.json().catch(() => ({}));
-  if (!payload.id) {
-    return json(response.ok ? 502 : 502, { error: response.ok ? "PROVIDER_UNKNOWN" : "CHARGE_REJECTED" }, gate.headers);
+  const classified = classifyOpenpayCreateBody(response.status, payload);
+  if (classified.outcome === "technical") {
+    return json(502, { error: "PROVIDER_UNKNOWN" }, gate.headers);
   }
-  const decision = chargeIdDecision(attempt.openpay_charge_id, payload.id);
+  if (classified.outcome === "business") {
+    await admin.database.from("openpay_payment_attempts").update({
+      provider_error_code: classified.errorCode,
+      provider_error_detail: classified.description,
+      last_verified_status: "failed",
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", attempt.id);
+    return json(402, {
+      error: "CHARGE_REJECTED",
+      error_code: classified.errorCode,
+      description: classified.description
+    }, gate.headers);
+  }
+  if (chargeIsBusinessRejection(classified.status)) {
+    const decision2 = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId);
+    if (decision2 === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
+    if (decision2 === "set") {
+      await admin.database.from("openpay_payment_attempts").update({
+        openpay_charge_id: classified.chargeId,
+        provider_error_code: classified.errorCode,
+        provider_error_detail: classified.description,
+        initial_status: classified.status,
+        last_verified_status: classified.status,
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      }).eq("id", attempt.id).is("openpay_charge_id", null);
+      const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
+      const stored = firstRow(storedData);
+      if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === "mismatch") {
+        return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
+      }
+    }
+    return json(402, {
+      error: "CHARGE_REJECTED",
+      error_code: classified.errorCode,
+      description: classified.description,
+      charge_id: classified.chargeId
+    }, gate.headers);
+  }
+  const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId);
   if (decision === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
   if (decision === "set") {
     await admin.database.from("openpay_payment_attempts").update({
-      openpay_charge_id: payload.id,
-      initial_status: safeTechnicalStatus(payload.status),
+      openpay_charge_id: classified.chargeId,
+      initial_status: safeTechnicalStatus(classified.status),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", attempt.id).is("openpay_charge_id", null);
     const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
     const stored = firstRow(storedData);
-    if (chargeIdDecision(stored?.openpay_charge_id ?? null, payload.id) === "mismatch") {
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === "mismatch") {
       return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
     }
   }
   return json(200, {
     order_id: order.id,
     openpay_order_ref: attempt.openpay_order_ref,
-    charge_id: payload.id,
-    status: safeTechnicalStatus(payload.status),
-    redirect_url: sandboxChargeRedirect(payload.payment_method)
+    charge_id: classified.chargeId,
+    status: safeTechnicalStatus(classified.status),
+    redirect_url: openpayChargeRedirect(payload.payment_method, apiBase)
   }, gate.headers);
 }
 async function resumeExistingCharge(input) {
@@ -510,7 +628,7 @@ async function resumeExistingCharge(input) {
   if (!chargeId) return json(409, { error: "ATTEMPT_NOT_FOUND" }, input.headers);
   let response;
   try {
-    response = await fetch(`${SANDBOX_API}/v1/${input.merchantId}/charges/${chargeId}`, {
+    response = await fetch(`${input.apiBase}/v1/${input.merchantId}/charges/${chargeId}`, {
       headers: {
         Authorization: `Basic ${btoa(`${input.privateKey}:`)}`,
         "X-Forwarded-For": input.clientIp
@@ -522,15 +640,45 @@ async function resumeExistingCharge(input) {
   if (!response.ok) return json(502, { error: "PROVIDER_LOOKUP_FAILED" }, input.headers);
   const charge = await response.json();
   if (charge.id !== chargeId) return json(409, { error: "CHARGE_ID_MISMATCH" }, input.headers);
-  const verified = verifyOpenpayCharge(charge, { attemptId: input.order.id, totalCents: input.totalCents });
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: input.attempt.openpay_order_ref,
+    totalCents: input.totalCents
+  });
   if (!verified.ok) return json(409, { error: verified.code }, input.headers);
+  if (failedChargeDisposition(verified.normalized) === "rotate") {
+    const nextRef = openpayOrderId(crypto.randomUUID());
+    const errorCode = sanitizeErrorCode(charge.error_code);
+    const description = sanitizeProviderDetail(charge.error_message);
+    await input.admin.database.from("openpay_payment_attempts").update({
+      openpay_order_ref: nextRef,
+      openpay_charge_id: null,
+      rejected_charge_id: chargeId,
+      provider_error_code: errorCode,
+      provider_error_detail: description,
+      last_verified_status: safeTechnicalStatus(charge.status),
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", input.attempt.id).eq("openpay_charge_id", chargeId);
+    return json(200, {
+      order_id: input.order.id,
+      error: "CHARGE_REJECTED",
+      error_code: errorCode,
+      description,
+      openpay_order_ref: nextRef,
+      charge_id: chargeId,
+      status: safeTechnicalStatus(charge.status),
+      retryable: true
+    }, input.headers);
+  }
+  if (failedChargeDisposition(verified.normalized) === "stop") {
+    return json(409, { error: "CHARGE_CANCELLED" }, input.headers);
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     return json(200, {
       order_id: input.order.id,
       openpay_order_ref: input.attempt.openpay_order_ref,
       charge_id: chargeId,
       status: safeTechnicalStatus(charge.status),
-      redirect_url: sandboxChargeRedirect(charge.payment_method)
+      redirect_url: openpayChargeRedirect(charge.payment_method, input.apiBase)
     }, input.headers);
   }
   const { data, error } = await input.admin.database.rpc("openpay_apply_verified_charge", {

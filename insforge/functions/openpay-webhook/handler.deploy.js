@@ -7,6 +7,11 @@ function openpayOrderId(attemptId) {
 }
 
 // insforge/functions/_shared/openpay/attempt.ts
+function chargeIdDecision(current, incoming) {
+  if (current == null || current === "") return "set";
+  if (current === incoming) return "same";
+  return "mismatch";
+}
 function safeTechnicalStatus(status) {
   if (typeof status !== "string") return null;
   const trimmed = status.trim();
@@ -37,8 +42,14 @@ function verifiedApplyPayload(input) {
 }
 
 // insforge/functions/_shared/openpay/gate.ts
-function openpaySandboxEnabled(env2) {
-  return env2.OPENPAY_ENABLED === "true" && env2.OPENPAY_SANDBOX === "true";
+var OPENPAY_SANDBOX_API = "https://sandbox-api.openpay.mx";
+var OPENPAY_PRODUCTION_API = "https://api.openpay.mx";
+function openpayRuntime(env2) {
+  if (env2.OPENPAY_ENABLED !== "true") return null;
+  if (env2.OPENPAY_SANDBOX === "true") {
+    return { sandbox: true, apiBase: OPENPAY_SANDBOX_API };
+  }
+  return { sandbox: false, apiBase: OPENPAY_PRODUCTION_API };
 }
 
 // insforge/functions/_shared/openpay/status.ts
@@ -64,15 +75,32 @@ var OPENPAY_WEBHOOK_EVENTS = [
   "chargeback.accepted"
 ];
 function normalizeOpenpayChargeStatus(status) {
-  return CHARGE_STATUS[status] ?? "UNKNOWN";
+  if (typeof status !== "string") return "UNKNOWN";
+  return CHARGE_STATUS[status.trim().toUpperCase()] ?? "UNKNOWN";
 }
 function openpayEventShouldFetch(eventType) {
   return OPENPAY_WEBHOOK_EVENTS.includes(eventType);
 }
 
+// insforge/functions/_shared/openpay/provider-error.ts
+var PAN = /\d{12,19}/g;
+var EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+var SECRET = /\b(?:sk|pk)_[A-Za-z0-9]+\b/g;
+function sanitizeErrorCode(value) {
+  const text = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof text !== "string" || !/^[0-9]{1,6}$/.test(text)) return null;
+  return text;
+}
+function sanitizeProviderDetail(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(PAN, "").replace(EMAIL, "").replace(SECRET, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 // insforge/functions/_shared/openpay/verify.ts
 function verifyOpenpayCharge(charge, expected) {
-  if (charge.order_id !== openpayOrderId(expected.attemptId)) {
+  const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null);
+  if (!orderRef || charge.order_id !== orderRef) {
     return { ok: false, code: "REFERENCE_MISMATCH" };
   }
   if (charge.currency !== "MXN") return { ok: false, code: "CURRENCY_MISMATCH" };
@@ -114,12 +142,12 @@ function json(status, body) {
 function firstRow(data) {
   return Array.isArray(data) ? data[0] ?? null : null;
 }
-var SANDBOX_API = "https://sandbox-api.openpay.mx";
 async function handler(req) {
-  if (!openpaySandboxEnabled({
+  const runtime = openpayRuntime({
     OPENPAY_ENABLED: env("OPENPAY_ENABLED"),
     OPENPAY_SANDBOX: env("OPENPAY_SANDBOX")
-  })) {
+  });
+  if (!runtime) {
     return json(404, { error: "OPENPAY_DISABLED" });
   }
   if (req.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" });
@@ -148,7 +176,7 @@ async function handler(req) {
   if (!transactionId || !/^[A-Za-z0-9_-]{1,64}$/.test(transactionId)) {
     return json(400, { error: "MISSING_TRANSACTION" });
   }
-  const chargeResponse = await fetch(`${SANDBOX_API}/v1/${merchantId}/charges/${transactionId}`, {
+  const chargeResponse = await fetch(`${runtime.apiBase}/v1/${merchantId}/charges/${transactionId}`, {
     headers: { Authorization: `Basic ${btoa(`${privateKey}:`)}` }
   });
   if (!chargeResponse.ok) return json(502, { error: "PROVIDER_LOOKUP_FAILED" });
@@ -166,14 +194,32 @@ async function handler(req) {
   if (orderError || !order || order.currency !== "MXN") return json(409, { error: "ORDER_NOT_FOUND" });
   const totalCents = typeof order.total_cents === "string" ? Number(order.total_cents) : order.total_cents;
   if (!Number.isSafeInteger(totalCents)) return json(409, { error: "ORDER_AMOUNT_MISMATCH" });
-  const verified = verifyOpenpayCharge(charge, { attemptId: order.id, totalCents });
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: attempt.openpay_order_ref,
+    totalCents
+  });
   if (!verified.ok) return json(409, { error: verified.code });
+  const chargeDecision = chargeIdDecision(attempt.openpay_charge_id, charge.id);
+  if (chargeDecision === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" });
+  if (chargeDecision === "set") {
+    await admin.database.from("openpay_payment_attempts").update({
+      openpay_charge_id: charge.id,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", attempt.id).is("openpay_charge_id", null);
+    const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
+    const stored = firstRow(storedData);
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, charge.id) === "mismatch") {
+      return json(409, { error: "CHARGE_ID_MISMATCH" });
+    }
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from("openpay_payment_attempts").update({
       last_verified_status: safeTechnicalStatus(charge.status),
+      provider_error_code: sanitizeErrorCode(charge.error_code),
+      provider_error_detail: sanitizeProviderDetail(charge.error_message),
       verified_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", attempt.id);
+    }).eq("id", attempt.id).eq("openpay_charge_id", charge.id);
     return json(200, { ok: true, applied: false, status: verified.normalized });
   }
   const { data, error } = await admin.database.rpc("openpay_apply_verified_charge", {

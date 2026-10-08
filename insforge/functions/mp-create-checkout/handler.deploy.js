@@ -12232,6 +12232,21 @@ async function orchestrateCheckoutStart(rawBody, deps) {
       }
       return publicSuccess(tx.priorResponse);
     }
+    if (selectedProvider === "OPENPAY") {
+      try {
+        if (!deps.repo.storeOpenpayCheckout) throw new CheckoutError("CONFIGURATION_ERROR");
+        const stored = await deps.repo.storeOpenpayCheckout({ orderId: tx.orderId });
+        return publicSuccess(stored);
+      } catch (error40) {
+        await deps.repo.compensatePreferenceFailure({
+          orderId: tx.orderId,
+          holdId: tx.holdId,
+          reason: "OPENPAY_RESERVE_FAILED"
+        });
+        if (isCheckoutError(error40)) throw error40;
+        throw new CheckoutError("CHECKOUT_CREATION_FAILED");
+      }
+    }
     try {
       assertCanonicalMsiEligible(orderSnap.msi_eligible);
       const paymentPolicy = toCheckoutPaymentPolicy(
@@ -12544,6 +12559,14 @@ function createPorts() {
           reason: input.reason
         }
       });
+    },
+    async storeOpenpayCheckout(input) {
+      const { data, error: error40 } = await admin.database.rpc("openpay_store_checkout_response", {
+        p: { order_id: input.orderId }
+      });
+      const row2 = data;
+      if (error40 || !row2?.ok || !row2.response) throw new CheckoutError("CHECKOUT_CREATION_FAILED");
+      return row2.response;
     }
   };
   const catalogWithCapacity = {

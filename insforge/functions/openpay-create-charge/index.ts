@@ -9,16 +9,18 @@ import {
   parsePaymentMode,
   paymentPathAllowed,
   readCents,
+  failedChargeDisposition,
   safeTechnicalStatus,
-  sandboxChargeRedirect,
+  openpayChargeRedirect,
   shouldApplyVerified,
   shouldSendTicketEmail,
   verifiedApplyPayload,
 } from '../_shared/openpay/attempt'
-import { buildOpenpayCharge } from '../_shared/openpay/charge'
+import { attemptIdFromOpenpayOrderId, buildOpenpayCharge, openpayOrderId } from '../_shared/openpay/charge'
 import { trustedClientIp } from '../_shared/openpay/client-ip'
-import { openpaySandboxEnabled } from '../_shared/openpay/gate'
+import { openpayMsiEnabled, openpayRuntime } from '../_shared/openpay/gate'
 import { openpayChoicesForAmount } from '../_shared/openpay/msi'
+import { chargeIsBusinessRejection, classifyOpenpayCreateBody, sanitizeErrorCode, sanitizeProviderDetail } from '../_shared/openpay/provider-error'
 import { verifyOpenpayCharge } from '../_shared/openpay/verify'
 import {
   gateRequestOrigin,
@@ -37,7 +39,6 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
   })
 }
 
-const SANDBOX_API = 'https://sandbox-api.openpay.mx'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type AttemptRecord = {
@@ -71,12 +72,15 @@ function fireTicketEmail(baseUrl: string, orderId: string): void {
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  if (!openpaySandboxEnabled({
+  const runtime = openpayRuntime({
     OPENPAY_ENABLED: env('OPENPAY_ENABLED'),
     OPENPAY_SANDBOX: env('OPENPAY_SANDBOX'),
-  })) {
+  })
+  if (!runtime) {
     return json(404, { error: 'OPENPAY_DISABLED' })
   }
+  const apiBase = runtime.apiBase
+  const msiEnabled = openpayMsiEnabled({ OPENPAY_MSI_ENABLED: env('OPENPAY_MSI_ENABLED') })
 
   const allowedOrigin = readConfiguredOrigin(env, 'CHECKOUT_CORS_ORIGIN')
   const gate = gateRequestOrigin({
@@ -125,6 +129,9 @@ export default async function handler(req: Request): Promise<Response> {
     ? { ok: true as const, mode: 'ONE_TIME' as const, installments: 1 as const }
     : parsePaymentMode({ mode: body.mode, installments: body.installments })
   if (!mode.ok) return json(400, { error: mode.code }, gate.headers)
+  if (mode.mode === 'THREE_MSI' && !msiEnabled) {
+    return json(400, { error: 'MSI_NOT_OFFERED' }, gate.headers)
+  }
 
   const clientIp = trustedClientIp(req.headers)
   if (!clientIp) return json(400, { error: 'MISSING_CLIENT_IP' }, gate.headers)
@@ -144,7 +151,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!payable.ok) return json(409, { error: payable.code }, gate.headers)
 
   if (preview) {
-    const choices = openpayChoicesForAmount(totalCents)
+    const choices = openpayChoicesForAmount(totalCents).filter((count) => count === 1 || msiEnabled)
     return json(200, {
       ok: true,
       preview: true,
@@ -153,7 +160,7 @@ export default async function handler(req: Request): Promise<Response> {
       currency: 'MXN',
       amount_cents: totalCents,
       modes: choices.map((count) => (count === 3 ? 'THREE_MSI' : 'ONE_TIME')),
-      three_msi_eligible: choices.includes(3),
+      three_msi_eligible: msiEnabled && choices.includes(3),
     }, gate.headers)
   }
 
@@ -241,6 +248,7 @@ export default async function handler(req: Request): Promise<Response> {
         privateKey,
         clientIp,
         baseUrl,
+        apiBase,
         headers: gate.headers,
       })
     }
@@ -258,12 +266,14 @@ export default async function handler(req: Request): Promise<Response> {
       privateKey,
       clientIp,
       baseUrl,
+      apiBase,
       headers: gate.headers,
     })
   }
 
+  const chargeAttemptId = attemptIdFromOpenpayOrderId(attempt.openpay_order_ref) ?? order.id
   const charge = buildOpenpayCharge({
-    attemptId: order.id,
+    attemptId: chargeAttemptId,
     totalCents,
     installments: mode.installments,
     sourceId,
@@ -275,7 +285,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   let response: Response
   try {
-    response = await fetch(`${SANDBOX_API}/v1/${merchantId}/charges`, {
+    response = await fetch(`${apiBase}/v1/${merchantId}/charges`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${btoa(`${privateKey}:`)}`,
@@ -291,18 +301,64 @@ export default async function handler(req: Request): Promise<Response> {
   const payload = await response.json().catch(() => ({})) as {
     id?: string
     status?: string
+    error_code?: number | string
+    description?: string
+    error_message?: string
     payment_method?: { url?: string }
   }
-  if (!payload.id) {
-    return json(response.ok ? 502 : 502, { error: response.ok ? 'PROVIDER_UNKNOWN' : 'CHARGE_REJECTED' }, gate.headers)
+  const classified = classifyOpenpayCreateBody(response.status, payload)
+  if (classified.outcome === 'technical') {
+    return json(502, { error: 'PROVIDER_UNKNOWN' }, gate.headers)
+  }
+  if (classified.outcome === 'business') {
+    await admin.database.from('openpay_payment_attempts').update({
+      provider_error_code: classified.errorCode,
+      provider_error_detail: classified.description,
+      last_verified_status: 'failed',
+      updated_at: new Date().toISOString(),
+    }).eq('id', attempt.id)
+    return json(402, {
+      error: 'CHARGE_REJECTED',
+      error_code: classified.errorCode,
+      description: classified.description,
+    }, gate.headers)
+  }
+  if (chargeIsBusinessRejection(classified.status)) {
+    const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId)
+    if (decision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
+    if (decision === 'set') {
+      await admin.database.from('openpay_payment_attempts').update({
+        openpay_charge_id: classified.chargeId,
+        provider_error_code: classified.errorCode,
+        provider_error_detail: classified.description,
+        initial_status: classified.status,
+        last_verified_status: classified.status,
+        updated_at: new Date().toISOString(),
+      }).eq('id', attempt.id).is('openpay_charge_id', null)
+      const { data: storedData } = await admin.database
+        .from('openpay_payment_attempts')
+        .select('openpay_charge_id')
+        .eq('id', attempt.id)
+        .limit(1)
+      const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
+      if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === 'mismatch') {
+        return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
+      }
+    }
+    return json(402, {
+      error: 'CHARGE_REJECTED',
+      error_code: classified.errorCode,
+      description: classified.description,
+      charge_id: classified.chargeId,
+    }, gate.headers)
   }
 
-  const decision = chargeIdDecision(attempt.openpay_charge_id, payload.id)
+  const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId)
   if (decision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
   if (decision === 'set') {
     await admin.database.from('openpay_payment_attempts').update({
-      openpay_charge_id: payload.id,
-      initial_status: safeTechnicalStatus(payload.status),
+      openpay_charge_id: classified.chargeId,
+      initial_status: safeTechnicalStatus(classified.status),
       updated_at: new Date().toISOString(),
     }).eq('id', attempt.id).is('openpay_charge_id', null)
     const { data: storedData } = await admin.database
@@ -311,7 +367,7 @@ export default async function handler(req: Request): Promise<Response> {
       .eq('id', attempt.id)
       .limit(1)
     const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
-    if (chargeIdDecision(stored?.openpay_charge_id ?? null, payload.id) === 'mismatch') {
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === 'mismatch') {
       return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
     }
   }
@@ -319,9 +375,9 @@ export default async function handler(req: Request): Promise<Response> {
   return json(200, {
     order_id: order.id,
     openpay_order_ref: attempt.openpay_order_ref,
-    charge_id: payload.id,
-    status: safeTechnicalStatus(payload.status),
-    redirect_url: sandboxChargeRedirect(payload.payment_method),
+    charge_id: classified.chargeId,
+    status: safeTechnicalStatus(classified.status),
+    redirect_url: openpayChargeRedirect(payload.payment_method, apiBase),
   }, gate.headers)
 }
 
@@ -334,6 +390,7 @@ async function resumeExistingCharge(input: {
   privateKey: string
   clientIp: string
   baseUrl: string
+  apiBase: string
   headers: Record<string, string>
 }): Promise<Response> {
   const chargeId = input.attempt.openpay_charge_id
@@ -341,7 +398,7 @@ async function resumeExistingCharge(input: {
 
   let response: Response
   try {
-    response = await fetch(`${SANDBOX_API}/v1/${input.merchantId}/charges/${chargeId}`, {
+    response = await fetch(`${input.apiBase}/v1/${input.merchantId}/charges/${chargeId}`, {
       headers: {
         Authorization: `Basic ${btoa(`${input.privateKey}:`)}`,
         'X-Forwarded-For': input.clientIp,
@@ -357,18 +414,50 @@ async function resumeExistingCharge(input: {
     amount: number
     currency: string
     order_id: string | null
+    error_code?: number | string
+    error_message?: string
     payment_method?: { url?: string }
   }
   if (charge.id !== chargeId) return json(409, { error: 'CHARGE_ID_MISMATCH' }, input.headers)
-  const verified = verifyOpenpayCharge(charge, { attemptId: input.order.id, totalCents: input.totalCents })
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: input.attempt.openpay_order_ref,
+    totalCents: input.totalCents,
+  })
   if (!verified.ok) return json(409, { error: verified.code }, input.headers)
+  if (failedChargeDisposition(verified.normalized) === 'rotate') {
+    const nextRef = openpayOrderId(crypto.randomUUID())
+    const errorCode = sanitizeErrorCode(charge.error_code)
+    const description = sanitizeProviderDetail(charge.error_message)
+    await input.admin.database.from('openpay_payment_attempts').update({
+      openpay_order_ref: nextRef,
+      openpay_charge_id: null,
+      rejected_charge_id: chargeId,
+      provider_error_code: errorCode,
+      provider_error_detail: description,
+      last_verified_status: safeTechnicalStatus(charge.status),
+      updated_at: new Date().toISOString(),
+    }).eq('id', input.attempt.id).eq('openpay_charge_id', chargeId)
+    return json(200, {
+      order_id: input.order.id,
+      error: 'CHARGE_REJECTED',
+      error_code: errorCode,
+      description,
+      openpay_order_ref: nextRef,
+      charge_id: chargeId,
+      status: safeTechnicalStatus(charge.status),
+      retryable: true,
+    }, input.headers)
+  }
+  if (failedChargeDisposition(verified.normalized) === 'stop') {
+    return json(409, { error: 'CHARGE_CANCELLED' }, input.headers)
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     return json(200, {
       order_id: input.order.id,
       openpay_order_ref: input.attempt.openpay_order_ref,
       charge_id: chargeId,
       status: safeTechnicalStatus(charge.status),
-      redirect_url: sandboxChargeRedirect(charge.payment_method),
+      redirect_url: openpayChargeRedirect(charge.payment_method, input.apiBase),
     }, input.headers)
   }
 

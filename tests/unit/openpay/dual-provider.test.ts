@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { applyApprovedCharge, staleEventKeepsPaid } from '../../../insforge/functions/_shared/payments/apply-outcome'
 import { claimPaymentAttempt, type ClaimOrder } from '../../../insforge/functions/_shared/payments/claim'
 import { trustedClientIp } from '../../../insforge/functions/_shared/openpay/client-ip'
 import { buildOpenpayCharge, openpayOrderId } from '../../../insforge/functions/_shared/openpay/charge'
 import { OPENPAY_MAX_CHARGE_CENTS } from '../../../insforge/functions/_shared/openpay/msi'
-import { openpaySandboxEnabled } from '../../../insforge/functions/_shared/openpay/gate'
+import { openpayMsiEnabled, openpayRuntime, openpaySandboxEnabled } from '../../../insforge/functions/_shared/openpay/gate'
+import { openpayChargeRedirect } from '../../../insforge/functions/_shared/openpay/attempt'
 import { openpayChoicesForAmount } from '../../../insforge/functions/_shared/openpay/msi'
 import { normalizeOpenpayChargeStatus, openpayEventShouldFetch } from '../../../insforge/functions/_shared/openpay/status'
 import { verifyOpenpayCharge } from '../../../insforge/functions/_shared/openpay/verify'
@@ -69,14 +69,28 @@ describe('openpay charge and verification', () => {
 
   it('maps charge statuses and ignores the event name as financial truth', () => {
     expect(normalizeOpenpayChargeStatus('COMPLETED')).toBe('APPROVED')
+    expect(normalizeOpenpayChargeStatus('completed')).toBe('APPROVED')
+    expect(normalizeOpenpayChargeStatus(' completed ')).toBe('APPROVED')
     expect(normalizeOpenpayChargeStatus('IN_PROGRESS')).toBe('PENDING')
+    expect(normalizeOpenpayChargeStatus('in_progress')).toBe('PENDING')
     expect(normalizeOpenpayChargeStatus('CHARGE_PENDING')).toBe('PENDING')
+    expect(normalizeOpenpayChargeStatus('charge_pending')).toBe('PENDING')
     expect(normalizeOpenpayChargeStatus('FAILED')).toBe('REJECTED')
+    expect(normalizeOpenpayChargeStatus('failed')).toBe('REJECTED')
     expect(normalizeOpenpayChargeStatus('CANCELLED')).toBe('CANCELLED')
+    expect(normalizeOpenpayChargeStatus('cancelled')).toBe('CANCELLED')
     expect(normalizeOpenpayChargeStatus('REFUNDED')).toBe('REFUNDED')
+    expect(normalizeOpenpayChargeStatus('refunded')).toBe('REFUNDED')
     expect(normalizeOpenpayChargeStatus('CHARGEBACK_PENDING')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_pending')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('CHARGEBACK_ACCEPTED')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_accepted')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('CHARGEBACK_ADJUSTMENT')).toBe('CHARGED_BACK')
+    expect(normalizeOpenpayChargeStatus('chargeback_adjustment')).toBe('CHARGED_BACK')
     expect(openpayEventShouldFetch('charge.succeeded')).toBe(true)
     expect(normalizeOpenpayChargeStatus('charge.succeeded')).toBe('UNKNOWN')
+    expect(normalizeOpenpayChargeStatus('not-a-status')).toBe('UNKNOWN')
+    expect(normalizeOpenpayChargeStatus('')).toBe('UNKNOWN')
   })
 
   it('allows 3 MSI only at or above MXN 300 and never 6, 9, 12, or 18', () => {
@@ -182,16 +196,26 @@ describe('winning payment', () => {
   })
 })
 
-describe('openpay endpoints stay on the sandbox host', () => {
-  const charge = readFileSync('insforge/functions/openpay-create-charge/index.ts', 'utf8')
-  const webhook = readFileSync('insforge/functions/openpay-webhook/index.ts', 'utf8')
+describe('openpay host follows the runtime flag', () => {
+  it('uses the production API only when Openpay is enabled and sandbox is not', () => {
+    expect(openpayRuntime({})).toBeNull()
+    expect(openpayRuntime({ OPENPAY_ENABLED: 'true', OPENPAY_SANDBOX: 'true' })?.apiBase).toBe(
+      'https://sandbox-api.openpay.mx',
+    )
+    expect(openpayRuntime({ OPENPAY_ENABLED: 'true' })?.apiBase).toBe('https://api.openpay.mx')
+    expect(openpayRuntime({ OPENPAY_ENABLED: 'true', OPENPAY_SANDBOX: 'false' })?.apiBase).toBe(
+      'https://api.openpay.mx',
+    )
+    expect(openpayMsiEnabled({})).toBe(false)
+    expect(openpayMsiEnabled({ OPENPAY_MSI_ENABLED: 'true' })).toBe(true)
+  })
 
-  it('does not call the production API', () => {
-    expect(charge).toContain('https://sandbox-api.openpay.mx')
-    expect(webhook).toContain('https://sandbox-api.openpay.mx')
-    expect(charge).not.toContain('https://api.openpay.mx')
-    expect(webhook).not.toContain('https://api.openpay.mx')
-    expect(charge).toContain('OPENPAY_DISABLED')
-    expect(webhook).toContain('OPENPAY_DISABLED')
+  it('accepts a 3DS redirect only from the active host', () => {
+    const production = 'https://api.openpay.mx/v1/merchant/charges/abc/redirect'
+    const sandbox = 'https://sandbox-api.openpay.mx/v1/merchant/charges/abc/redirect'
+    expect(openpayChargeRedirect({ url: production }, 'https://api.openpay.mx')).toBe(production)
+    expect(openpayChargeRedirect({ url: sandbox }, 'https://api.openpay.mx')).toBeNull()
+    expect(openpayChargeRedirect({ url: production }, 'https://sandbox-api.openpay.mx')).toBeNull()
+    expect(openpayChargeRedirect({ url: 'https://evil.example/paid' }, 'https://api.openpay.mx')).toBeNull()
   })
 })

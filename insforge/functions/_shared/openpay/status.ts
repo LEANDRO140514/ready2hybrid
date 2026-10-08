@@ -33,7 +33,8 @@ export const OPENPAY_WEBHOOK_EVENTS = [
 ] as const
 
 export function normalizeOpenpayChargeStatus(status: string): NormalizedPaymentState {
-  return CHARGE_STATUS[status] ?? 'UNKNOWN'
+  if (typeof status !== 'string') return 'UNKNOWN'
+  return CHARGE_STATUS[status.trim().toUpperCase()] ?? 'UNKNOWN'
 }
 
 export function openpayEventShouldFetch(eventType: string): boolean {

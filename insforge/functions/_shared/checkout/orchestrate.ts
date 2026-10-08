@@ -86,7 +86,7 @@ export type CheckoutTxResult = {
   holdId: string
   expiresAt: string
   replay: boolean
-  priorResponse: CheckoutSuccessResponse | null
+  priorResponse: CheckoutSuccessResponse | OpenpayCheckoutResponse | null
   invitationTokens: Array<{ token: string }>
 }
 
@@ -103,6 +103,9 @@ export type CheckoutRepository = {
     holdId: string
     reason: string
   }) => Promise<void>
+  storeOpenpayCheckout?: (input: {
+    orderId: string
+  }) => Promise<OpenpayCheckoutResponse>
 }
 
 export type CheckoutSuccessResponse = {
@@ -110,6 +113,15 @@ export type CheckoutSuccessResponse = {
   public_order_reference: string
   expires_at: string
   roster_invitations?: Array<{ token: string }>
+}
+
+export type OpenpayCheckoutResponse = {
+  provider: 'OPENPAY'
+  order_id: string
+  public_order_reference: string
+  expires_at: string
+  amount_cents: number
+  currency: 'MXN'
 }
 
 export type OrchestrateDeps = {
@@ -121,7 +133,9 @@ export type OrchestrateDeps = {
   randomId?: () => string
 }
 
-function publicSuccess(body: CheckoutSuccessResponse): { status: number; body: CheckoutSuccessResponse } {
+function publicSuccess(
+  body: CheckoutSuccessResponse | OpenpayCheckoutResponse,
+): { status: number; body: CheckoutSuccessResponse | OpenpayCheckoutResponse } {
   return { status: 200, body }
 }
 
@@ -321,6 +335,22 @@ export async function orchestrateCheckoutStart(
         throw new CheckoutError('RESERVATION_EXPIRED')
       }
       return publicSuccess(tx.priorResponse)
+    }
+
+    if (selectedProvider === 'OPENPAY') {
+      try {
+        if (!deps.repo.storeOpenpayCheckout) throw new CheckoutError('CONFIGURATION_ERROR')
+        const stored = await deps.repo.storeOpenpayCheckout({ orderId: tx.orderId })
+        return publicSuccess(stored)
+      } catch (error) {
+        await deps.repo.compensatePreferenceFailure({
+          orderId: tx.orderId,
+          holdId: tx.holdId,
+          reason: 'OPENPAY_RESERVE_FAILED',
+        })
+        if (isCheckoutError(error)) throw error
+        throw new CheckoutError('CHECKOUT_CREATION_FAILED')
+      }
     }
 
     try {
