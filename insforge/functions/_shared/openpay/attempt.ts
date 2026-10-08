@@ -90,13 +90,19 @@ export function nextAttemptAction(
   | { action: 'create_charge'; openpayOrderRef: string }
   | { action: 'reuse_charge'; openpayOrderRef: string; chargeId: string }
   | { action: 'ref_mismatch' } {
-  const openpayOrderRef = openpayOrderId(orderId)
-  if (!existing) return { action: 'create_attempt', openpayOrderRef }
-  if (existing.openpayOrderRef !== openpayOrderRef) return { action: 'ref_mismatch' }
+  if (!existing) return { action: 'create_attempt', openpayOrderRef: openpayOrderId(orderId) }
+  if (!existing.openpayOrderRef) return { action: 'ref_mismatch' }
   if (existing.openpayChargeId) {
-    return { action: 'reuse_charge', openpayOrderRef, chargeId: existing.openpayChargeId }
+    return { action: 'reuse_charge', openpayOrderRef: existing.openpayOrderRef, chargeId: existing.openpayChargeId }
   }
-  return { action: 'create_charge', openpayOrderRef }
+  return { action: 'create_charge', openpayOrderRef: existing.openpayOrderRef }
+}
+
+/** A rejected card can try another charge. A cancellation does not. */
+export function failedChargeDisposition(normalized: string): 'rotate' | 'keep' | 'stop' {
+  if (normalized === 'REJECTED') return 'rotate'
+  if (normalized === 'CANCELLED') return 'stop'
+  return 'keep'
 }
 
 export function chargeIdDecision(current: string | null, incoming: string): 'set' | 'same' | 'mismatch' {
@@ -112,11 +118,22 @@ export function safeTechnicalStatus(status: unknown): string | null {
   return trimmed
 }
 
-export function sandboxChargeRedirect(paymentMethod: unknown): string | null {
+const OPENPAY_REDIRECT_HOSTS = new Set([
+  'https://sandbox-api.openpay.mx',
+  'https://api.openpay.mx',
+])
+
+/** 3DS redirect must stay on the host selected for this runtime. */
+export function openpayChargeRedirect(paymentMethod: unknown, apiBase: string): string | null {
+  if (!OPENPAY_REDIRECT_HOSTS.has(apiBase)) return null
   if (!paymentMethod || typeof paymentMethod !== 'object' || !('url' in paymentMethod)) return null
   const url = (paymentMethod as { url?: unknown }).url
-  if (typeof url !== 'string' || !url.startsWith('https://sandbox-api.openpay.mx/')) return null
+  if (typeof url !== 'string' || !url.startsWith(`${apiBase}/`)) return null
   return url
+}
+
+export function sandboxChargeRedirect(paymentMethod: unknown): string | null {
+  return openpayChargeRedirect(paymentMethod, 'https://sandbox-api.openpay.mx')
 }
 
 export function shouldApplyVerified(normalized: string): boolean {

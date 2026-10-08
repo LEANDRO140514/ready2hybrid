@@ -6,6 +6,7 @@ import {
   orchestrateCheckoutStart,
   type CatalogPort,
   type CheckoutRepository,
+  type OpenpayCheckoutResponse,
 } from '../_shared/checkout/orchestrate'
 import {
   gateRequestOrigin,
@@ -221,6 +222,14 @@ function createPorts() {
           reason: input.reason,
         },
       })
+    },
+    async storeOpenpayCheckout(input) {
+      const { data, error } = await admin.database.rpc('openpay_store_checkout_response', {
+        p: { order_id: input.orderId },
+      })
+      const row = data as { ok?: boolean; response?: OpenpayCheckoutResponse } | null
+      if (error || !row?.ok || !row.response) throw new CheckoutError('CHECKOUT_CREATION_FAILED')
+      return row.response
     },
   }
 

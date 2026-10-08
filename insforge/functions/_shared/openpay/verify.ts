@@ -15,9 +15,10 @@ export type OpenpayVerification =
 
 export function verifyOpenpayCharge(
   charge: OpenpayChargeResource,
-  expected: { attemptId: string; totalCents: number },
+  expected: { attemptId?: string; orderRef?: string; totalCents: number },
 ): OpenpayVerification {
-  if (charge.order_id !== openpayOrderId(expected.attemptId)) {
+  const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null)
+  if (!orderRef || charge.order_id !== orderRef) {
     return { ok: false, code: 'REFERENCE_MISMATCH' }
   }
   if (charge.currency !== 'MXN') return { ok: false, code: 'CURRENCY_MISMATCH' }

@@ -1,7 +1,8 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
-import { correlationId, safeTechnicalStatus, shouldApplyVerified, shouldSendTicketEmail, verifiedApplyPayload } from '../_shared/openpay/attempt'
-import { openpaySandboxEnabled } from '../_shared/openpay/gate'
+import { chargeIdDecision, correlationId, safeTechnicalStatus, shouldApplyVerified, shouldSendTicketEmail, verifiedApplyPayload } from '../_shared/openpay/attempt'
+import { openpayRuntime } from '../_shared/openpay/gate'
 import { openpayEventShouldFetch } from '../_shared/openpay/status'
+import { sanitizeErrorCode, sanitizeProviderDetail } from '../_shared/openpay/provider-error'
 import { verifyOpenpayCharge } from '../_shared/openpay/verify'
 import { basicAuthMatches } from '../_shared/openpay/webhook-auth'
 
@@ -20,13 +21,12 @@ function firstRow<T>(data: unknown): T | null {
   return Array.isArray(data) ? (data[0] as T | undefined) ?? null : null
 }
 
-const SANDBOX_API = 'https://sandbox-api.openpay.mx'
-
 export default async function handler(req: Request): Promise<Response> {
-  if (!openpaySandboxEnabled({
+  const runtime = openpayRuntime({
     OPENPAY_ENABLED: env('OPENPAY_ENABLED'),
     OPENPAY_SANDBOX: env('OPENPAY_SANDBOX'),
-  })) {
+  })
+  if (!runtime) {
     return json(404, { error: 'OPENPAY_DISABLED' })
   }
   if (req.method !== 'POST') return json(405, { error: 'METHOD_NOT_ALLOWED' })
@@ -58,7 +58,7 @@ export default async function handler(req: Request): Promise<Response> {
     return json(400, { error: 'MISSING_TRANSACTION' })
   }
 
-  const chargeResponse = await fetch(`${SANDBOX_API}/v1/${merchantId}/charges/${transactionId}`, {
+  const chargeResponse = await fetch(`${runtime.apiBase}/v1/${merchantId}/charges/${transactionId}`, {
     headers: { Authorization: `Basic ${btoa(`${privateKey}:`)}` },
   })
   if (!chargeResponse.ok) return json(502, { error: 'PROVIDER_LOOKUP_FAILED' })
@@ -68,6 +68,8 @@ export default async function handler(req: Request): Promise<Response> {
     amount: number
     currency: string
     order_id: string | null
+    error_code?: number | string
+    error_message?: string
   }
   if (!charge.order_id || charge.id !== transactionId) return json(409, { error: 'REFERENCE_MISMATCH' })
 
@@ -98,14 +100,37 @@ export default async function handler(req: Request): Promise<Response> {
   const totalCents = typeof order.total_cents === 'string' ? Number(order.total_cents) : order.total_cents
   if (!Number.isSafeInteger(totalCents)) return json(409, { error: 'ORDER_AMOUNT_MISMATCH' })
 
-  const verified = verifyOpenpayCharge(charge, { attemptId: order.id, totalCents })
+  const verified = verifyOpenpayCharge(charge, {
+    orderRef: attempt.openpay_order_ref,
+    totalCents,
+  })
   if (!verified.ok) return json(409, { error: verified.code })
+  const chargeDecision = chargeIdDecision(attempt.openpay_charge_id, charge.id)
+  if (chargeDecision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' })
+  if (chargeDecision === 'set') {
+    await admin.database.from('openpay_payment_attempts').update({
+      openpay_charge_id: charge.id,
+      updated_at: new Date().toISOString(),
+    }).eq('id', attempt.id).is('openpay_charge_id', null)
+    const { data: storedData } = await admin.database
+      .from('openpay_payment_attempts')
+      .select('openpay_charge_id')
+      .eq('id', attempt.id)
+      .limit(1)
+    const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, charge.id) === 'mismatch') {
+      return json(409, { error: 'CHARGE_ID_MISMATCH' })
+    }
+  }
+
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from('openpay_payment_attempts').update({
       last_verified_status: safeTechnicalStatus(charge.status),
+      provider_error_code: sanitizeErrorCode(charge.error_code),
+      provider_error_detail: sanitizeProviderDetail(charge.error_message),
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq('id', attempt.id)
+    }).eq('id', attempt.id).eq('openpay_charge_id', charge.id)
     return json(200, { ok: true, applied: false, status: verified.normalized })
   }
 
