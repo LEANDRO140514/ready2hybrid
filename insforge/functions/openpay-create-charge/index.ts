@@ -18,7 +18,7 @@ import {
 } from '../_shared/openpay/attempt'
 import { attemptIdFromOpenpayOrderId, buildOpenpayCharge, openpayOrderId } from '../_shared/openpay/charge'
 import { trustedClientIp } from '../_shared/openpay/client-ip'
-import { openpayMsiEnabled, openpayRuntime } from '../_shared/openpay/gate'
+import { openpayMsiEnabled, openpayNewChargesOpen, openpayRuntime } from '../_shared/openpay/gate'
 import { openpayChoicesForAmount } from '../_shared/openpay/msi'
 import { chargeIsBusinessRejection, classifyOpenpayCreateBody, sanitizeErrorCode, sanitizeProviderDetail } from '../_shared/openpay/provider-error'
 import { verifyOpenpayCharge } from '../_shared/openpay/verify'
@@ -81,6 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
   const apiBase = runtime.apiBase
   const msiEnabled = openpayMsiEnabled({ OPENPAY_MSI_ENABLED: env('OPENPAY_MSI_ENABLED') })
+  const chargesOpen = openpayNewChargesOpen({ OPENPAY_CHARGES_ENABLED: env('OPENPAY_CHARGES_ENABLED') })
 
   const allowedOrigin = readConfiguredOrigin(env, 'CHECKOUT_CORS_ORIGIN')
   const gate = gateRequestOrigin({
@@ -222,6 +223,9 @@ export default async function handler(req: Request): Promise<Response> {
     order.id,
   )
   if (action.action === 'ref_mismatch') return json(409, { error: 'ORDER_REF_MISMATCH' }, gate.headers)
+  if (!attempt?.openpay_charge_id && !chargesOpen) {
+    return json(403, { error: 'CHARGES_CLOSED' }, gate.headers)
+  }
 
   if (action.action === 'create_attempt') {
     const { error: insertError } = await admin.database.from('openpay_payment_attempts').insert([{

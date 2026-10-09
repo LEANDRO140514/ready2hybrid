@@ -32,3 +32,8 @@ export function openpayRuntime(env: {
 export function openpayMsiEnabled(env: { OPENPAY_MSI_ENABLED?: string }): boolean {
   return env.OPENPAY_MSI_ENABLED === 'true'
 }
+
+/** New charges stay open unless this flag is explicitly false. The webhook ignores it. */
+export function openpayNewChargesOpen(env: { OPENPAY_CHARGES_ENABLED?: string }): boolean {
+  return env.OPENPAY_CHARGES_ENABLED !== 'false'
+}
