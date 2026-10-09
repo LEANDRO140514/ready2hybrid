@@ -1,10 +1,11 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { applyApprovedCharge, staleEventKeepsPaid } from '../../../insforge/functions/_shared/payments/apply-outcome'
 import { claimPaymentAttempt, type ClaimOrder } from '../../../insforge/functions/_shared/payments/claim'
 import { trustedClientIp } from '../../../insforge/functions/_shared/openpay/client-ip'
 import { buildOpenpayCharge, openpayOrderId } from '../../../insforge/functions/_shared/openpay/charge'
 import { OPENPAY_MAX_CHARGE_CENTS } from '../../../insforge/functions/_shared/openpay/msi'
-import { openpayMsiEnabled, openpayRuntime, openpaySandboxEnabled } from '../../../insforge/functions/_shared/openpay/gate'
+import { openpayMsiEnabled, openpayNewChargesOpen, openpayRuntime, openpaySandboxEnabled } from '../../../insforge/functions/_shared/openpay/gate'
 import { openpayChargeRedirect } from '../../../insforge/functions/_shared/openpay/attempt'
 import { openpayChoicesForAmount } from '../../../insforge/functions/_shared/openpay/msi'
 import { normalizeOpenpayChargeStatus, openpayEventShouldFetch } from '../../../insforge/functions/_shared/openpay/status'
@@ -208,6 +209,14 @@ describe('openpay host follows the runtime flag', () => {
     )
     expect(openpayMsiEnabled({})).toBe(false)
     expect(openpayMsiEnabled({ OPENPAY_MSI_ENABLED: 'true' })).toBe(true)
+    expect(openpayNewChargesOpen({})).toBe(true)
+    expect(openpayNewChargesOpen({ OPENPAY_CHARGES_ENABLED: 'true' })).toBe(true)
+    expect(openpayNewChargesOpen({ OPENPAY_CHARGES_ENABLED: 'false' })).toBe(false)
+    const createCharge = readFileSync('insforge/functions/openpay-create-charge/index.ts', 'utf8')
+    const webhook = readFileSync('insforge/functions/openpay-webhook/index.ts', 'utf8')
+    expect(createCharge).toContain("error: 'CHARGES_CLOSED'")
+    expect(webhook).not.toContain('OPENPAY_CHARGES_ENABLED')
+    expect(webhook).not.toContain('CHARGES_CLOSED')
   })
 
   it('accepts a 3DS redirect only from the active host', () => {

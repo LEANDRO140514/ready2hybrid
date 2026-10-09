@@ -29,6 +29,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (!runtime) {
     return json(404, { error: 'OPENPAY_DISABLED' })
   }
+  // A closed charge switch does not apply here. Charges already sent to Openpay still get verified.
   if (req.method !== 'POST') return json(405, { error: 'METHOD_NOT_ALLOWED' })
 
   const webhookUser = env('OPENPAY_WEBHOOK_USER')

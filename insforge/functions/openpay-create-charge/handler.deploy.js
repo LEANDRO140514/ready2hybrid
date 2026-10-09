@@ -213,6 +213,9 @@ function openpayRuntime(env2) {
 function openpayMsiEnabled(env2) {
   return env2.OPENPAY_MSI_ENABLED === "true";
 }
+function openpayNewChargesOpen(env2) {
+  return env2.OPENPAY_CHARGES_ENABLED !== "false";
+}
 
 // insforge/functions/_shared/openpay/status.ts
 var CHARGE_STATUS = {
@@ -385,6 +388,7 @@ async function handler(req) {
   }
   const apiBase = runtime.apiBase;
   const msiEnabled = openpayMsiEnabled({ OPENPAY_MSI_ENABLED: env("OPENPAY_MSI_ENABLED") });
+  const chargesOpen = openpayNewChargesOpen({ OPENPAY_CHARGES_ENABLED: env("OPENPAY_CHARGES_ENABLED") });
   const allowedOrigin = readConfiguredOrigin(env, "CHECKOUT_CORS_ORIGIN");
   const gate = gateRequestOrigin({
     req,
@@ -491,6 +495,9 @@ async function handler(req) {
     order.id
   );
   if (action.action === "ref_mismatch") return json(409, { error: "ORDER_REF_MISMATCH" }, gate.headers);
+  if (!attempt?.openpay_charge_id && !chargesOpen) {
+    return json(403, { error: "CHARGES_CLOSED" }, gate.headers);
+  }
   if (action.action === "create_attempt") {
     const { error: insertError } = await admin.database.from("openpay_payment_attempts").insert([{
       order_id: order.id,
