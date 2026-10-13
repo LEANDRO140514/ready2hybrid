@@ -217,6 +217,51 @@ function normalizeOpenpayChargeStatus(status) {
   return CHARGE_STATUS[status.trim().toUpperCase()] ?? "UNKNOWN";
 }
 
+// insforge/functions/_shared/openpay/provider-error.ts
+var PAN = /\d{12,19}/g;
+var EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+var SECRET = /\b(?:sk|pk)_[A-Za-z0-9]+\b/g;
+var CHARGE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function sanitizeErrorCode(value) {
+  const text = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof text !== "string" || !/^[0-9]{1,6}$/.test(text)) return null;
+  return text;
+}
+function sanitizeProviderDetail(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(PAN, "").replace(EMAIL, "").replace(SECRET, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  return cleaned.length > 0 ? cleaned : null;
+}
+function sanitizeChargeId(value) {
+  if (typeof value !== "string" || !CHARGE_ID.test(value)) return null;
+  return value;
+}
+function classifyOpenpayCreateBody(httpStatus, body) {
+  const chargeId = sanitizeChargeId(body.id);
+  const errorCode = sanitizeErrorCode(body.error_code);
+  const description = sanitizeProviderDetail(
+    typeof body.description === "string" ? body.description : body.error_message
+  );
+  if (chargeId) {
+    const status = typeof body.status === "string" ? body.status.trim() : null;
+    return {
+      outcome: "charge",
+      chargeId,
+      status: status && /^[A-Za-z0-9_]{1,64}$/.test(status) ? status : null,
+      errorCode,
+      description
+    };
+  }
+  if (httpStatus >= 400 && httpStatus < 500 && errorCode) {
+    return { outcome: "business", errorCode, description };
+  }
+  return { outcome: "technical" };
+}
+function chargeIsBusinessRejection(status) {
+  if (!status) return false;
+  return normalizeOpenpayChargeStatus(status) === "REJECTED";
+}
+
 // insforge/functions/_shared/openpay/verify.ts
 function verifyOpenpayCharge(charge, expected) {
   const orderRef = expected.orderRef ?? (expected.attemptId ? openpayOrderId(expected.attemptId) : null);
@@ -493,28 +538,67 @@ async function handler(req) {
     return json(504, { error: "PROVIDER_UNKNOWN" }, gate.headers);
   }
   const payload = await response.json().catch(() => ({}));
-  if (!payload.id) {
-    return json(response.ok ? 502 : 502, { error: response.ok ? "PROVIDER_UNKNOWN" : "CHARGE_REJECTED" }, gate.headers);
+  const classified = classifyOpenpayCreateBody(response.status, payload);
+  if (classified.outcome === "technical") {
+    return json(502, { error: "PROVIDER_UNKNOWN" }, gate.headers);
   }
-  const decision = chargeIdDecision(attempt.openpay_charge_id, payload.id);
+  if (classified.outcome === "business") {
+    await admin.database.from("openpay_payment_attempts").update({
+      provider_error_code: classified.errorCode,
+      provider_error_detail: classified.description,
+      last_verified_status: "failed",
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", attempt.id);
+    return json(402, {
+      error: "CHARGE_REJECTED",
+      error_code: classified.errorCode,
+      description: classified.description
+    }, gate.headers);
+  }
+  if (chargeIsBusinessRejection(classified.status)) {
+    const decision2 = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId);
+    if (decision2 === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
+    if (decision2 === "set") {
+      await admin.database.from("openpay_payment_attempts").update({
+        openpay_charge_id: classified.chargeId,
+        provider_error_code: classified.errorCode,
+        provider_error_detail: classified.description,
+        initial_status: classified.status,
+        last_verified_status: classified.status,
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      }).eq("id", attempt.id).is("openpay_charge_id", null);
+      const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
+      const stored = firstRow(storedData);
+      if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === "mismatch") {
+        return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
+      }
+    }
+    return json(402, {
+      error: "CHARGE_REJECTED",
+      error_code: classified.errorCode,
+      description: classified.description,
+      charge_id: classified.chargeId
+    }, gate.headers);
+  }
+  const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId);
   if (decision === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
   if (decision === "set") {
     await admin.database.from("openpay_payment_attempts").update({
-      openpay_charge_id: payload.id,
-      initial_status: safeTechnicalStatus(payload.status),
+      openpay_charge_id: classified.chargeId,
+      initial_status: safeTechnicalStatus(classified.status),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", attempt.id).is("openpay_charge_id", null);
     const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
     const stored = firstRow(storedData);
-    if (chargeIdDecision(stored?.openpay_charge_id ?? null, payload.id) === "mismatch") {
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === "mismatch") {
       return json(409, { error: "CHARGE_ID_MISMATCH" }, gate.headers);
     }
   }
   return json(200, {
     order_id: order.id,
     openpay_order_ref: attempt.openpay_order_ref,
-    charge_id: payload.id,
-    status: safeTechnicalStatus(payload.status),
+    charge_id: classified.chargeId,
+    status: safeTechnicalStatus(classified.status),
     redirect_url: sandboxChargeRedirect(payload.payment_method)
   }, gate.headers);
 }
@@ -542,16 +626,24 @@ async function resumeExistingCharge(input) {
   if (!verified.ok) return json(409, { error: verified.code }, input.headers);
   if (failedChargeDisposition(verified.normalized) === "rotate") {
     const nextRef = openpayOrderId(crypto.randomUUID());
+    const errorCode = sanitizeErrorCode(charge.error_code);
+    const description = sanitizeProviderDetail(charge.error_message);
     await input.admin.database.from("openpay_payment_attempts").update({
       openpay_order_ref: nextRef,
       openpay_charge_id: null,
+      rejected_charge_id: chargeId,
+      provider_error_code: errorCode,
+      provider_error_detail: description,
       last_verified_status: safeTechnicalStatus(charge.status),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("id", input.attempt.id).eq("openpay_charge_id", chargeId);
     return json(200, {
       order_id: input.order.id,
+      error: "CHARGE_REJECTED",
+      error_code: errorCode,
+      description,
       openpay_order_ref: nextRef,
-      charge_id: null,
+      charge_id: chargeId,
       status: safeTechnicalStatus(charge.status),
       retryable: true
     }, input.headers);

@@ -1,6 +1,8 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
+import { sandboxReturnOutcome } from '../_shared/openpay/return-status'
 
-const RESERVED_ORDER_ID = '8e84b53a-6a96-4b11-847e-f8bc1325bf73'
+/** Empty until a fresh sandbox order exists. Never point this at an expired hold. */
+const RESERVED_ORDER_ID = '7d65fb36-46fd-444c-aed8-7f1ec8d00b18'
 const CREATE_PATH = '/functions/openpay-create-charge'
 
 function env(key: string): string | undefined {
@@ -14,13 +16,25 @@ function html(status: number, body: string): Response {
   })
 }
 
-function verificationPage(): Response {
+function outcomePage(outcome: 'approved' | 'pending' | 'failed' | 'unknown', errorCode: string | null): Response {
+  const title = {
+    approved: 'Pago aprobado',
+    pending: 'Pago pendiente',
+    failed: 'Pago no completado',
+    unknown: 'Sin resultado',
+  }[outcome]
+  const detail = {
+    approved: 'La inscripción quedó registrada. No se inició otro cargo.',
+    pending: 'Seguimos esperando la confirmación. No se inició otro cargo.',
+    failed: errorCode ? `Openpay rechazó el pago (${errorCode}). No se inició otro cargo.` : 'Openpay no completó el pago. No se inició otro cargo.',
+    unknown: 'No hay una orden de esta prueba para consultar.',
+  }[outcome]
   return html(200, `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verificación de pago</title>
+  <title>${title}</title>
   <style>
     * { box-sizing: border-box; }
     html { color-scheme: light; }
@@ -31,8 +45,8 @@ function verificationPage(): Response {
 </head>
 <body>
   <main>
-    <h1>Estamos verificando tu pago.</h1>
-    <p>Puedes regresar a la prueba mientras confirmamos el resultado con Openpay.</p>
+    <h1>${title}</h1>
+    <p>${detail}</p>
   </main>
 </body>
 </html>`)
@@ -45,7 +59,7 @@ function firstRow<T>(data: unknown): T | null {
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'GET') return html(405, 'Método no permitido.')
   const url = new URL(req.url)
-  if (url.search.length > 0) return verificationPage()
+  const returning = url.search.length > 0
 
   if (env('OPENPAY_ENABLED') !== 'true' || env('OPENPAY_SANDBOX') !== 'true') {
     return html(404, 'Openpay sandbox no está habilitado.')
@@ -57,6 +71,24 @@ export default async function handler(req: Request): Promise<Response> {
   if (!merchantId || !publicKey.startsWith('pk_') || !baseUrl || !apiKey) {
     return html(503, 'Falta la configuración pública de Openpay en el sandbox.')
   }
+  if (!RESERVED_ORDER_ID) {
+    if (returning) return outcomePage('unknown', null)
+    return html(200, `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prueba Openpay sandbox</title>
+</head>
+<body>
+  <main>
+    <h1>Prueba THREE_MSI en sandbox</h1>
+    <p>Sandbox · HALF-IND-H · MXN 900 · 3 meses sin intereses.</p>
+    <p>La página está lista. No hay una orden abierta.</p>
+  </main>
+</body>
+</html>`)
+  }
 
   const admin = createAdminClient({ baseUrl, apiKey })
   const { data, error } = await admin.database
@@ -64,9 +96,32 @@ export default async function handler(req: Request): Promise<Response> {
     .select('id,state,currency,total_cents')
     .eq('id', RESERVED_ORDER_ID)
     .limit(1)
+  const { data: holdData } = await admin.database
+    .from('capacity_holds')
+    .select('state,expires_at')
+    .eq('order_id', RESERVED_ORDER_ID)
+    .limit(1)
+  const { data: attemptData } = await admin.database
+    .from('openpay_payment_attempts')
+    .select('last_verified_status,provider_error_code')
+    .eq('order_id', RESERVED_ORDER_ID)
+    .limit(1)
   const order = firstRow<{ id: string; state: string; currency: string | null; total_cents: number | string }>(data)
+  const hold = firstRow<{ state: string; expires_at: string | null }>(holdData)
+  const attempt = firstRow<{ last_verified_status: string | null; provider_error_code: string | null }>(attemptData)
+  if (returning) {
+    const errorCode = attempt?.provider_error_code && /^[0-9]{1,6}$/.test(attempt.provider_error_code)
+      ? attempt.provider_error_code
+      : null
+    return outcomePage(sandboxReturnOutcome({
+      orderState: error || !order ? null : order.state,
+      attemptStatus: attempt?.last_verified_status ?? null,
+      providerErrorCode: errorCode,
+    }), errorCode)
+  }
   const totalCents = order ? Number(order.total_cents) : NaN
-  const ready = !error && order?.state === 'PREFERENCE_PENDING' && order.currency === 'MXN' && totalCents === 90_000
+  const holdOpen = hold?.state === 'ACTIVE' && hold.expires_at != null && Date.parse(hold.expires_at) > Date.now()
+  const ready = !error && order?.state === 'PREFERENCE_PENDING' && order.currency === 'MXN' && totalCents === 90_000 && holdOpen
   if (!ready) {
     return html(409, 'El pedido reservado no está listo para la prueba. No se reinició.')
   }
@@ -147,7 +202,7 @@ export default async function handler(req: Request): Promise<Response> {
             location.assign(body.redirect_url)
             return
           }
-          status.textContent = body.error || body.status || 'Sin cargo.'
+          status.textContent = [body.error, body.error_code, body.description].filter(Boolean).join(' · ') || body.status || 'Sin cargo.'
         }).catch(() => {
           status.textContent = 'No se pudo continuar.'
         })

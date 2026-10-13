@@ -3,6 +3,7 @@ export const OPERATIONAL_ROLES = [
   'OPERATIONS_MANAGER',
   'CHECKIN_STAFF',
   'SOLUTION_DESK',
+  'FINANCE',
 ] as const
 
 export type OperationalRole = (typeof OPERATIONAL_ROLES)[number]
@@ -50,6 +51,27 @@ export type AuthorizationDecision =
         | 'assignment_mismatch'
     }
 
+/** Password rules published by InsForge public auth config. */
+export type PasswordPolicy = {
+  passwordMinLength: number
+  requireNumber: boolean
+  requireLowercase: boolean
+  requireUppercase: boolean
+  requireSpecialChar: boolean
+}
+
+export type AuthStepFailure = {
+  ok: false
+  message: string
+  cooldown?: boolean
+}
+
+export type PublicSignupConfig = {
+  policy: PasswordPolicy
+  signupOpen: boolean
+  verifyEmailMethod: 'code' | 'link'
+}
+
 export type AuthPort = {
   getSession: () => Promise<AuthSession>
   signInWithPassword: (
@@ -57,6 +79,20 @@ export type AuthPort = {
     password: string,
   ) => Promise<{ ok: true } | { ok: false; message: string }>
   signOut: () => Promise<void>
+  getSignupConfig: () => Promise<
+    { ok: true; config: PublicSignupConfig } | AuthStepFailure
+  >
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: true; needsVerification: boolean } | AuthStepFailure>
+  verifyEmail: (
+    email: string,
+    code: string,
+  ) => Promise<{ ok: true } | AuthStepFailure>
+  resendVerificationEmail: (
+    email: string,
+  ) => Promise<{ ok: true } | AuthStepFailure>
 }
 
 export type AuthorizationPort = {

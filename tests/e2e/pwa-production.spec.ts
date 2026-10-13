@@ -135,17 +135,20 @@ test.describe('production PWA shell', () => {
     context,
   }) => {
     await waitForServiceWorkerControl(page)
-    await expect(page.getByTestId('not-ready-operate')).toBeVisible()
-    await expect(page.getByTestId('shell-build-id')).toContainText('prod-e2e-a')
+    await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
+    await expect(page.locator('.app-shell')).toHaveAttribute(
+      'data-build-id',
+      'prod-e2e-a',
+    )
 
     await context.setOffline(true)
     await page.reload({ waitUntil: 'domcontentloaded' })
 
     await expect(
-      page.getByRole('heading', { name: 'Ready2Hybrid' }),
+      page.getByRole('heading', { name: 'HYBRID EVENT EXPERIENCE 2026' }),
     ).toBeVisible()
     await expect(page.getByTestId('connectivity-offline')).toBeVisible()
-    await expect(page.getByTestId('not-ready-operate')).toBeVisible()
+    await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
     await expect(page.getByText(/CHECK-IN AVAILABLE/i)).toHaveCount(0)
     await expect(
       page.getByText('LISTO PARA OPERAR SIN INTERNET'),
@@ -154,10 +157,10 @@ test.describe('production PWA shell', () => {
     await context.setOffline(false)
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect
-      .poll(async () => page.getByTestId('shell-connectivity').innerText(), {
+      .poll(async () => page.getByTestId('connectivity-offline').count(), {
         timeout: 10_000,
       })
-      .toMatch(/online|recovering/i)
+      .toBe(0)
   })
 
   test('production build ignores fixture localStorage grants', async ({

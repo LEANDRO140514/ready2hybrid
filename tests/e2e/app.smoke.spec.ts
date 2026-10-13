@@ -8,9 +8,11 @@ test('loads the Ready2Hybrid shell without operational readiness claim', async (
   expect(response?.ok()).toBe(true)
   await expect(page.getByRole('main')).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Ready2Hybrid', exact: true }),
+    page.getByRole('heading', { name: 'HYBRID EVENT EXPERIENCE 2026', exact: true }),
   ).toBeVisible()
-  await expect(page.getByTestId('not-ready-operate')).toBeVisible()
+  await expect(page.getByText('ENFORMA').first()).toBeVisible()
+  await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
+  await expect(page.getByText(/shell operativo|manifiesto|build:/i)).toHaveCount(0)
   await expect(
     page.getByText('LISTO PARA OPERAR SIN INTERNET'),
   ).toHaveCount(0)
@@ -86,14 +88,14 @@ test('shell shows offline connectivity without operational readiness claim', asy
   context,
 }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Ready2Hybrid' })).toBeVisible()
-  await expect(page.getByTestId('not-ready-operate')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'HYBRID EVENT EXPERIENCE 2026' })).toBeVisible()
+  await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
 
   await context.setOffline(true)
 
   await expect(page.getByTestId('connectivity-offline')).toBeVisible()
   await expect(page.getByRole('main')).toBeVisible()
-  await expect(page.getByTestId('not-ready-operate')).toBeVisible()
+  await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
   await expect(
     page.getByText('LISTO PARA OPERAR SIN INTERNET'),
   ).toHaveCount(0)

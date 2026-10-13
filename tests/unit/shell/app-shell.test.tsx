@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import App from '../../../src/App'
 import {
+  closedAccountAuth,
   createFixtureAuthPort,
   createFixtureAuthorizationPort,
   FIXTURE_ASSIGNMENT_KEY,
@@ -19,6 +20,7 @@ function createAuthPort(
   status: 'authenticated' | 'unauthenticated',
 ): AuthPort {
   return {
+    ...closedAccountAuth(),
     async getSession() {
       if (status === 'authenticated') {
         return {
@@ -64,12 +66,34 @@ describe('App shell', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: 'Ready2Hybrid' }),
+      await screen.findByRole('heading', { name: 'HYBRID EVENT EXPERIENCE 2026' }),
     ).toBeTruthy()
-    expect(screen.getByTestId('not-ready-operate').textContent).toMatch(
-      /No listo para operar/i,
-    )
+    expect(screen.getAllByText('ENFORMA').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/shell operativo/i)).toBeNull()
+    expect(screen.queryByText(/manifiesto/i)).toBeNull()
+    expect(screen.queryByText(/build:/i)).toBeNull()
+    expect(screen.queryByTestId('not-ready-operate')).toBeNull()
     expect(screen.queryByText(/LISTO PARA OPERAR SIN INTERNET/i)).toBeNull()
+  })
+
+  it('login states the event without technical copy', async () => {
+    render(
+      <App
+        initialPath="/login"
+        authPort={createAuthPort('unauthenticated')}
+        authorizationPort={createAuthzPort({ role: null, assignment: null })}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Control de ventas y conciliación financiera',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByLabelText('Correo')).toBeTruthy()
+    expect(screen.getByLabelText('Contraseña')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeTruthy()
+    expect(screen.queryByText(/PWA|manifiesto|build:|shell operativo/i)).toBeNull()
   })
 
   it('denies check-in route when authenticated without assignment', async () => {

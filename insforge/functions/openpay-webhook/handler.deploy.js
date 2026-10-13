@@ -7,6 +7,11 @@ function openpayOrderId(attemptId) {
 }
 
 // insforge/functions/_shared/openpay/attempt.ts
+function chargeIdDecision(current, incoming) {
+  if (current == null || current === "") return "set";
+  if (current === incoming) return "same";
+  return "mismatch";
+}
 function safeTechnicalStatus(status) {
   if (typeof status !== "string") return null;
   const trimmed = status.trim();
@@ -69,6 +74,21 @@ function normalizeOpenpayChargeStatus(status) {
 }
 function openpayEventShouldFetch(eventType) {
   return OPENPAY_WEBHOOK_EVENTS.includes(eventType);
+}
+
+// insforge/functions/_shared/openpay/provider-error.ts
+var PAN = /\d{12,19}/g;
+var EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+var SECRET = /\b(?:sk|pk)_[A-Za-z0-9]+\b/g;
+function sanitizeErrorCode(value) {
+  const text = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  if (typeof text !== "string" || !/^[0-9]{1,6}$/.test(text)) return null;
+  return text;
+}
+function sanitizeProviderDetail(value) {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(PAN, "").replace(EMAIL, "").replace(SECRET, "").replace(/\s+/g, " ").trim().slice(0, 180);
+  return cleaned.length > 0 ? cleaned : null;
 }
 
 // insforge/functions/_shared/openpay/verify.ts
@@ -173,12 +193,27 @@ async function handler(req) {
     totalCents
   });
   if (!verified.ok) return json(409, { error: verified.code });
+  const chargeDecision = chargeIdDecision(attempt.openpay_charge_id, charge.id);
+  if (chargeDecision === "mismatch") return json(409, { error: "CHARGE_ID_MISMATCH" });
+  if (chargeDecision === "set") {
+    await admin.database.from("openpay_payment_attempts").update({
+      openpay_charge_id: charge.id,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", attempt.id).is("openpay_charge_id", null);
+    const { data: storedData } = await admin.database.from("openpay_payment_attempts").select("openpay_charge_id").eq("id", attempt.id).limit(1);
+    const stored = firstRow(storedData);
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, charge.id) === "mismatch") {
+      return json(409, { error: "CHARGE_ID_MISMATCH" });
+    }
+  }
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from("openpay_payment_attempts").update({
       last_verified_status: safeTechnicalStatus(charge.status),
+      provider_error_code: sanitizeErrorCode(charge.error_code),
+      provider_error_detail: sanitizeProviderDetail(charge.error_message),
       verified_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", attempt.id);
+    }).eq("id", attempt.id).eq("openpay_charge_id", charge.id);
     return json(200, { ok: true, applied: false, status: verified.normalized });
   }
   const { data, error } = await admin.database.rpc("openpay_apply_verified_charge", {

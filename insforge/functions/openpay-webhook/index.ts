@@ -1,7 +1,8 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
-import { correlationId, safeTechnicalStatus, shouldApplyVerified, shouldSendTicketEmail, verifiedApplyPayload } from '../_shared/openpay/attempt'
+import { chargeIdDecision, correlationId, safeTechnicalStatus, shouldApplyVerified, shouldSendTicketEmail, verifiedApplyPayload } from '../_shared/openpay/attempt'
 import { openpaySandboxEnabled } from '../_shared/openpay/gate'
 import { openpayEventShouldFetch } from '../_shared/openpay/status'
+import { sanitizeErrorCode, sanitizeProviderDetail } from '../_shared/openpay/provider-error'
 import { verifyOpenpayCharge } from '../_shared/openpay/verify'
 import { basicAuthMatches } from '../_shared/openpay/webhook-auth'
 
@@ -68,6 +69,8 @@ export default async function handler(req: Request): Promise<Response> {
     amount: number
     currency: string
     order_id: string | null
+    error_code?: number | string
+    error_message?: string
   }
   if (!charge.order_id || charge.id !== transactionId) return json(409, { error: 'REFERENCE_MISMATCH' })
 
@@ -103,12 +106,32 @@ export default async function handler(req: Request): Promise<Response> {
     totalCents,
   })
   if (!verified.ok) return json(409, { error: verified.code })
+  const chargeDecision = chargeIdDecision(attempt.openpay_charge_id, charge.id)
+  if (chargeDecision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' })
+  if (chargeDecision === 'set') {
+    await admin.database.from('openpay_payment_attempts').update({
+      openpay_charge_id: charge.id,
+      updated_at: new Date().toISOString(),
+    }).eq('id', attempt.id).is('openpay_charge_id', null)
+    const { data: storedData } = await admin.database
+      .from('openpay_payment_attempts')
+      .select('openpay_charge_id')
+      .eq('id', attempt.id)
+      .limit(1)
+    const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, charge.id) === 'mismatch') {
+      return json(409, { error: 'CHARGE_ID_MISMATCH' })
+    }
+  }
+
   if (!shouldApplyVerified(verified.normalized)) {
     await admin.database.from('openpay_payment_attempts').update({
       last_verified_status: safeTechnicalStatus(charge.status),
+      provider_error_code: sanitizeErrorCode(charge.error_code),
+      provider_error_detail: sanitizeProviderDetail(charge.error_message),
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq('id', attempt.id)
+    }).eq('id', attempt.id).eq('openpay_charge_id', charge.id)
     return json(200, { ok: true, applied: false, status: verified.normalized })
   }
 

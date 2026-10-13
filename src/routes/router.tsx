@@ -6,10 +6,14 @@ import {
 } from '@tanstack/react-router'
 
 import { OperationalLayout } from '../components/shell/OperationalLayout'
+import { SignupPage, VerifyEmailPage } from './account'
 import {
   CheckinShellPage,
+  ConciliationShellPage,
   DeskShellPage,
+  FinanceShellPage,
   HomePage,
+  PartnersShellPage,
   LoginPage,
   UnauthorizedPage,
 } from './pages'
@@ -27,7 +31,25 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  validateSearch: (search: Record<string, unknown>): { verified?: '1' } =>
+    search.verified === '1' ? { verified: '1' } : {},
   component: LoginPage,
+})
+
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  validateSearch: (): Record<string, never> => ({}),
+  component: SignupPage,
+})
+
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verify-email',
+  validateSearch: (search: Record<string, unknown>): { email: string } => ({
+    email: typeof search.email === 'string' ? search.email : '',
+  }),
+  component: VerifyEmailPage,
 })
 
 const unauthorizedRoute = createRoute({
@@ -48,12 +70,35 @@ const deskRoute = createRoute({
   component: DeskShellPage,
 })
 
+const financeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/finance',
+  component: FinanceShellPage,
+})
+
+const conciliationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/finance/conciliation',
+  component: ConciliationShellPage,
+})
+
+const partnersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/partners',
+  component: PartnersShellPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  signupRoute,
+  verifyEmailRoute,
   unauthorizedRoute,
   checkinRoute,
   deskRoute,
+  financeRoute,
+  conciliationRoute,
+  partnersRoute,
 ])
 
 export function createAppRouter(initialPath = '/') {

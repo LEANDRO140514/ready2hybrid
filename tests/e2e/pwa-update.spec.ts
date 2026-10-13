@@ -81,7 +81,7 @@ function stopPreview(child: ChildProcess): void {
 
 test.describe.configure({ mode: 'serial' })
 
-test('update A→B waits for explicit operator confirmation', async ({
+test('update A→B replaces the controlling worker without a cache clear', async ({
   browser,
 }) => {
   test.setTimeout(240_000)
@@ -122,7 +122,7 @@ test('update A→B waits for explicit operator confirmation', async ({
       )
       .toBe(true)
 
-    await expect(page.getByTestId('shell-build-id')).toContainText('update-a')
+    await expect(page.locator('.app-shell')).toHaveAttribute('data-build-id', 'update-a')
     await expect(page.getByTestId('update-available')).toHaveCount(0)
 
     await runBuild('update-b')
@@ -132,20 +132,14 @@ test('update A→B waits for explicit operator confirmation', async ({
       await reg?.update()
     })
 
-    await expect(page.getByTestId('update-available')).toBeVisible({
-      timeout: 90_000,
-    })
-    await expect(page.getByTestId('shell-build-id')).toContainText('update-a')
-
-    await page
-      .getByRole('button', { name: 'Actualizar cuando sea seguro' })
-      .click()
-    await page.waitForLoadState('networkidle')
-    await expect(page.getByTestId('shell-build-id')).toContainText(
+    await expect(page.locator('.app-shell')).toHaveAttribute(
+      'data-build-id',
       'update-b',
-      { timeout: 60_000 },
+      { timeout: 90_000 },
     )
-    await expect(page.getByTestId('not-ready-operate')).toBeVisible()
+    await expect(page.getByTestId('not-ready-operate')).toHaveCount(0)
+    await page.waitForTimeout(2_000)
+    await expect(page.locator('.app-shell')).toHaveAttribute('data-build-id', 'update-b')
 
     await context.close()
   } finally {

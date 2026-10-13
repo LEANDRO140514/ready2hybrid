@@ -1,6 +1,23 @@
 // insforge/functions/openpay-e2e-page/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
-var RESERVED_ORDER_ID = "8e84b53a-6a96-4b11-847e-f8bc1325bf73";
+
+// insforge/functions/_shared/openpay/return-status.ts
+var FAILED_ORDER = /* @__PURE__ */ new Set(["REJECTED", "CANCELLED", "EXPIRED"]);
+var OPEN_ORDER = /* @__PURE__ */ new Set(["CREATED", "PREFERENCE_PENDING", "PAYMENT_PENDING"]);
+var FAILED_ATTEMPT = /* @__PURE__ */ new Set(["failed", "FAILED", "cancelled", "CANCELLED", "REJECTED"]);
+function sandboxReturnOutcome(input) {
+  if (!input.orderState) return "unknown";
+  if (input.orderState === "PAID") return "approved";
+  if (FAILED_ORDER.has(input.orderState)) return "failed";
+  if (input.providerErrorCode || input.attemptStatus != null && FAILED_ATTEMPT.has(input.attemptStatus)) {
+    return "failed";
+  }
+  if (OPEN_ORDER.has(input.orderState)) return "pending";
+  return "unknown";
+}
+
+// insforge/functions/openpay-e2e-page/index.ts
+var RESERVED_ORDER_ID = "7d65fb36-46fd-444c-aed8-7f1ec8d00b18";
 var CREATE_PATH = "/functions/openpay-create-charge";
 function env(key) {
   return Deno.env.get(key) ?? void 0;
@@ -11,13 +28,25 @@ function html(status, body) {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
   });
 }
-function verificationPage() {
+function outcomePage(outcome, errorCode) {
+  const title = {
+    approved: "Pago aprobado",
+    pending: "Pago pendiente",
+    failed: "Pago no completado",
+    unknown: "Sin resultado"
+  }[outcome];
+  const detail = {
+    approved: "La inscripci\xF3n qued\xF3 registrada. No se inici\xF3 otro cargo.",
+    pending: "Seguimos esperando la confirmaci\xF3n. No se inici\xF3 otro cargo.",
+    failed: errorCode ? `Openpay rechaz\xF3 el pago (${errorCode}). No se inici\xF3 otro cargo.` : "Openpay no complet\xF3 el pago. No se inici\xF3 otro cargo.",
+    unknown: "No hay una orden de esta prueba para consultar."
+  }[outcome];
   return html(200, `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verificaci\xF3n de pago</title>
+  <title>${title}</title>
   <style>
     * { box-sizing: border-box; }
     html { color-scheme: light; }
@@ -28,8 +57,8 @@ function verificationPage() {
 </head>
 <body>
   <main>
-    <h1>Estamos verificando tu pago.</h1>
-    <p>Puedes regresar a la prueba mientras confirmamos el resultado con Openpay.</p>
+    <h1>${title}</h1>
+    <p>${detail}</p>
   </main>
 </body>
 </html>`);
@@ -40,7 +69,7 @@ function firstRow(data) {
 async function handler(req) {
   if (req.method !== "GET") return html(405, "M\xE9todo no permitido.");
   const url = new URL(req.url);
-  if (url.search.length > 0) return verificationPage();
+  const returning = url.search.length > 0;
   if (env("OPENPAY_ENABLED") !== "true" || env("OPENPAY_SANDBOX") !== "true") {
     return html(404, "Openpay sandbox no est\xE1 habilitado.");
   }
@@ -51,11 +80,42 @@ async function handler(req) {
   if (!merchantId || !publicKey.startsWith("pk_") || !baseUrl || !apiKey) {
     return html(503, "Falta la configuraci\xF3n p\xFAblica de Openpay en el sandbox.");
   }
+  if (!RESERVED_ORDER_ID) {
+    if (returning) return outcomePage("unknown", null);
+    return html(200, `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prueba Openpay sandbox</title>
+</head>
+<body>
+  <main>
+    <h1>Prueba THREE_MSI en sandbox</h1>
+    <p>Sandbox \xB7 HALF-IND-H \xB7 MXN 900 \xB7 3 meses sin intereses.</p>
+    <p>La p\xE1gina est\xE1 lista. No hay una orden abierta.</p>
+  </main>
+</body>
+</html>`);
+  }
   const admin = createAdminClient({ baseUrl, apiKey });
   const { data, error } = await admin.database.from("orders").select("id,state,currency,total_cents").eq("id", RESERVED_ORDER_ID).limit(1);
+  const { data: holdData } = await admin.database.from("capacity_holds").select("state,expires_at").eq("order_id", RESERVED_ORDER_ID).limit(1);
+  const { data: attemptData } = await admin.database.from("openpay_payment_attempts").select("last_verified_status,provider_error_code").eq("order_id", RESERVED_ORDER_ID).limit(1);
   const order = firstRow(data);
+  const hold = firstRow(holdData);
+  const attempt = firstRow(attemptData);
+  if (returning) {
+    const errorCode = attempt?.provider_error_code && /^[0-9]{1,6}$/.test(attempt.provider_error_code) ? attempt.provider_error_code : null;
+    return outcomePage(sandboxReturnOutcome({
+      orderState: error || !order ? null : order.state,
+      attemptStatus: attempt?.last_verified_status ?? null,
+      providerErrorCode: errorCode
+    }), errorCode);
+  }
   const totalCents = order ? Number(order.total_cents) : NaN;
-  const ready = !error && order?.state === "PREFERENCE_PENDING" && order.currency === "MXN" && totalCents === 9e4;
+  const holdOpen = hold?.state === "ACTIVE" && hold.expires_at != null && Date.parse(hold.expires_at) > Date.now();
+  const ready = !error && order?.state === "PREFERENCE_PENDING" && order.currency === "MXN" && totalCents === 9e4 && holdOpen;
   if (!ready) {
     return html(409, "El pedido reservado no est\xE1 listo para la prueba. No se reinici\xF3.");
   }
@@ -134,7 +194,7 @@ async function handler(req) {
             location.assign(body.redirect_url)
             return
           }
-          status.textContent = body.error || body.status || 'Sin cargo.'
+          status.textContent = [body.error, body.error_code, body.description].filter(Boolean).join(' \xB7 ') || body.status || 'Sin cargo.'
         }).catch(() => {
           status.textContent = 'No se pudo continuar.'
         })

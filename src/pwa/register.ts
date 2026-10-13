@@ -16,9 +16,10 @@ export function usePwaRegistration(): {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW() {
+    onRegisteredSW(_swUrl, registration) {
       setRegistration('active')
       setShell('available')
+      void registration?.update()
     },
     onRegisterError() {
       setRegistration('failed')
@@ -38,6 +39,21 @@ export function usePwaRegistration(): {
   useEffect(() => {
     if (needRefresh) setUpdate('available')
   }, [needRefresh, setUpdate])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    if (!navigator.serviceWorker.controller) return
+    let reloaded = false
+    const onControllerChange = () => {
+      if (reloaded) return
+      reloaded = true
+      window.location.reload()
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+    }
+  }, [])
 
   return {
     needRefresh,

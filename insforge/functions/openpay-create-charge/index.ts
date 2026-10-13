@@ -20,6 +20,7 @@ import { attemptIdFromOpenpayOrderId, buildOpenpayCharge, openpayOrderId } from 
 import { trustedClientIp } from '../_shared/openpay/client-ip'
 import { openpaySandboxEnabled } from '../_shared/openpay/gate'
 import { openpayChoicesForAmount } from '../_shared/openpay/msi'
+import { chargeIsBusinessRejection, classifyOpenpayCreateBody, sanitizeErrorCode, sanitizeProviderDetail } from '../_shared/openpay/provider-error'
 import { verifyOpenpayCharge } from '../_shared/openpay/verify'
 import {
   gateRequestOrigin,
@@ -293,18 +294,64 @@ export default async function handler(req: Request): Promise<Response> {
   const payload = await response.json().catch(() => ({})) as {
     id?: string
     status?: string
+    error_code?: number | string
+    description?: string
+    error_message?: string
     payment_method?: { url?: string }
   }
-  if (!payload.id) {
-    return json(response.ok ? 502 : 502, { error: response.ok ? 'PROVIDER_UNKNOWN' : 'CHARGE_REJECTED' }, gate.headers)
+  const classified = classifyOpenpayCreateBody(response.status, payload)
+  if (classified.outcome === 'technical') {
+    return json(502, { error: 'PROVIDER_UNKNOWN' }, gate.headers)
+  }
+  if (classified.outcome === 'business') {
+    await admin.database.from('openpay_payment_attempts').update({
+      provider_error_code: classified.errorCode,
+      provider_error_detail: classified.description,
+      last_verified_status: 'failed',
+      updated_at: new Date().toISOString(),
+    }).eq('id', attempt.id)
+    return json(402, {
+      error: 'CHARGE_REJECTED',
+      error_code: classified.errorCode,
+      description: classified.description,
+    }, gate.headers)
+  }
+  if (chargeIsBusinessRejection(classified.status)) {
+    const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId)
+    if (decision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
+    if (decision === 'set') {
+      await admin.database.from('openpay_payment_attempts').update({
+        openpay_charge_id: classified.chargeId,
+        provider_error_code: classified.errorCode,
+        provider_error_detail: classified.description,
+        initial_status: classified.status,
+        last_verified_status: classified.status,
+        updated_at: new Date().toISOString(),
+      }).eq('id', attempt.id).is('openpay_charge_id', null)
+      const { data: storedData } = await admin.database
+        .from('openpay_payment_attempts')
+        .select('openpay_charge_id')
+        .eq('id', attempt.id)
+        .limit(1)
+      const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
+      if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === 'mismatch') {
+        return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
+      }
+    }
+    return json(402, {
+      error: 'CHARGE_REJECTED',
+      error_code: classified.errorCode,
+      description: classified.description,
+      charge_id: classified.chargeId,
+    }, gate.headers)
   }
 
-  const decision = chargeIdDecision(attempt.openpay_charge_id, payload.id)
+  const decision = chargeIdDecision(attempt.openpay_charge_id, classified.chargeId)
   if (decision === 'mismatch') return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
   if (decision === 'set') {
     await admin.database.from('openpay_payment_attempts').update({
-      openpay_charge_id: payload.id,
-      initial_status: safeTechnicalStatus(payload.status),
+      openpay_charge_id: classified.chargeId,
+      initial_status: safeTechnicalStatus(classified.status),
       updated_at: new Date().toISOString(),
     }).eq('id', attempt.id).is('openpay_charge_id', null)
     const { data: storedData } = await admin.database
@@ -313,7 +360,7 @@ export default async function handler(req: Request): Promise<Response> {
       .eq('id', attempt.id)
       .limit(1)
     const stored = firstRow<{ openpay_charge_id: string | null }>(storedData)
-    if (chargeIdDecision(stored?.openpay_charge_id ?? null, payload.id) === 'mismatch') {
+    if (chargeIdDecision(stored?.openpay_charge_id ?? null, classified.chargeId) === 'mismatch') {
       return json(409, { error: 'CHARGE_ID_MISMATCH' }, gate.headers)
     }
   }
@@ -321,8 +368,8 @@ export default async function handler(req: Request): Promise<Response> {
   return json(200, {
     order_id: order.id,
     openpay_order_ref: attempt.openpay_order_ref,
-    charge_id: payload.id,
-    status: safeTechnicalStatus(payload.status),
+    charge_id: classified.chargeId,
+    status: safeTechnicalStatus(classified.status),
     redirect_url: sandboxChargeRedirect(payload.payment_method),
   }, gate.headers)
 }
@@ -359,6 +406,8 @@ async function resumeExistingCharge(input: {
     amount: number
     currency: string
     order_id: string | null
+    error_code?: number | string
+    error_message?: string
     payment_method?: { url?: string }
   }
   if (charge.id !== chargeId) return json(409, { error: 'CHARGE_ID_MISMATCH' }, input.headers)
@@ -369,16 +418,24 @@ async function resumeExistingCharge(input: {
   if (!verified.ok) return json(409, { error: verified.code }, input.headers)
   if (failedChargeDisposition(verified.normalized) === 'rotate') {
     const nextRef = openpayOrderId(crypto.randomUUID())
+    const errorCode = sanitizeErrorCode(charge.error_code)
+    const description = sanitizeProviderDetail(charge.error_message)
     await input.admin.database.from('openpay_payment_attempts').update({
       openpay_order_ref: nextRef,
       openpay_charge_id: null,
+      rejected_charge_id: chargeId,
+      provider_error_code: errorCode,
+      provider_error_detail: description,
       last_verified_status: safeTechnicalStatus(charge.status),
       updated_at: new Date().toISOString(),
     }).eq('id', input.attempt.id).eq('openpay_charge_id', chargeId)
     return json(200, {
       order_id: input.order.id,
+      error: 'CHARGE_REJECTED',
+      error_code: errorCode,
+      description,
       openpay_order_ref: nextRef,
-      charge_id: null,
+      charge_id: chargeId,
       status: safeTechnicalStatus(charge.status),
       retryable: true,
     }, input.headers)

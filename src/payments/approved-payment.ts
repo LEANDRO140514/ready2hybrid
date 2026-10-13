@@ -138,6 +138,13 @@ export function anomaliesFor(order: ApprovedOrder, nowMs: number): Anomaly[] {
     push('Orden PAID sin boleto', approvedAt(order))
   }
 
+  if (approvedCount >= 1 && !order.tickets.some((ticket) => ticket.issuedAt)) {
+    push(
+      'Pago APPROVED sin boleto',
+      approved?.providerUpdatedAt ?? approved?.createdAt ?? order.updatedAt,
+    )
+  }
+
   for (const ticket of order.tickets) {
     if (ticket.issuedAt && ticket.emailState !== 'SENT') {
       push('Boleto generado sin correo SENT', ticket.issuedAt)

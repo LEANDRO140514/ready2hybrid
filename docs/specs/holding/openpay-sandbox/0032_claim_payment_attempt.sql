@@ -1,0 +1,3 @@
+-- Superseded. Do not apply.
+-- The candidate is insforge/migrations/0032_dual-provider-payment-core.sql.
+-- Run docs/specs/holding/openpay-sandbox/preflight-active-attempts.sql first.
