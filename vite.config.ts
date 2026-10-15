@@ -75,11 +75,6 @@ export default defineConfig(({ command, mode }) => {
           navigateFallbackDenylist: [/^\/api\//, /\/functions\//],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           runtimeCaching: [],
-          // A waiting worker never replaces the precached shell. Login hides
-          // the prompt, so returning users stayed on the previous deploy until
-          // they cleared the cache. Activate the new worker, then reload once.
-          skipWaiting: true,
-          clientsClaim: true,
         },
         devOptions: {
           enabled: false,
@@ -95,8 +90,6 @@ export default defineConfig(({ command, mode }) => {
           rootDir,
           'src/test/pwa-register-stub.ts',
         ),
-        'npm:jspdf@3.0.1': 'jspdf',
-        'npm:qrcode@1.5.4': 'qrcode',
       },
     },
   }

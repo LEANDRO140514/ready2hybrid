@@ -1,4 +1,7 @@
 /insforge
+.cursor
+.insforge
+.env*
 tests
 docs
 design-system

@@ -11,15 +11,6 @@
  * staged pricing.
  */
 
-import {
-  anomaliesFor,
-  approvedAt,
-  approvedPayment,
-  type Anomaly,
-} from '../payments/approved-payment'
-
-export { anomaliesFor, approvedAt, approvedPayment, type Anomaly }
-
 export type SalesPayment = {
   id: string
   provider: string
@@ -232,6 +223,42 @@ export function reconciliationLabel(order: SalesOrder): string {
 export function effectiveFeeRate(order: SalesOrder): number | null {
   if (!order.adjustment || order.totalCents <= 0) return null
   return order.adjustment.providerFeeCents / order.totalCents
+}
+
+/**
+ * The payment that produced the valid PAID transition.
+ * paid_payment_id wins. Otherwise the earliest WEBHOOK_PAYMENT_APPLIED / PAID
+ * reference. A single APPROVED payment covers rows written before that
+ * evidence. Several APPROVED payments without evidence are not guessed.
+ */
+export function approvedPayment(order: SalesOrder): SalesPayment | null {
+  if (order.paidPaymentId) {
+    return order.payments.find((row) => row.id === order.paidPaymentId) ?? null
+  }
+  const winningRef = order.activity
+    .filter((row) => row.action === 'WEBHOOK_PAYMENT_APPLIED' && row.result === 'PAID' && row.paymentRef)
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0]?.paymentRef
+  if (winningRef) {
+    return (
+      order.payments.find((row) => row.providerPaymentId === winningRef) ?? null
+    )
+  }
+  const approved = order.payments.filter((row) => row.normalizedState === 'APPROVED')
+  if (approved.length === 1) return approved[0] ?? null
+  return null
+}
+
+/** Reporting date. provider_updated_at, then WEBHOOK_PAYMENT_APPLIED / PAID. */
+export function approvedAt(order: SalesOrder): string | null {
+  const payment = approvedPayment(order)
+  if (payment?.providerUpdatedAt) return payment.providerUpdatedAt
+  const applied = order.activity
+    .filter(
+      (row) =>
+        row.action === 'WEBHOOK_PAYMENT_APPLIED' && row.result === 'PAID',
+    )
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+  return applied.at(-1)?.at ?? null
 }
 
 export function participantCount(order: SalesOrder): number {
@@ -454,6 +481,97 @@ export function buildTimeline(order: SalesOrder): TimelineEvent[] {
   return events
     .filter((event) => event.at && !Number.isNaN(Date.parse(event.at)))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+}
+
+export type Anomaly = {
+  id: string
+  orderId: string
+  type: string
+  buyer: string
+  amountCents: number
+  at: string | null
+}
+
+function buyerSummary(order: SalesOrder): string {
+  const name = order.buyerName?.trim()
+  if (name) return name
+  return order.trackingRef || order.id.slice(0, 8)
+}
+
+export function anomaliesFor(order: SalesOrder, nowMs: number): Anomaly[] {
+  const found: Anomaly[] = []
+  const push = (type: string, at: string | null) => {
+    found.push({
+      id: `${order.id}:${type}`,
+      orderId: order.id,
+      type,
+      buyer: buyerSummary(order),
+      amountCents: order.totalCents,
+      at,
+    })
+  }
+
+  if (
+    order.state === 'PAYMENT_PENDING' &&
+    order.expiresAt &&
+    Date.parse(order.expiresAt) < nowMs
+  ) {
+    push('Checkout vencido sigue en PAYMENT_PENDING', order.expiresAt)
+  }
+
+  const approved = approvedPayment(order)
+  const approvedCount = order.payments.filter((row) => row.normalizedState === 'APPROVED').length
+  if (approved && order.state !== 'PAID') {
+    push('Pago APPROVED y la orden no está PAID', approved.providerUpdatedAt ?? approved.createdAt)
+  }
+  if (order.state === 'PAID' && approvedCount > 1 && !approved) {
+    push('Proveedor ganador no determinado', order.updatedAt)
+  }
+
+  if (isSale(order) && !order.tickets.some((ticket) => ticket.issuedAt)) {
+    push('Orden PAID sin boleto', approvedAt(order))
+  }
+
+  for (const ticket of order.tickets) {
+    if (ticket.issuedAt && ticket.emailState !== 'SENT') {
+      push('Boleto generado sin correo SENT', ticket.issuedAt)
+    }
+  }
+
+  for (const payment of order.payments) {
+    if (payment.amountCents != null && payment.amountCents !== order.totalCents) {
+      push('Monto de la orden distinto al pago', payment.providerUpdatedAt ?? payment.createdAt)
+      break
+    }
+  }
+
+  const verificationFailed = order.verifications.some(
+    (row) =>
+      row.merchantOk === false ||
+      row.referenceOk === false ||
+      row.amountOk === false ||
+      row.currencyOk === false,
+  )
+  const verificationActivity = order.activity.some(
+    (row) => row.action === 'WEBHOOK_VERIFICATION_REJECTED',
+  )
+  if (verificationFailed || verificationActivity) {
+    const at =
+      order.verifications.find((row) => row.verifiedAt)?.verifiedAt ??
+      order.activity.find((row) => row.action === 'WEBHOOK_VERIFICATION_REJECTED')?.at ??
+      null
+    push('Verificación de pago rechazada', at)
+  }
+
+  if (order.state === 'REQUIRES_REVIEW') {
+    push('Orden en REQUIRES_REVIEW', order.updatedAt ?? order.createdAt)
+  }
+
+  if (isSale(order) && !approvedAt(order)) {
+    push('Venta PAID sin fecha de aprobación', order.createdAt)
+  }
+
+  return found
 }
 
 export type SeriesPoint = {

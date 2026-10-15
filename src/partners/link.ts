@@ -3,9 +3,8 @@
  * captureAffiliateFromUrl reads `aff` only. It does not read `ref`.
  * Checkout sends that stored value as affiliate_code.
  *
- * Flow: studio code → QR or link `?aff=` → this visit may use launch price.
- * A code left in localStorage still attributes a later direct visit, and does
- * not by itself select launch price. Checkout sends that distinction.
+ * Flow: studio code → QR → visitor scans → landing `?aff=` → checkout
+ * keeps the code → orders.affiliate_code → PAID attributes the sale.
  * A scan is not a sale. A sale is orders.state = 'PAID'.
  */
 

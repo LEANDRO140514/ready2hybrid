@@ -20,7 +20,6 @@
     "bundle:send-ticket-email": "node scripts/bundle-send-ticket-email.mjs",
     "bundle:sales-read": "node scripts/bundle-ops-sales-read.mjs",
     "bundle:commercial-read": "node scripts/bundle-ops-commercial-read.mjs",
-    "bundle:openpay-e2e-page": "node scripts/bundle-openpay-e2e-page.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -40,7 +39,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "embedded-postgres": "18.4.0-beta.17",
+    "embedded-postgres": "^18.4.0-beta.17",
     "jsdom": "^29.1.1",
     "jspdf": "^3.0.1",
     "oxlint": "^1.71.0",
