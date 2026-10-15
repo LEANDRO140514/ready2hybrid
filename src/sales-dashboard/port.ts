@@ -29,6 +29,17 @@ export type CommercialPayload = {
     legacyPending: number
     legacyGrossCents: number
   } | null
+  sync?: {
+    lastSuccessAt: string | null
+    lastErrorAt: string | null
+    lastError: string | null
+    inserted: number | null
+    updated: number | null
+    disappeared: number | null
+    conflicts: number | null
+  } | null
+  manualSaleOrderIds?: string[]
+  overrides?: { legacyId: string; field: 'amount_cents'; valueCents: number; conflict: boolean }[]
 }
 
 export type SalesPort = {
@@ -244,7 +255,25 @@ export function parseCommercialPayload(value: unknown): CommercialPayload {
     : ACTIVE_EVENT_CODE
   const legacy = Array.isArray(row.legacy) ? row.legacy.flatMap(parseLegacy) : []
   const funnel = Array.isArray(row.funnel) ? row.funnel.flatMap(parseFunnel) : []
-  return { eventCode, legacy, funnel }
+  const sync = row.sync && typeof row.sync === 'object' ? row.sync as CommercialPayload['sync'] : null
+  const manualSaleOrderIds = Array.isArray(row.manualSaleOrderIds)
+    ? row.manualSaleOrderIds.filter((id): id is string => typeof id === 'string')
+    : []
+  const overrides = Array.isArray(row.overrides)
+    ? row.overrides.flatMap((item) => {
+      if (!item || typeof item !== 'object') return []
+      const override = item as Record<string, unknown>
+      if (typeof override.legacyId !== 'string' || override.field !== 'amount_cents') return []
+      if (typeof override.valueCents !== 'number') return []
+      return [{
+        legacyId: override.legacyId,
+        field: 'amount_cents' as const,
+        valueCents: override.valueCents,
+        conflict: override.conflict === true,
+      }]
+    })
+    : []
+  return { eventCode, legacy, funnel, sync, manualSaleOrderIds, overrides }
 }
 
 function parseLegacy(value: unknown): LegacyRegistration[] {
@@ -255,7 +284,9 @@ function parseLegacy(value: unknown): LegacyRegistration[] {
     id: row.id,
     eventCode: typeof row.eventCode === 'string' ? row.eventCode : ACTIVE_EVENT_CODE,
     originalStatus: typeof row.originalStatus === 'string' ? row.originalStatus : '',
-    commercialStatus: row.commercialStatus === 'LEGACY_PAID' || row.commercialStatus === 'LEGACY_PENDING'
+    commercialStatus: row.commercialStatus === 'LEGACY_PAID'
+      || row.commercialStatus === 'LEGACY_PENDING'
+      || row.commercialStatus === 'LEGACY_CANCELLED'
       ? row.commercialStatus
       : null,
     originalCreatedAt: nullableString(row.originalCreatedAt),
@@ -271,7 +302,9 @@ function parseLegacy(value: unknown): LegacyRegistration[] {
     teamName: nullableString(row.teamName),
     participants: nullableString(row.participants),
     notes: nullableString(row.notes),
-    hasPaymentId: row.hasPaymentId === true,
+    hasPaymentId: row.hasPaymentId === true || (typeof row.originalPaymentId === 'string' && row.originalPaymentId.trim() !== ''),
+    originalPaymentId: nullableString(row.originalPaymentId),
+    missingSince: nullableString(row.missingSince),
   }]
 }
 
@@ -279,13 +312,14 @@ export function stripAggregateIdentity(rows: LegacyRegistration[]): LegacyRegist
   return rows.map((item) => ({
     ...item,
     name: null,
-    email: null,
     phone: null,
     buyerContactId: null,
     teamName: null,
     participants: null,
     notes: null,
-    hasPaymentId: false,
+    hasPaymentId: Boolean(item.originalPaymentId),
+    originalPaymentId: item.originalPaymentId ?? null,
+    missingSince: item.missingSince ?? null,
   }))
 }
 

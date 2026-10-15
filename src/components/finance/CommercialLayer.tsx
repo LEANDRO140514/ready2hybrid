@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import type { OperationalRole } from '../../auth/types'
+import { buildSourceLedger } from '../../sales-dashboard/source-ledger'
 import {
   contactsToCsv,
   contactSearchMatch,
@@ -42,14 +43,41 @@ export function EventTotal({
   legacy,
   eventCode,
   summary,
+  manualSaleOrderIds = [],
+  overrides = [],
 }: {
   orders: SalesOrder[]
   legacy: LegacyRegistration[]
   eventCode: string
   summary?: { legacyPaid: number; legacyPending: number; legacyGrossCents: number } | null
+  manualSaleOrderIds?: string[]
+  overrides?: { legacyId: string; field: 'amount_cents'; valueCents: number; conflict: boolean }[]
 }) {
   const computed = eventCommercialTotals(orders, legacy, eventCode)
   const identityKnown = !legacy.some((row) => !row.email && !row.buyerContactId)
+  const ledger = buildSourceLedger({
+    orders: orders.map((order) => ({
+      id: order.id,
+      state: order.state,
+      totalCents: order.totalCents,
+      email: order.buyerEmail,
+      productCode: order.lines[0]?.productCode ?? null,
+      approvedPaymentIds: order.payments
+        .filter((payment) => payment.normalizedState === 'APPROVED')
+        .map((payment) => payment.providerPaymentId),
+    })),
+    legacy: legacy.map((row) => ({
+      id: row.id,
+      commercialStatus: row.commercialStatus,
+      email: row.email,
+      productCode: row.categoryCode,
+      amountCents: row.amountCents,
+      paymentId: row.originalPaymentId ?? null,
+      missingSince: row.missingSince ?? null,
+    })),
+    manualOrderIds: new Set(manualSaleOrderIds),
+    overrides,
+  })
   const totals = legacy.length === 0 && summary
     ? {
       ...computed,
@@ -59,21 +87,36 @@ export function EventTotal({
       knownPaid: computed.currentPaid + summary.legacyPaid,
       knownGrossCents: computed.currentGrossCents + summary.legacyGrossCents,
     }
-    : computed
+    : {
+      ...computed,
+      knownPaid: ledger.confirmedSales,
+      knownGrossCents: ledger.confirmedCents,
+      currentPaid: ledger.currentSales,
+      currentGrossCents: ledger.currentCents,
+      legacyPaid: ledger.legacySales,
+      legacyGrossCents: ledger.legacyCents,
+    }
+  const samePerson = ledger.review.filter((row) => row.kind === 'same-person-product').length
   return (
     <section className="finance-panel event-total" data-testid="event-total" aria-label="Total del evento">
       <h2>Total del evento</h2>
       <p className="muted">
         Historia comercial conocida de {eventCode}. No cambia con Hoy, 7 días, 30 días ni el rango.
+        Un mismo id de pago cuenta una sola vez. Persona y producto iguales, sin ese id, siguen en el total y van a revisión.
       </p>
       <div className="kpi-grid">
-        <Kpi testId="event-known-paid" label="Inscripciones pagadas" value={String(totals.knownPaid)} hint="Registros pagados actuales + históricos. No es el número de compradores." />
-        <Kpi testId="event-known-gross" label="Monto comercial conocido" value={formatMoney(totals.knownGrossCents)} hint="Bruto actual + bruto histórico reportado" />
+        <Kpi testId="event-known-paid" label="Inscripciones pagadas" value={String(totals.knownPaid)} hint="Actuales, resueltas a mano y históricas, después del cruce por id de pago." />
+        <Kpi testId="event-known-gross" label="Monto comercial conocido" value={formatMoney(totals.knownGrossCents)} hint="Misma regla. No resta las coincidencias de persona y producto." />
         <Kpi testId="event-current-paid" label="Ventas actuales pagadas" value={String(totals.currentPaid)} hint={formatMoney(totals.currentGrossCents)} />
+        <Kpi testId="event-manual-paid" label="Resueltas manualmente" value={String(ledger.manualSales)} hint={formatMoney(ledger.manualCents)} />
         <Kpi testId="event-current-people" label="Participantes confirmados actuales" value={String(totals.currentParticipants)} hint="Solo boletos/órdenes actuales. El histórico no se cuenta como personas." />
-        <Kpi testId="event-legacy-paid" label="Inscripciones históricas pagadas" value={String(totals.legacyPaid)} hint={`${formatMoney(totals.legacyGrossCents)} reportados`} />
+        <Kpi testId="event-legacy-paid" label="Inscripciones históricas pagadas" value={String(totals.legacyPaid)} hint={`${formatMoney(totals.legacyGrossCents)} reportados, sin los pagos ya contados en Ready2Hybrid`} />
         <Kpi testId="event-legacy-pending" label="Registros históricos pendientes" value={String(totals.legacyPendingRegistrations)} hint={identityKnown ? `${totals.legacyPendingPeople} contactos identificables sin compra conocida` : 'Los contactos identificables se calculan en la lectura OWNER'} />
       </div>
+      <p className="muted" data-testid="event-cross-review">
+        {ledger.excludedLegacyIds.length} pagos históricos omitidos porque ya están en una orden actual.
+        {' '}{samePerson} coincidencias de persona y producto a revisión, sin descontar.
+      </p>
     </section>
   )
 }

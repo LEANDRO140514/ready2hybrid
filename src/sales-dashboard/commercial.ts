@@ -28,7 +28,7 @@ export type LegacyRegistration = {
   id: string
   eventCode: string
   originalStatus: string
-  commercialStatus: 'LEGACY_PAID' | 'LEGACY_PENDING' | null
+  commercialStatus: 'LEGACY_PAID' | 'LEGACY_PENDING' | 'LEGACY_CANCELLED' | null
   originalCreatedAt: string | null
   originalUpdatedAt: string | null
   buyerContactId: string | null
@@ -43,6 +43,8 @@ export type LegacyRegistration = {
   participants?: string | null
   notes?: string | null
   hasPaymentId?: boolean
+  originalPaymentId?: string | null
+  missingSince?: string | null
 }
 
 export type FunnelEvent = {

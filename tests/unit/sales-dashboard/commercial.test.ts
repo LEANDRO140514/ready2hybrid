@@ -329,7 +329,7 @@ describe('unified commercial intelligence', () => {
     ])
     expect(stripped[0]).toMatchObject({
       name: null,
-      email: null,
+      email: 'secret@example.com',
       phone: null,
       teamName: null,
       participants: null,

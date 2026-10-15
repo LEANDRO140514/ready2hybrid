@@ -4,6 +4,11 @@ import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 // insforge/functions/_shared/commercial/contacts.ts
 var RANK = { PAID: 3, PENDING: 2, LEAD: 1 };
 var PENDING_STATES = /* @__PURE__ */ new Set(["PAYMENT_PENDING", "PREFERENCE_PENDING"]);
+function paymentAlreadyCounted(value, approved) {
+  if (!approved || typeof value !== "string") return false;
+  const id = value.trim();
+  return id.length > 0 && approved.has(id);
+}
 function text(value) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -85,6 +90,7 @@ function assembleMarketingContacts(source) {
     const status = legacyStatus(row);
     if (!status) continue;
     const amount = typeof row.amount_cents === "number" ? row.amount_cents : 0;
+    const countedOnCurrent = status === "PAID" && paymentAlreadyCounted(row.original_payment_id, source.approvedPaymentIds);
     atoms.push({
       keyHint: `legacy:${String(row.id)}`,
       email: normalizeContactEmail(row.original_email),
@@ -93,7 +99,7 @@ function assembleMarketingContacts(source) {
       status,
       legacy: true,
       category: text(row.category_name_raw) ?? text(row.category_code_raw),
-      paidCents: status === "PAID" ? amount : 0,
+      paidCents: status === "PAID" && !countedOnCurrent ? amount : 0,
       at: text(row.original_updated_at) ?? text(row.original_created_at),
       // The legacy source never stored marketing consent.
       consent: false
@@ -237,7 +243,7 @@ async function readAll(start) {
 }
 async function marketingContacts(admin, eventCode, headers) {
   try {
-    const [buyers, orders, items, products, legacy, funnel] = await Promise.all([
+    const [buyers, orders, items, products, legacy, payments, funnel] = await Promise.all([
       readAll(() => admin.database.from("buyer_contacts").select(
         "id,name,email,phone,contact_consent_at,created_at"
       )),
@@ -247,8 +253,9 @@ async function marketingContacts(admin, eventCode, headers) {
       readAll(() => admin.database.from("order_items").select("order_id,product_code")),
       readAll(() => admin.database.from("products").select("code,name")),
       readAll(() => admin.database.from("legacy_registrations").select(
-        "id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents"
+        "id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,original_payment_id"
       ).eq("event_code", eventCode)),
+      readAll(() => admin.database.from("payments").select("provider_payment_id,normalized_state")),
       readAll(() => admin.database.from("marketing_events").select("visitor_id,event_type").eq("event_code", eventCode))
     ]);
     const visitors = /* @__PURE__ */ new Set();
@@ -258,7 +265,13 @@ async function marketingContacts(admin, eventCode, headers) {
       visitors.add(row.visitor_id);
       if (row.event_type === "LEAD_IDENTIFIED") identified.add(row.visitor_id);
     }
-    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy });
+    const approvedPaymentIds = /* @__PURE__ */ new Set();
+    for (const row of payments) {
+      if (row.normalized_state !== "APPROVED" || typeof row.provider_payment_id !== "string") continue;
+      const id = row.provider_payment_id.trim();
+      if (id) approvedPaymentIds.add(id);
+    }
+    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy, approvedPaymentIds });
     return json(200, {
       ok: true,
       eventCode,
@@ -326,12 +339,15 @@ async function handler(req) {
   if (classified.view !== "aggregates" && !roleMayReadCommercialDirectory(role)) {
     return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
   }
-  const legacyColumns = classified.view === "aggregates" ? "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,category_code_raw,category_name_raw,amount_cents,currency" : "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id";
-  const [legacyResult, funnelResult] = await Promise.all([
+  const legacyColumns = classified.view === "aggregates" ? "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since" : "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since";
+  const [legacyResult, funnelResult, syncResult, manualResult, overrideResult] = await Promise.all([
     admin.database.from("legacy_registrations").select(legacyColumns).eq("event_code", eventCode),
-    admin.database.from("marketing_events").select("event_code,visitor_id,event_type,occurred_at").eq("event_code", eventCode)
+    admin.database.from("marketing_events").select("event_code,visitor_id,event_type,occurred_at").eq("event_code", eventCode),
+    admin.database.from("legacy_sync_runs").select("finished_at,status,inserted_count,updated_count,disappeared_count,conflict_count,error_message").order("started_at", { ascending: false }).limit(20),
+    admin.database.from("manual_sale_resolutions").select("order_id,resolution"),
+    admin.database.from("legacy_field_overrides").select("legacy_registration_id,field_name,override_value,conflict")
   ]);
-  if (legacyResult.error || funnelResult.error) {
+  if (legacyResult.error || funnelResult.error || syncResult.error || manualResult.error || overrideResult.error) {
     return json(503, { ok: false, error: "SERVICE_UNAVAILABLE" }, gate.headers);
   }
   const legacy = (Array.isArray(legacyResult.data) ? legacyResult.data : []).map((row) => {
@@ -345,16 +361,18 @@ async function handler(req) {
       originalUpdatedAt: record.original_updated_at,
       buyerContactId: classified.view === "aggregates" ? null : record.buyer_contact_id,
       name: classified.view === "aggregates" ? null : record.original_name,
-      email: classified.view === "aggregates" ? null : record.original_email,
+      email: typeof record.original_email === "string" ? record.original_email : null,
       phone: classified.view === "aggregates" ? null : record.original_phone,
-      categoryCode: record.category_code_raw,
+      categoryCode: record.normalized_product_code ?? record.category_code_raw,
       categoryName: record.category_name_raw,
       amountCents: record.amount_cents,
       currency: record.currency,
       teamName: classified.view === "aggregates" ? null : record.team_name_raw ?? null,
       participants: classified.view === "aggregates" ? null : record.participants_raw ?? null,
       notes: classified.view === "aggregates" ? null : record.notes_raw ?? null,
-      hasPaymentId: classified.view === "aggregates" ? false : typeof record.original_payment_id === "string" && record.original_payment_id.trim() !== ""
+      originalPaymentId: typeof record.original_payment_id === "string" ? record.original_payment_id : null,
+      missingSince: typeof record.missing_since === "string" ? record.missing_since : null,
+      hasPaymentId: typeof record.original_payment_id === "string" && record.original_payment_id.trim() !== ""
     };
   });
   const funnel = (Array.isArray(funnelResult.data) ? funnelResult.data : []).map((row) => {
@@ -367,6 +385,31 @@ async function handler(req) {
       orderId: null
     };
   });
+  const syncRows = Array.isArray(syncResult.data) ? syncResult.data : [];
+  const latestSuccess = syncRows.find((row) => row.status === "SUCCESS");
+  const latestError = syncRows.find((row) => row.status === "ERROR");
+  const sync = {
+    lastSuccessAt: typeof latestSuccess?.finished_at === "string" ? latestSuccess.finished_at : null,
+    lastErrorAt: typeof latestError?.finished_at === "string" ? latestError.finished_at : null,
+    lastError: typeof latestError?.error_message === "string" ? latestError.error_message : null,
+    inserted: typeof latestSuccess?.inserted_count === "number" ? latestSuccess.inserted_count : null,
+    updated: typeof latestSuccess?.updated_count === "number" ? latestSuccess.updated_count : null,
+    disappeared: typeof latestSuccess?.disappeared_count === "number" ? latestSuccess.disappeared_count : null,
+    conflicts: typeof latestSuccess?.conflict_count === "number" ? latestSuccess.conflict_count : null
+  };
+  const manualSaleOrderIds = (Array.isArray(manualResult.data) ? manualResult.data : []).map((row) => row.order_id).filter((id) => typeof id === "string");
+  const overrides = (Array.isArray(overrideResult.data) ? overrideResult.data : []).flatMap((row) => {
+    const record = row;
+    if (typeof record.legacy_registration_id !== "string" || record.field_name !== "amount_cents") return [];
+    const valueCents = Number(record.override_value);
+    if (!Number.isFinite(valueCents)) return [];
+    return [{
+      legacyId: record.legacy_registration_id,
+      field: "amount_cents",
+      valueCents,
+      conflict: record.conflict === true
+    }];
+  });
   if (classified.view === "aggregates") {
     return json(200, {
       ok: true,
@@ -376,10 +419,13 @@ async function handler(req) {
       legacyGrossCents: legacy.reduce((sum, row) => row.commercialStatus === "LEGACY_PAID" && typeof row.amountCents === "number" ? sum + row.amountCents : sum, 0),
       funnelEvents: funnel.length,
       legacy,
-      funnel
+      funnel,
+      sync,
+      manualSaleOrderIds,
+      overrides
     }, gate.headers);
   }
-  return json(200, { ok: true, eventCode, legacy, funnel }, gate.headers);
+  return json(200, { ok: true, eventCode, legacy, funnel, sync, manualSaleOrderIds, overrides }, gate.headers);
 }
 export {
   handler as default

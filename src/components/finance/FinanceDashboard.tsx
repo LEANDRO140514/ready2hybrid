@@ -9,8 +9,13 @@ import {
   HistoricalSales,
   PeriodPanorama,
 } from './CommercialLayer'
-import { ACTIVE_EVENT_CODE, type FunnelEvent, type LegacyRegistration } from '../../sales-dashboard/commercial'
-import type { CommercialSource } from '../../sales-dashboard/commercial'
+import { splitAttention } from '../../sales-dashboard/source-ledger'
+import {
+  ACTIVE_EVENT_CODE,
+  type FunnelEvent,
+  type LegacyRegistration,
+  type CommercialSource,
+} from '../../sales-dashboard/commercial'
 import {
   approvedPayment,
   buildDashboard,
@@ -45,6 +50,17 @@ type Props = {
       legacyPending: number
       legacyGrossCents: number
     } | null
+    sync?: {
+      lastSuccessAt: string | null
+      lastErrorAt: string | null
+      lastError: string | null
+      inserted: number | null
+      updated: number | null
+      disappeared: number | null
+      conflicts: number | null
+    } | null
+    manualSaleOrderIds?: string[]
+    overrides?: { legacyId: string; field: 'amount_cents'; valueCents: number; conflict: boolean }[]
   }
   role?: OperationalRole | null
   now?: Date
@@ -76,6 +92,19 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
     () => buildDashboard(snapshot.orders, filters, clock),
     [snapshot.orders, filters, clock],
   )
+  const manualSaleOrderIds = useMemo(
+    () => new Set(commercial?.manualSaleOrderIds ?? []),
+    [commercial?.manualSaleOrderIds],
+  )
+  const attention = useMemo(
+    () => splitAttention(view.anomalies, manualSaleOrderIds),
+    [view.anomalies, manualSaleOrderIds],
+  )
+  const expiredHoldCount = snapshot.orders.filter((order) =>
+    order.state === 'PAYMENT_PENDING'
+    && order.expiresAt != null
+    && Date.parse(order.expiresAt) < clock.getTime(),
+  ).length
   useEffect(() => {
     if (role !== 'OWNER' || !onLoadDetail) return
     if (section !== 'base' && salesMode !== 'legacy') return
@@ -127,8 +156,23 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           Datos al {formatWhen(snapshot.generatedAt)}
         </p>
       </header>
+      <p className="muted" data-testid="legacy-sync-status">
+        {commercial?.sync?.lastSuccessAt
+          ? `Legacy sincronizado ${formatWhen(commercial.sync.lastSuccessAt)}. Nuevos ${commercial.sync.inserted ?? 0}, cambios ${commercial.sync.updated ?? 0}, ausentes ${commercial.sync.disappeared ?? 0}, conflictos ${commercial.sync.conflicts ?? 0}.`
+          : 'Legacy sin sincronización registrada. La copia visible es la carga anterior.'}
+        {commercial?.sync?.lastErrorAt
+          ? ` Último error ${formatWhen(commercial.sync.lastErrorAt)}: ${commercial.sync.lastError ?? 'sin detalle'}.`
+          : ''}
+      </p>
 
-      <EventTotal orders={snapshot.orders} legacy={legacy} eventCode={eventCode} summary={commercial?.summary} />
+      <EventTotal
+        orders={snapshot.orders}
+        legacy={legacy}
+        eventCode={eventCode}
+        summary={commercial?.summary}
+        manualSaleOrderIds={commercial?.manualSaleOrderIds}
+        overrides={commercial?.overrides}
+      />
 
       <section className="finance-filters" aria-label="Filtros">
         <h2 data-testid="period-label">Periodo seleccionado</h2>
@@ -376,7 +420,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           testId="kpi-pending"
           label="Pagos pendientes"
           value={String(view.preferencePending + view.paymentPending)}
-          hint={`Preferencia ${view.preferencePending} · Pago pendiente ${view.paymentPending}`}
+          hint={`Preferencia ${view.preferencePending} · Pago pendiente ${view.paymentPending}. ${expiredHoldCount} con reserva vencida, sin cambiar su estado.`}
         />
         <Kpi testId="kpi-rejected" label="Rechazadas" value={String(view.rejectedCount)} />
         <Kpi
@@ -686,7 +730,15 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
 
       <section className="finance-panel" data-testid="anomalies">
         <h2>Requieren atención</h2>
-        {view.anomalies.length === 0 ? (
+        <p className="muted" data-testid="expired-holds">
+          {attention.expiredHolds.length} reservas vencidas siguen en PAYMENT_PENDING. No son un pago en curso y no se listan una por una.
+        </p>
+        {attention.resolvedManually.length > 0 ? (
+          <p className="muted" data-testid="manual-resolutions">
+            {attention.resolvedManually.length} venta resuelta manualmente. No se emite otro boleto.
+          </p>
+        ) : null}
+        {attention.active.length === 0 ? (
           <p className="muted">Sin incidencias en las órdenes del periodo.</p>
         ) : (
           <div className="table-wrap">
@@ -702,7 +754,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
                 </tr>
               </thead>
               <tbody>
-                {view.anomalies.map((row) => (
+                {attention.active.map((row) => (
                   <tr key={row.id}>
                     <td>{row.type}</td>
                     <td>{shortId(row.orderId)}</td>

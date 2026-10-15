@@ -25,11 +25,19 @@ export type ContactSources = {
   items: Record<string, unknown>[]
   products: Record<string, unknown>[]
   legacy: Record<string, unknown>[]
+  /** Approved Mercado Pago ids already counted on a current order. */
+  approvedPaymentIds?: ReadonlySet<string>
 }
 
 const RANK: Record<MarketingContactStatus, number> = { PAID: 3, PENDING: 2, LEAD: 1 }
 
 const PENDING_STATES = new Set(['PAYMENT_PENDING', 'PREFERENCE_PENDING'])
+
+function paymentAlreadyCounted(value: unknown, approved: ReadonlySet<string> | undefined): boolean {
+  if (!approved || typeof value !== 'string') return false
+  const id = value.trim()
+  return id.length > 0 && approved.has(id)
+}
 
 type Atom = {
   keyHint: string
@@ -131,6 +139,7 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     const status = legacyStatus(row)
     if (!status) continue
     const amount = typeof row.amount_cents === 'number' ? row.amount_cents : 0
+    const countedOnCurrent = status === 'PAID' && paymentAlreadyCounted(row.original_payment_id, source.approvedPaymentIds)
     atoms.push({
       keyHint: `legacy:${String(row.id)}`,
       email: normalizeContactEmail(row.original_email),
@@ -139,7 +148,7 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       status,
       legacy: true,
       category: text(row.category_name_raw) ?? text(row.category_code_raw),
-      paidCents: status === 'PAID' ? amount : 0,
+      paidCents: status === 'PAID' && !countedOnCurrent ? amount : 0,
       at: text(row.original_updated_at) ?? text(row.original_created_at),
       // The legacy source never stored marketing consent.
       consent: false,
