@@ -7,6 +7,7 @@ import {
 
 import { OperationalLayout } from '../components/shell/OperationalLayout'
 import { SignupPage, VerifyEmailPage } from './account'
+import { DashboardPreviewPage } from './dashboard-preview'
 import {
   CheckinShellPage,
   DeskShellPage,
@@ -88,6 +89,12 @@ const marketingRoute = createRoute({
   component: MarketingShellPage,
 })
 
+const previewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/preview',
+  component: DashboardPreviewPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -99,6 +106,7 @@ const routeTree = rootRoute.addChildren([
   financeRoute,
   partnersRoute,
   marketingRoute,
+  previewRoute,
 ])
 
 export function createAppRouter(initialPath = '/') {

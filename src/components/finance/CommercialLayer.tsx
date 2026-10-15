@@ -18,6 +18,7 @@ import {
   pageContacts,
   periodCommercial,
   phoneLooksIncomplete,
+  recoverableOrders,
   registrationCountLabel,
   showDeclaredParticipants,
   buildContacts,
@@ -37,6 +38,8 @@ import {
   type SalesFilters,
   type SalesOrder,
 } from '../../sales-dashboard/model'
+
+const EMPTY_MANUAL_IDS: ReadonlySet<string> = new Set()
 
 export function EventTotal({
   orders,
@@ -112,6 +115,8 @@ export function EventTotal({
         <Kpi testId="event-current-people" label="Participantes confirmados actuales" value={String(totals.currentParticipants)} hint="Solo boletos/órdenes actuales. El histórico no se cuenta como personas." />
         <Kpi testId="event-legacy-paid" label="Inscripciones históricas pagadas" value={String(totals.legacyPaid)} hint={`${formatMoney(totals.legacyGrossCents)} reportados, sin los pagos ya contados en Ready2Hybrid`} />
         <Kpi testId="event-legacy-pending" label="Registros históricos pendientes" value={String(totals.legacyPendingRegistrations)} hint={identityKnown ? `${totals.legacyPendingPeople} contactos identificables sin compra conocida` : 'Los contactos identificables se calculan en la lectura OWNER'} />
+        <Kpi testId="event-buyers" label="Compradores" value={identityKnown ? String(computed.buyers) : '—'} hint="Una persona por correo, en cualquiera de las dos fuentes. No es el número de inscripciones." />
+        <Kpi testId="event-registrations" label="Inscripciones contadas" value={String(totals.currentParticipants + totals.legacyPaid)} hint="Participantes de las órdenes actuales más las inscripciones históricas que sí entraron al total." />
       </div>
       <p className="muted" data-testid="event-cross-review">
         {ledger.excludedLegacyIds.length} pagos históricos omitidos porque ya están en una orden actual.
@@ -128,6 +133,7 @@ export function PeriodPanorama({
   filters,
   now,
   source,
+  manualSaleOrderIds = EMPTY_MANUAL_IDS,
 }: {
   orders: SalesOrder[]
   legacy: LegacyRegistration[]
@@ -135,8 +141,9 @@ export function PeriodPanorama({
   filters: SalesFilters
   now: Date
   source: CommercialSource
+  manualSaleOrderIds?: ReadonlySet<string>
 }) {
-  const period = periodCommercial(orders, legacy, eventCode, filters, now, source)
+  const period = periodCommercial(orders, legacy, eventCode, filters, now, source, manualSaleOrderIds)
   const totals = eventCommercialTotals(orders, legacy, eventCode)
   const identityKnown = !legacy.some((row) => !row.email && !row.buyerContactId)
   if (period.error) return <p role="alert">{period.error}</p>
@@ -216,23 +223,30 @@ export function FunnelBlock({
 
 export function CurrentOpportunities({
   orders,
+  legacy,
   eventCode,
   filters,
   now,
 }: {
   orders: SalesOrder[]
   eventCode: string
+  legacy: LegacyRegistration[]
   filters: SalesFilters
   now: Date
 }) {
-  const period = periodCommercial(orders, [], eventCode, filters, now, 'current')
-  const rows = period.currentPendingOrders
+  const period = periodCommercial(orders, legacy, eventCode, filters, now, 'current')
+  const recovery = recoverableOrders(period.currentPendingOrders, legacy, now)
+  const expiredIds = new Set(recovery.expired.map((order) => order.id))
+  const recoveryRows = [...recovery.open, ...recovery.expired]
   return (
     <div data-testid="current-opportunities">
-      <h3>Oportunidades actuales</h3>
+      <h3>Oportunidades de recuperación</h3>
       <p className="muted">
-        Checkouts pendientes del periodo. Siguen en su estado. No se reactivan ni se marcan como pagados.
+        Personas que dejaron un checkout y no tienen una compra pagada en ninguna fuente.
+        Una reserva vencida no es un pago en curso.
       </p>
+      <p className="muted" data-testid="recovery-open">{recovery.open.length} checkouts todavía vigentes.</p>
+      <p className="muted" data-testid="recovery-expired">{recovery.expired.length} reservas vencidas, sin compra posterior.</p>
       <div className="table-wrap finance-table">
         <table>
           <thead>
@@ -241,20 +255,20 @@ export function CurrentOpportunities({
               <th>Producto</th>
               <th>Monto</th>
               <th>Antigüedad</th>
-              <th>Estado</th>
+              <th>Situación</th>
               <th>Primer toque</th>
               <th>Último toque</th>
               <th>Community Partner</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((order) => (
+            {recoveryRows.map((order) => (
               <tr key={order.id}>
                 <td>{order.buyerName || '—'}</td>
                 <td>{productLabel(order)}</td>
                 <td>{formatMoney(order.totalCents)}</td>
                 <td>{ageLabel(order.createdAt, now)}</td>
-                <td>{order.state}</td>
+                <td>{expiredIds.has(order.id) ? 'Reserva vencida' : 'Checkout vigente'}</td>
                 <td>{touchLabel(order.firstTouch)}</td>
                 <td>{touchLabel(order.lastTouch)}</td>
                 <td>{order.affiliateName || order.affiliateCode || 'Venta directa'}</td>
@@ -264,7 +278,7 @@ export function CurrentOpportunities({
         </table>
       </div>
       <div className="commercial-cards">
-        {rows.map((order) => (
+        {recoveryRows.map((order) => (
           <article key={order.id} className="order-card">
             <strong>{order.buyerName || '—'}</strong>
             <span>{productLabel(order)}</span>
@@ -274,7 +288,7 @@ export function CurrentOpportunities({
           </article>
         ))}
       </div>
-      {rows.length === 0 ? <p className="muted">No hay checkouts pendientes en el periodo.</p> : null}
+      {recoveryRows.length === 0 ? <p className="muted">No hay personas por recuperar en el periodo.</p> : null}
     </div>
   )
 }

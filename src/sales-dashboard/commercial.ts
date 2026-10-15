@@ -18,6 +18,7 @@ import {
   type SalesFilters,
   type SalesOrder,
 } from './model'
+import { buildSourceLedger, normalizeLedgerEmail } from './source-ledger'
 
 export const ACTIVE_EVENT_CODE = 'HEX-2026'
 export const LEGACY_SOURCE = 'LEGACY_HYBRID_REGISTRO'
@@ -574,6 +575,7 @@ export function periodCommercial(
   filters: SalesFilters,
   now: Date,
   source: CommercialSource,
+  manualOrderIds: ReadonlySet<string> = new Set(),
 ) {
   const range = rangeForFilters(filters, now)
   if ('error' in range) {
@@ -610,21 +612,73 @@ export function periodCommercial(
   )
   const includeCurrent = source !== 'legacy'
   const includeLegacy = source !== 'current'
+  const manualInWindow = includeCurrent
+    ? orders.filter((order) => manualOrderIds.has(order.id) && order.state !== 'PAID' && inWindow(approvedAt(order) ?? order.createdAt, range.startMs, range.endMs))
+    : []
+  const ledger = buildSourceLedger({
+    orders: [...(includeCurrent ? currentPaid : []), ...manualInWindow].map((order) => ({
+      id: order.id,
+      state: order.state,
+      totalCents: order.totalCents,
+      email: order.buyerEmail,
+      productCode: order.lines[0]?.productCode ?? null,
+      approvedPaymentIds: order.payments
+        .filter((payment) => payment.normalizedState === 'APPROVED')
+        .map((payment) => payment.providerPaymentId),
+    })),
+    legacy: (includeLegacy ? legacyPaid : []).map((row) => ({
+      id: row.id,
+      commercialStatus: row.commercialStatus,
+      email: row.email ?? null,
+      productCode: row.categoryCode,
+      amountCents: row.amountCents,
+      paymentId: row.originalPaymentId ?? null,
+      missingSince: row.missingSince ?? null,
+    })),
+    manualOrderIds,
+  })
   return {
     error: null,
     currentPaid: includeCurrent ? currentPaid.length : 0,
-    legacyPaid: includeLegacy ? legacyPaid.length : 0,
-    knownPaid: (includeCurrent ? currentPaid.length : 0) + (includeLegacy ? legacyPaid.length : 0),
+    legacyPaid: ledger.legacySales,
+    knownPaid: ledger.confirmedSales,
     currentGrossCents: includeCurrent ? currentPaid.reduce((sum, order) => sum + order.totalCents, 0) : 0,
-    legacyGrossCents: includeLegacy ? legacyPaid.reduce((sum, row) => sum + (row.amountCents ?? 0), 0) : 0,
-    knownGrossCents:
-      (includeCurrent ? currentPaid.reduce((sum, order) => sum + order.totalCents, 0) : 0) +
-      (includeLegacy ? legacyPaid.reduce((sum, row) => sum + (row.amountCents ?? 0), 0) : 0),
+    legacyGrossCents: ledger.legacyCents,
+    knownGrossCents: ledger.confirmedCents,
     currentPending: includeCurrent ? pendingNow.length : 0,
     legacyPending: includeLegacy ? legacyPending.length : 0,
     legacyPendingRows: includeLegacy ? legacyPending : [],
     currentPendingOrders: includeCurrent ? pendingNow : [],
   }
+}
+
+export function recoverableOrders(
+  orders: SalesOrder[],
+  legacy: LegacyRegistration[],
+  now: Date,
+): { open: SalesOrder[]; expired: SalesOrder[] } {
+  const paidEmails = new Set<string>()
+  for (const order of orders) {
+    if (order.state !== 'PAID') continue
+    const email = normalizeLedgerEmail(order.buyerEmail)
+    if (email) paidEmails.add(email)
+  }
+  for (const row of legacy) {
+    if (row.commercialStatus !== 'LEGACY_PAID') continue
+    const email = normalizeLedgerEmail(row.email)
+    if (email) paidEmails.add(email)
+  }
+  const open: SalesOrder[] = []
+  const expired: SalesOrder[] = []
+  for (const order of orders) {
+    if (order.state !== 'PAYMENT_PENDING' && order.state !== 'PREFERENCE_PENDING') continue
+    const email = normalizeLedgerEmail(order.buyerEmail)
+    if (email && paidEmails.has(email)) continue
+    const holdExpired = order.expiresAt != null && Date.parse(order.expiresAt) < now.getTime()
+    if (holdExpired) expired.push(order)
+    else open.push(order)
+  }
+  return { open, expired }
 }
 
 export function currentFunnel(

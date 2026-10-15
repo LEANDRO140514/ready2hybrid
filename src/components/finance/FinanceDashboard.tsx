@@ -84,7 +84,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
   const [filters, setFilters] = useState<SalesFilters>(EMPTY_FILTERS)
   const [source, setSource] = useState<CommercialSource>('all')
   const [salesMode, setSalesMode] = useState<'current' | 'legacy'>('current')
-  const [section, setSection] = useState<'resumen' | 'ventas' | 'base' | 'conciliacion'>('resumen')
+  const [section, setSection] = useState<'resumen' | 'ventas' | 'oportunidades' | 'atencion' | 'base' | 'conciliacion'>('resumen')
   const [page, setPage] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -148,8 +148,8 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       <header className="finance-head">
         <div>
           <p className="muted">
-            Consulta ventas aprobadas y registra los costos reales de procesamiento
-            para conocer el ingreso neto conciliado.
+            Consulta ventas, oportunidades y lo que requiere atención.
+            Los filtros de abajo aplican a Ventas, Oportunidades y Atención. El total del evento no cambia con el periodo.
           </p>
         </div>
         <p className="muted" data-testid="snapshot-time">
@@ -331,6 +331,8 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           [
             ['resumen', 'Resumen'],
             ['ventas', 'Ventas'],
+            ['oportunidades', 'Oportunidades'],
+            ['atencion', 'Atención'],
             ...(role === 'OWNER' ? [['base', 'Base comercial'] as const] : []),
             ['conciliacion', 'Conciliación'],
           ] as const
@@ -404,6 +406,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           filters={filters}
           now={clock}
           source={source}
+          manualSaleOrderIds={manualSaleOrderIds}
         />
         <FunnelBlock
           orders={snapshot.orders}
@@ -492,6 +495,63 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       </section>
       ) : null}
 
+      {section === 'oportunidades' ? (
+        <section className="finance-panel">
+          <CurrentOpportunities orders={snapshot.orders} legacy={legacy} eventCode={eventCode} filters={filters} now={clock} />
+        </section>
+      ) : null}
+
+      {section === 'atencion' ? (
+      <section className="finance-panel" data-testid="anomalies">
+        <h2>Requieren atención</h2>
+        <p className="muted">
+          Casos que no se resuelven con un mensaje de recuperación. Las reservas vencidas están en Oportunidades.
+        </p>
+        <p className="muted" data-testid="expired-holds">
+          {attention.expiredHolds.length} reservas vencidas siguen en PAYMENT_PENDING. No son un pago en curso.
+        </p>
+        {attention.resolvedManually.length > 0 ? (
+          <p className="muted" data-testid="manual-resolutions">
+            {attention.resolvedManually.length} venta resuelta manualmente. No se emite otro boleto.
+          </p>
+        ) : null}
+        {attention.active.length === 0 ? (
+          <p className="muted">Sin incidencias en las órdenes del periodo.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Orden</th>
+                  <th>Cliente</th>
+                  <th>Monto</th>
+                  <th>Edad</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {attention.active.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.type}</td>
+                    <td>{shortId(row.orderId)}</td>
+                    <td>{row.buyer}</td>
+                    <td>{formatMoney(row.amountCents)}</td>
+                    <td>{formatAge(row.at, clock.getTime())}</td>
+                    <td>
+                      <button type="button" className="chip" onClick={() => setSelectedId(row.orderId)}>
+                        Ver detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      ) : null}
+
       {section === 'ventas' ? (
       <>
       <div className="chip-row" aria-label="Modo de ventas">
@@ -508,11 +568,10 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       {salesMode === 'current' ? (
       <>
       <section className="finance-panel">
-        <CurrentOpportunities orders={snapshot.orders} eventCode={eventCode} filters={filters} now={clock} />
-      </section>
-      <section className="finance-panel">
         <h2>Reporte comercial</h2>
-        <p className="muted">Qué se vendió en el periodo. Aquí no se capturan costos.</p>
+        <p className="muted">
+          Ventas Ready2Hybrid pagadas dentro del filtro. El mismo periodo, producto y Community Partner recortan esta tabla, el CSV y la conciliación. Legacy se ve en Ventas históricas. El cruce por id de pago está en el resumen.
+        </p>
         {view.series.length === 0 ? (
           <p className="muted">Sin ventas aprobadas en el periodo.</p>
         ) : (
@@ -720,56 +779,6 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
                     <td>{row.cancelled}</td>
                     <td>{row.refunded}</td>
                     <td>{row.chargedBack}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="finance-panel" data-testid="anomalies">
-        <h2>Requieren atención</h2>
-        <p className="muted" data-testid="expired-holds">
-          {attention.expiredHolds.length} reservas vencidas siguen en PAYMENT_PENDING. No son un pago en curso y no se listan una por una.
-        </p>
-        {attention.resolvedManually.length > 0 ? (
-          <p className="muted" data-testid="manual-resolutions">
-            {attention.resolvedManually.length} venta resuelta manualmente. No se emite otro boleto.
-          </p>
-        ) : null}
-        {attention.active.length === 0 ? (
-          <p className="muted">Sin incidencias en las órdenes del periodo.</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Tipo</th>
-                  <th>Orden</th>
-                  <th>Cliente</th>
-                  <th>Monto</th>
-                  <th>Edad</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {attention.active.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.type}</td>
-                    <td>{shortId(row.orderId)}</td>
-                    <td>{row.buyer}</td>
-                    <td>{formatMoney(row.amountCents)}</td>
-                    <td>{formatAge(row.at, clock.getTime())}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="chip"
-                        onClick={() => setSelectedId(row.orderId)}
-                      >
-                        Ver detalle
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
