@@ -2,7 +2,7 @@ import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 import { labelsForActors, usersFromAuthList } from '../_shared/sales-read/actors.ts'
 import { adminFinanceStore, parseFinanceAdjustmentInput, saveFinanceAdjustment } from '../_shared/sales-read/adjust.ts'
 import { assembleSalesSnapshot } from '../_shared/sales-read/assemble.ts'
-import { classifySalesReadRequest, roleMayReadSales } from '../_shared/sales-read/gate.ts'
+import { classifySalesReadRequest, roleMayAskWhoami, roleMayReadSales } from '../_shared/sales-read/gate.ts'
 import {
   gateRequestOrigin,
   originNotAllowedResponse,
@@ -180,11 +180,14 @@ export default async function handler(req: Request): Promise<Response> {
       return json(503, { ok: false, error: 'SERVICE_UNAVAILABLE' }, gate.headers)
     }
     const role = Array.isArray(data) ? (data[0] as { role?: unknown } | undefined)?.role : null
+    if (classified.view === 'whoami') {
+      if (!roleMayAskWhoami(role)) {
+        return json(403, { ok: false, error: 'FORBIDDEN' }, gate.headers)
+      }
+      return json(200, { ok: true, role, userId }, gate.headers)
+    }
     if (!roleMayReadSales(role)) {
       return json(403, { ok: false, error: 'FORBIDDEN' }, gate.headers)
-    }
-    if (classified.view === 'whoami') {
-      return json(200, { ok: true, role, userId }, gate.headers)
     }
     if (classified.view === 'upsert-adjustment') {
       const parsed = parseFinanceAdjustmentInput(body)

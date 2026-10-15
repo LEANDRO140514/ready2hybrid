@@ -19,7 +19,7 @@
     "bundle:ticket-credentials": "node scripts/bundle-ticket-credentials.mjs",
     "bundle:send-ticket-email": "node scripts/bundle-send-ticket-email.mjs",
     "bundle:sales-read": "node scripts/bundle-ops-sales-read.mjs",
-    "bundle:legacy-reconcile": "node scripts/bundle-ops-legacy-reconcile.mjs",
+    "bundle:commercial-read": "node scripts/bundle-ops-commercial-read.mjs",
     "bundle:openpay-e2e-page": "node scripts/bundle-openpay-e2e-page.mjs",
     "preview": "vite preview"
   },

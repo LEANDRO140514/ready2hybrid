@@ -4,10 +4,10 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const outfile = resolve(root, 'insforge/functions/ops-legacy-reconcile/handler.deploy.js')
+const outfile = resolve(root, 'insforge/functions/ops-commercial-read/handler.deploy.js')
 mkdirSync(dirname(outfile), { recursive: true })
 
-const entry = resolve(root, 'insforge/functions/ops-legacy-reconcile/index.ts')
+const entry = resolve(root, 'insforge/functions/ops-commercial-read/index.ts')
 const result = spawnSync(
   'npx',
   [

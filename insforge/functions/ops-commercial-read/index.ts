@@ -1,8 +1,10 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
+import { assembleMarketingContacts } from '../_shared/commercial/contacts.ts'
 import {
   classifyCommercialRead,
   roleMayReadCommercialAggregates,
   roleMayReadCommercialDirectory,
+  roleMayReadMarketingContacts,
 } from '../_shared/commercial/gate.ts'
 import {
   gateRequestOrigin,
@@ -19,6 +21,71 @@ const ALLOW_HEADERS = 'Content-Type, Authorization'
 
 function json(status: number, body: unknown, headers: Record<string, string>): Response {
   return new Response(JSON.stringify(body), { status, headers })
+}
+
+type PagedQuery = {
+  range: (from: number, to: number) => Promise<{ data: unknown; error: unknown }>
+}
+
+async function readAll(start: () => unknown): Promise<Record<string, unknown>[]> {
+  const pageSize = 1000
+  const rows: Record<string, unknown>[] = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await (start() as PagedQuery).range(from, from + pageSize - 1)
+    if (error) throw new Error('READ_FAILED')
+    const batch = Array.isArray(data) ? data : []
+    for (const row of batch) {
+      if (row && typeof row === 'object') rows.push(row as Record<string, unknown>)
+    }
+    if (batch.length < pageSize) break
+  }
+  return rows
+}
+
+/**
+ * Everyone the platform can reach: paid, pending, and identified leads, plus
+ * the anonymous landing visitor count. Visitors who never left a contact are
+ * counted but cannot be listed: marketing_events stores no name, email, or phone.
+ */
+async function marketingContacts(
+  admin: ReturnType<typeof createAdminClient>,
+  eventCode: string,
+  headers: Record<string, string>,
+): Promise<Response> {
+  try {
+    const [buyers, orders, items, products, legacy, funnel] = await Promise.all([
+      readAll(() => admin.database.from('buyer_contacts').select(
+        'id,name,email,phone,contact_consent_at,created_at',
+      )),
+      readAll(() => admin.database.from('orders').select(
+        'id,buyer_contact_id,state,total_cents,created_at,updated_at',
+      )),
+      readAll(() => admin.database.from('order_items').select('order_id,product_code')),
+      readAll(() => admin.database.from('products').select('code,name')),
+      readAll(() => admin.database.from('legacy_registrations').select(
+        'id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents',
+      ).eq('event_code', eventCode)),
+      readAll(() => admin.database.from('marketing_events').select('visitor_id,event_type')
+        .eq('event_code', eventCode)),
+    ])
+    const visitors = new Set<string>()
+    const identified = new Set<string>()
+    for (const row of funnel) {
+      if (typeof row.visitor_id !== 'string') continue
+      visitors.add(row.visitor_id)
+      if (row.event_type === 'LEAD_IDENTIFIED') identified.add(row.visitor_id)
+    }
+    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy })
+    return json(200, {
+      ok: true,
+      eventCode,
+      contacts,
+      visitors: visitors.size,
+      identifiedVisitors: identified.size,
+    }, headers)
+  } catch {
+    return json(503, { ok: false, error: 'SERVICE_UNAVAILABLE' }, headers)
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -72,6 +139,12 @@ export default async function handler(req: Request): Promise<Response> {
   const reader = await admin.database.from('dashboard_readers').select('role').eq('auth_user_id', userId).limit(1)
   if (reader.error) return json(503, { ok: false, error: 'SERVICE_UNAVAILABLE' }, gate.headers)
   const role = Array.isArray(reader.data) ? (reader.data[0] as { role?: unknown } | undefined)?.role : null
+  if (classified.view === 'contacts') {
+    if (!roleMayReadMarketingContacts(role)) {
+      return json(403, { ok: false, error: 'FORBIDDEN' }, gate.headers)
+    }
+    return await marketingContacts(admin, eventCode, gate.headers)
+  }
   if (!roleMayReadCommercialAggregates(role)) {
     return json(403, { ok: false, error: 'FORBIDDEN' }, gate.headers)
   }

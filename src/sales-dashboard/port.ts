@@ -5,6 +5,7 @@ import { getInsforgeClient } from '../lib/insforge/client'
 import { postProjectFunction } from '../lib/insforge/project-function'
 import type { FunnelEvent, LegacyRegistration } from './commercial'
 import { ACTIVE_EVENT_CODE } from './commercial'
+import { parseMarketingPayload, type MarketingPayload } from './marketing'
 import type {
   FinanceAdjustment,
   SalesActivity,
@@ -33,6 +34,7 @@ export type CommercialPayload = {
 export type SalesPort = {
   loadSnapshot: () => Promise<SalesSnapshot>
   loadCommercial?: (view?: 'rows' | 'aggregates') => Promise<CommercialPayload>
+  loadContacts?: () => Promise<MarketingPayload>
   saveAdjustment: (input: SaveAdjustmentInput) => Promise<void>
 }
 
@@ -347,6 +349,23 @@ export function createEdgeSalesPort(): SalesPort {
       } catch {
         return { eventCode: ACTIVE_EVENT_CODE, legacy: [], funnel: [] }
       }
+    },
+    async loadContacts() {
+      let data: unknown
+      try {
+        data = await postProjectFunction<unknown>(
+          getInsforgeClient(),
+          'ops-commercial-read',
+          { view: 'contacts', eventCode: ACTIVE_EVENT_CODE },
+        )
+      } catch (error) {
+        throw new Error(
+          error instanceof Error && error.message
+            ? error.message
+            : 'No se pudo leer la lista de contactos.',
+        )
+      }
+      return parseMarketingPayload(data)
     },
     async saveAdjustment(input) {
       let data: unknown

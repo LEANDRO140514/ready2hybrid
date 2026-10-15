@@ -1,6 +1,136 @@
 // insforge/functions/ops-commercial-read/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 
+// insforge/functions/_shared/commercial/contacts.ts
+var RANK = { PAID: 3, PENDING: 2, LEAD: 1 };
+var PENDING_STATES = /* @__PURE__ */ new Set(["PAYMENT_PENDING", "PREFERENCE_PENDING"]);
+function text(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+function normalizeContactEmail(value) {
+  const email = text(value)?.toLowerCase() ?? null;
+  if (!email || !email.includes("@") || email.startsWith("@")) return null;
+  return email;
+}
+function orderStatus(state) {
+  if (state === "PAID") return "PAID";
+  if (typeof state === "string" && PENDING_STATES.has(state)) return "PENDING";
+  return "LEAD";
+}
+function legacyStatus(row) {
+  if (row.commercial_status === "LEGACY_PAID" || row.original_status === "paid") return "PAID";
+  if (row.commercial_status === "LEGACY_PENDING" || row.original_status === "pending") return "PENDING";
+  return null;
+}
+function assembleMarketingContacts(source) {
+  const productNames = /* @__PURE__ */ new Map();
+  for (const product of source.products) {
+    const code = text(product.code);
+    if (code) productNames.set(code, text(product.name) ?? code);
+  }
+  const categoriesByOrder = /* @__PURE__ */ new Map();
+  for (const item of source.items) {
+    const orderId = text(item.order_id);
+    const code = text(item.product_code);
+    if (!orderId || !code) continue;
+    const list = categoriesByOrder.get(orderId) ?? [];
+    list.push(productNames.get(code) ?? code);
+    categoriesByOrder.set(orderId, list);
+  }
+  const buyers = /* @__PURE__ */ new Map();
+  for (const buyer of source.buyers) {
+    const id = text(buyer.id);
+    if (id) buyers.set(id, buyer);
+  }
+  const atoms = [];
+  const ordered = /* @__PURE__ */ new Set();
+  for (const order of source.orders) {
+    const contactId = text(order.buyer_contact_id);
+    const buyer = contactId ? buyers.get(contactId) : void 0;
+    if (!buyer) continue;
+    ordered.add(contactId);
+    const status = orderStatus(order.state);
+    const total = typeof order.total_cents === "number" ? order.total_cents : 0;
+    atoms.push({
+      keyHint: `contact:${contactId}`,
+      email: normalizeContactEmail(buyer.email),
+      name: text(buyer.name),
+      phone: text(buyer.phone),
+      status,
+      legacy: false,
+      category: (categoriesByOrder.get(String(order.id)) ?? []).join(" \xB7 ") || null,
+      paidCents: status === "PAID" ? total : 0,
+      at: text(order.updated_at) ?? text(order.created_at),
+      consent: text(buyer.contact_consent_at) != null
+    });
+  }
+  for (const [id, buyer] of buyers) {
+    if (ordered.has(id)) continue;
+    atoms.push({
+      keyHint: `contact:${id}`,
+      email: normalizeContactEmail(buyer.email),
+      name: text(buyer.name),
+      phone: text(buyer.phone),
+      status: "LEAD",
+      legacy: false,
+      category: null,
+      paidCents: 0,
+      at: text(buyer.created_at),
+      consent: text(buyer.contact_consent_at) != null
+    });
+  }
+  for (const row of source.legacy) {
+    const status = legacyStatus(row);
+    if (!status) continue;
+    const amount = typeof row.amount_cents === "number" ? row.amount_cents : 0;
+    atoms.push({
+      keyHint: `legacy:${String(row.id)}`,
+      email: normalizeContactEmail(row.original_email),
+      name: text(row.original_name),
+      phone: text(row.original_phone),
+      status,
+      legacy: true,
+      category: text(row.category_name_raw) ?? text(row.category_code_raw),
+      paidCents: status === "PAID" ? amount : 0,
+      at: text(row.original_updated_at) ?? text(row.original_created_at),
+      // The legacy source never stored marketing consent.
+      consent: false
+    });
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const atom of atoms) {
+    const key = atom.email ? `email:${atom.email}` : atom.keyHint;
+    const list = groups.get(key) ?? [];
+    list.push(atom);
+    groups.set(key, list);
+  }
+  return [...groups.entries()].map(([key, list]) => {
+    const status = list.reduce(
+      (best, atom) => RANK[atom.status] > RANK[best] ? atom.status : best,
+      "LEAD"
+    );
+    const dated = list.map((atom) => atom.at).filter((value) => value != null).sort((a, b) => Date.parse(a) - Date.parse(b));
+    const hasLegacy = list.some((atom) => atom.legacy);
+    const hasCurrent = list.some((atom) => !atom.legacy);
+    const paid = list.reduce((sum, atom) => sum + atom.paidCents, 0);
+    return {
+      key,
+      name: list.find((atom) => atom.name)?.name ?? null,
+      email: list.find((atom) => atom.email)?.email ?? null,
+      phone: list.find((atom) => atom.phone)?.phone ?? null,
+      status,
+      origin: hasLegacy && hasCurrent ? "current+legacy" : hasLegacy ? "legacy" : "current",
+      categories: [...new Set(list.map((atom) => atom.category).filter((c) => c != null))],
+      paidCents: paid,
+      firstAt: dated[0] ?? null,
+      lastAt: dated[dated.length - 1] ?? null,
+      consent: list.some((atom) => atom.consent) ? "recorded" : "not-recorded"
+    };
+  });
+}
+
 // insforge/functions/_shared/commercial/gate.ts
 function roleMayReadCommercialAggregates(role) {
   return role === "OWNER" || role === "FINANCE";
@@ -8,8 +138,11 @@ function roleMayReadCommercialAggregates(role) {
 function roleMayReadCommercialDirectory(role) {
   return role === "OWNER";
 }
+function roleMayReadMarketingContacts(role) {
+  return role === "OWNER" || role === "MARKETING";
+}
 function classifyCommercialRead(view) {
-  if (view === "aggregates" || view === "rows" || view === "directory") {
+  if (view === "aggregates" || view === "rows" || view === "directory" || view === "contacts") {
     return { ok: true, view };
   }
   return { ok: false, status: 403, code: "FORBIDDEN" };
@@ -88,6 +221,55 @@ var ALLOW_HEADERS = "Content-Type, Authorization";
 function json(status, body, headers) {
   return new Response(JSON.stringify(body), { status, headers });
 }
+async function readAll(start) {
+  const pageSize = 1e3;
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await start().range(from, from + pageSize - 1);
+    if (error) throw new Error("READ_FAILED");
+    const batch = Array.isArray(data) ? data : [];
+    for (const row of batch) {
+      if (row && typeof row === "object") rows.push(row);
+    }
+    if (batch.length < pageSize) break;
+  }
+  return rows;
+}
+async function marketingContacts(admin, eventCode, headers) {
+  try {
+    const [buyers, orders, items, products, legacy, funnel] = await Promise.all([
+      readAll(() => admin.database.from("buyer_contacts").select(
+        "id,name,email,phone,contact_consent_at,created_at"
+      )),
+      readAll(() => admin.database.from("orders").select(
+        "id,buyer_contact_id,state,total_cents,created_at,updated_at"
+      )),
+      readAll(() => admin.database.from("order_items").select("order_id,product_code")),
+      readAll(() => admin.database.from("products").select("code,name")),
+      readAll(() => admin.database.from("legacy_registrations").select(
+        "id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents"
+      ).eq("event_code", eventCode)),
+      readAll(() => admin.database.from("marketing_events").select("visitor_id,event_type").eq("event_code", eventCode))
+    ]);
+    const visitors = /* @__PURE__ */ new Set();
+    const identified = /* @__PURE__ */ new Set();
+    for (const row of funnel) {
+      if (typeof row.visitor_id !== "string") continue;
+      visitors.add(row.visitor_id);
+      if (row.event_type === "LEAD_IDENTIFIED") identified.add(row.visitor_id);
+    }
+    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy });
+    return json(200, {
+      ok: true,
+      eventCode,
+      contacts,
+      visitors: visitors.size,
+      identifiedVisitors: identified.size
+    }, headers);
+  } catch {
+    return json(503, { ok: false, error: "SERVICE_UNAVAILABLE" }, headers);
+  }
+}
 async function handler(req) {
   const allowedOrigin = readConfiguredOrigin(env, "OPS_DASHBOARD_CORS_ORIGIN", "CHECKOUT_CORS_ORIGIN");
   const gate = gateRequestOrigin({
@@ -132,6 +314,12 @@ async function handler(req) {
   const reader = await admin.database.from("dashboard_readers").select("role").eq("auth_user_id", userId).limit(1);
   if (reader.error) return json(503, { ok: false, error: "SERVICE_UNAVAILABLE" }, gate.headers);
   const role = Array.isArray(reader.data) ? reader.data[0]?.role : null;
+  if (classified.view === "contacts") {
+    if (!roleMayReadMarketingContacts(role)) {
+      return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
+    }
+    return await marketingContacts(admin, eventCode, gate.headers);
+  }
   if (!roleMayReadCommercialAggregates(role)) {
     return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
   }

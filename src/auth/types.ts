@@ -4,6 +4,7 @@ export const OPERATIONAL_ROLES = [
   'CHECKIN_STAFF',
   'SOLUTION_DESK',
   'FINANCE',
+  'MARKETING',
 ] as const
 
 export type OperationalRole = (typeof OPERATIONAL_ROLES)[number]

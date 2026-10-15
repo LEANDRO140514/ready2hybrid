@@ -12,6 +12,7 @@ describe('roles', () => {
     expect(isOperationalRole('CHECKIN_STAFF')).toBe(true)
     expect(isOperationalRole('FINANCE')).toBe(true)
     expect(isOperationalRole('OWNER')).toBe(true)
+    expect(isOperationalRole('MARKETING')).toBe(true)
     expect(isOperationalRole(null)).toBe(false)
   })
 

@@ -71,7 +71,7 @@ describe('operational navigation', () => {
     )
     expect((await screen.findByTestId('session-role')).textContent).toContain('FINANCE')
     expect(screen.getByTestId('session-user').textContent).toContain('finance@example.com')
-    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación'])
+    expect(linkNames()).toEqual(['Inicio', 'Ventas'])
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByText(/shell operativo|fundación PWA|manifiesto|build:/i)).toBeNull()
     expect(await screen.findByRole('link', { name: 'Ir a ventas' })).toBeTruthy()
@@ -131,8 +131,8 @@ describe('operational navigation', () => {
       'Check-in',
       'Mesa',
       'Ventas',
-      'Conciliación',
       'Community Partners',
+      'Marketing',
     ])
     owner.unmount()
 

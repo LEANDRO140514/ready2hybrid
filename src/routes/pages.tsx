@@ -1,8 +1,8 @@
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
-import { ConciliationPage } from '../components/finance/ConciliationPage'
 import { FinancePage } from '../components/finance/FinancePage'
+import { MarketingPage } from '../components/marketing/MarketingPage'
 import { PartnersPage } from '../components/partners/PartnersPage'
 import { useAuth } from '../auth/AuthContext'
 import { evaluateOperationalAccess } from '../auth/guards'
@@ -57,6 +57,11 @@ export function HomePage() {
             ? 'venta pendiente de conciliar'
             : 'ventas pendientes de conciliar'}{' '}
           <Link to="/ops/finance">Ir a conciliar</Link>
+        </p>
+      ) : null}
+      {roleResolved && roleAllowsPath(role, '/ops/marketing') ? (
+        <p>
+          <Link to="/ops/marketing">Contactos para marketing</Link>
         </p>
       ) : null}
       {roleResolved && roleAllowsPath(role, '/ops/partners') ? (
@@ -242,10 +247,10 @@ export function FinanceShellPage() {
   )
 }
 
-export function ConciliationShellPage() {
+export function MarketingShellPage() {
   return (
-    <OpsGuard path="/ops/finance/conciliation" title="Conciliación bancaria">
-      <ConciliationPage />
+    <OpsGuard path="/ops/marketing" title="Contactos para marketing">
+      <MarketingPage />
     </OpsGuard>
   )
 }

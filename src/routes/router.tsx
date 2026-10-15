@@ -9,10 +9,10 @@ import { OperationalLayout } from '../components/shell/OperationalLayout'
 import { SignupPage, VerifyEmailPage } from './account'
 import {
   CheckinShellPage,
-  ConciliationShellPage,
   DeskShellPage,
   FinanceShellPage,
   HomePage,
+  MarketingShellPage,
   PartnersShellPage,
   LoginPage,
   UnauthorizedPage,
@@ -76,16 +76,16 @@ const financeRoute = createRoute({
   component: FinanceShellPage,
 })
 
-const conciliationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/ops/finance/conciliation',
-  component: ConciliationShellPage,
-})
-
 const partnersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ops/partners',
   component: PartnersShellPage,
+})
+
+const marketingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/marketing',
+  component: MarketingShellPage,
 })
 
 const routeTree = rootRoute.addChildren([
@@ -97,8 +97,8 @@ const routeTree = rootRoute.addChildren([
   checkinRoute,
   deskRoute,
   financeRoute,
-  conciliationRoute,
   partnersRoute,
+  marketingRoute,
 ])
 
 export function createAppRouter(initialPath = '/') {

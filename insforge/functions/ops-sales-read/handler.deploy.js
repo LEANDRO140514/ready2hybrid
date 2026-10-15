@@ -431,6 +431,9 @@ function classifySalesReadRequest(view) {
 function roleMayReadSales(role) {
   return role === "OWNER" || role === "FINANCE";
 }
+function roleMayAskWhoami(role) {
+  return roleMayReadSales(role) || role === "MARKETING";
+}
 
 // insforge/functions/_shared/http/origin-guard.ts
 var PUBLIC_ORIGIN_NOT_ALLOWED = {
@@ -635,11 +638,14 @@ async function handler(req) {
       return json(503, { ok: false, error: "SERVICE_UNAVAILABLE" }, gate.headers);
     }
     const role = Array.isArray(data) ? data[0]?.role : null;
+    if (classified.view === "whoami") {
+      if (!roleMayAskWhoami(role)) {
+        return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
+      }
+      return json(200, { ok: true, role, userId }, gate.headers);
+    }
     if (!roleMayReadSales(role)) {
       return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
-    }
-    if (classified.view === "whoami") {
-      return json(200, { ok: true, role, userId }, gate.headers);
     }
     if (classified.view === "upsert-adjustment") {
       const parsed = parseFinanceAdjustmentInput(body);

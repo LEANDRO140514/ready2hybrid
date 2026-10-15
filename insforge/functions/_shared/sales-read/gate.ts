@@ -19,3 +19,11 @@ export function classifySalesReadRequest(view: unknown):
 export function roleMayReadSales(role: unknown): role is 'OWNER' | 'FINANCE' {
   return role === 'OWNER' || role === 'FINANCE'
 }
+
+/**
+ * whoami only reports the caller's own role so the PWA can route them.
+ * MARKETING may ask; every other view stays OWNER and FINANCE.
+ */
+export function roleMayAskWhoami(role: unknown): role is 'OWNER' | 'FINANCE' | 'MARKETING' {
+  return roleMayReadSales(role) || role === 'MARKETING'
+}

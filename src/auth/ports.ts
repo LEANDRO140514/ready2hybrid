@@ -193,7 +193,13 @@ export function createDefaultAuthorizationPort(): AuthorizationPort {
         if (!data || typeof data !== 'object') return null
         const body = data as { role?: unknown; userId?: unknown }
         if (body.userId !== userId) return null
-        if (body.role === 'OWNER' || body.role === 'FINANCE') return body.role
+        if (
+          body.role === 'OWNER' ||
+          body.role === 'FINANCE' ||
+          body.role === 'MARKETING'
+        ) {
+          return body.role
+        }
         return null
       } catch {
         return null
