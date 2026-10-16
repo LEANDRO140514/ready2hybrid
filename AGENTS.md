@@ -308,3 +308,11 @@ Key patterns:
 - Usa las skills de InsForge antes de improvisar contra el SDK o el CLI.
 - El pago corre por **Mercado Pago Checkout Pro**, no por la integración
   Stripe que menciona el bloque genérico.
+
+## Commercial calendar and deploys (updated 2026-10-16)
+
+- **Stage calendar (America/Merida, UTC-6): LAUNCH through 24 sep; PRESALE 25 sep - 19 oct inclusive (extended from 16 oct, CEO request); REGULAR 20 oct - 12 nov inclusive; sales close 13 nov 00:00.** Regular starts at `2026-10-20T06:00:00Z`.
+- Authority: `insforge/functions/_shared/checkout/staged-pricing.ts` (`STAGE_WINDOWS`). Only `mp-create-checkout` embeds it, bundled in `insforge/functions/mp-create-checkout/handler.deploy.js` (`npm run bundle:checkout`). Other functions read the amount from the order.
+- Production (`ready2hybrid`, appkey `4bg9ufz2`) runs the `origin/main` bundle (`25af44b`), verified identical on 2026-10-16. Deploy: `insforge functions deploy mp-create-checkout --file insforge/functions/mp-create-checkout/handler.deploy.js`.
+- **Never deploy `mp-create-checkout` from a branch or worktree that still has `2026, 10, 17` in `STAGE_WINDOWS`** (several feature branches do). When integrating `origin/main` into a long-lived branch, keep the `20 oct` dates.
+- The landing mirrors the calendar in `hybrid-event-landing/src/lib/pricingStage.ts`; change both together. SPEC-030 (lines ~253-254) still shows the old 16/17 oct dates and is pending the commercial owner.
