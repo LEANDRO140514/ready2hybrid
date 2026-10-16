@@ -71,7 +71,7 @@ describe('operational navigation', () => {
     )
     expect((await screen.findByTestId('session-role')).textContent).toContain('FINANCE')
     expect(screen.getByTestId('session-user').textContent).toContain('finance@example.com')
-    expect(linkNames()).toEqual(['Inicio', 'Ventas'])
+    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación'])
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByText(/shell operativo|fundación PWA|manifiesto|build:/i)).toBeNull()
     expect(await screen.findByRole('link', { name: 'Ir a ventas' })).toBeTruthy()
@@ -131,6 +131,7 @@ describe('operational navigation', () => {
       'Check-in',
       'Mesa',
       'Ventas',
+      'Conciliación',
       'Community Partners',
       'Marketing',
     ])
@@ -176,6 +177,33 @@ describe('operational navigation', () => {
       'CHECKIN_STAFF',
     )
     expect(linkNames()).toEqual(['Inicio', 'Check-in'])
+  })
+
+  it('opens both reconciliation lanes for FINANCE and keeps other roles out', async () => {
+    const finance = render(
+      <App
+        initialPath="/ops/finance/conciliation"
+        authPort={sessionPort('finance@example.com')}
+        authorizationPort={authz('FINANCE')}
+        salesPort={createHarnessSalesPort()}
+      />,
+    )
+    expect(await screen.findByTestId('lane-a')).toBeTruthy()
+    expect(screen.getByTestId('lane-b')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Importar estado de cuenta' })).toHaveProperty('disabled', true)
+    expect(screen.getByTestId('lane-a').textContent).toContain('Ventas → Conciliación')
+    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación'])
+    finance.unmount()
+
+    render(
+      <App
+        initialPath="/ops/finance/conciliation"
+        authPort={sessionPort('checkin@example.com')}
+        authorizationPort={authz('CHECKIN_STAFF')}
+        salesPort={createHarnessSalesPort()}
+      />,
+    )
+    expect(await screen.findByTestId('unauthorized')).toBeTruthy()
   })
 })
 

@@ -19,6 +19,7 @@ export const ROUTE_ROLE_POLICY = {
   '/ops/checkin': ['OWNER', 'OPERATIONS_MANAGER', 'CHECKIN_STAFF'] as const,
   '/ops/desk': ['OWNER', 'OPERATIONS_MANAGER', 'SOLUTION_DESK'] as const,
   '/ops/finance': ['OWNER', 'FINANCE'] as const,
+  '/ops/finance/conciliation': ['OWNER', 'FINANCE'] as const,
   '/ops/partners': ['OWNER'] as const,
   '/ops/marketing': ['OWNER', 'MARKETING'] as const,
 } as const
@@ -29,6 +30,7 @@ export type ProtectedOpsPath = keyof typeof ROUTE_ROLE_POLICY
 export function routeRequiresAssignment(path: ProtectedOpsPath): boolean {
   return (
     path !== '/ops/finance' &&
+    path !== '/ops/finance/conciliation' &&
     path !== '/ops/partners' &&
     path !== '/ops/marketing'
   )

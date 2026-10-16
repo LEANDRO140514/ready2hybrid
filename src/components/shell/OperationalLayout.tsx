@@ -9,6 +9,7 @@ const OPS_LINKS: { path: ProtectedOpsPath; label: string }[] = [
   { path: '/ops/checkin', label: 'Check-in' },
   { path: '/ops/desk', label: 'Mesa' },
   { path: '/ops/finance', label: 'Ventas' },
+  { path: '/ops/finance/conciliation', label: 'Conciliación' },
   { path: '/ops/partners', label: 'Community Partners' },
   { path: '/ops/marketing', label: 'Marketing' },
 ]

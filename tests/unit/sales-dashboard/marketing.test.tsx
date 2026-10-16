@@ -199,6 +199,7 @@ describe('MARKETING routes', () => {
     expect(routeRequiresAssignment('/ops/marketing')).toBe(false)
     for (const path of [
       '/ops/finance',
+      '/ops/finance/conciliation',
       '/ops/partners',
       '/ops/checkin',
       '/ops/desk',

@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
+import { ConciliationPage } from '../components/finance/ConciliationPage'
 import { FinancePage } from '../components/finance/FinancePage'
 import { MarketingPage } from '../components/marketing/MarketingPage'
 import { PartnersPage } from '../components/partners/PartnersPage'
@@ -243,6 +244,14 @@ export function FinanceShellPage() {
   return (
     <OpsGuard path="/ops/finance" title="Control de ventas y conciliación financiera">
       <FinancePage />
+    </OpsGuard>
+  )
+}
+
+export function ConciliationShellPage() {
+  return (
+    <OpsGuard path="/ops/finance/conciliation" title="Conciliación bancaria">
+      <ConciliationPage />
     </OpsGuard>
   )
 }

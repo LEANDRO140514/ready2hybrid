@@ -10,6 +10,7 @@ import { SignupPage, VerifyEmailPage } from './account'
 import { DashboardPreviewPage } from './dashboard-preview'
 import {
   CheckinShellPage,
+  ConciliationShellPage,
   DeskShellPage,
   FinanceShellPage,
   HomePage,
@@ -77,6 +78,12 @@ const financeRoute = createRoute({
   component: FinanceShellPage,
 })
 
+const conciliationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/finance/conciliation',
+  component: ConciliationShellPage,
+})
+
 const partnersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ops/partners',
@@ -104,6 +111,7 @@ const routeTree = rootRoute.addChildren([
   checkinRoute,
   deskRoute,
   financeRoute,
+  conciliationRoute,
   partnersRoute,
   marketingRoute,
   previewRoute,
