@@ -383,6 +383,7 @@ describe('finance route', () => {
       />,
     )
     expect(await screen.findByTestId('kpi-paid')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Acumulado del evento, sin filtros' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Base comercial' })).toBeTruthy()
     await waitFor(() => {
       expect(screen.getByTestId('event-legacy-paid').textContent).toContain('1')

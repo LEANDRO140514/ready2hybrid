@@ -201,6 +201,90 @@ describe('legacy sync plan', () => {
     expect(changed.updated).toBe(1)
   })
 
+  it('inserts a new registration, updates a later change, and a repeat adds no second row', () => {
+    const first = planLegacySync({
+      source: [source({})],
+      mirror: [],
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(first.inserted).toBe(1)
+    expect(first.actions.filter((action) => action.kind === 'insert')).toHaveLength(1)
+
+    const inserted = first.actions.find((action) => action.kind === 'insert')
+    if (!inserted || inserted.kind !== 'insert') throw new Error('missing insert')
+    const mirror = [{
+      originalRecordId: inserted.recordId,
+      sourceHash: inserted.nextHash,
+      missingSince: null,
+      commercialStatus: inserted.row.commercialStatus,
+      importDisposition: inserted.row.importDisposition,
+      reviewReason: inserted.row.reviewReason,
+    }]
+
+    const repeat = planLegacySync({
+      source: [source({})],
+      mirror,
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(repeat.inserted).toBe(0)
+    expect(repeat.updated).toBe(0)
+    expect(repeat.unchanged).toBe(1)
+
+    const secondId = '44444444-4444-4444-8444-444444444444'
+    const added = planLegacySync({
+      source: [source({}), source({ id: secondId, contact_email: 'luis@example.com', mp_payment_id: 'pay-new' })],
+      mirror,
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(added.inserted).toBe(1)
+    expect(added.unchanged).toBe(1)
+    expect(added.actions.filter((action) => action.kind === 'insert').map((action) => action.recordId)).toEqual([secondId])
+
+    const changed = planLegacySync({
+      source: [source({ amount: 2600, status: 'pending' })],
+      mirror,
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(changed.inserted).toBe(0)
+    expect(changed.updated).toBe(1)
+    const update = changed.actions.find((action) => action.kind === 'update')
+    expect(update && update.kind === 'update' && update.row.commercialStatus).toBe('LEGACY_PENDING')
+    expect(update && update.kind === 'update' && update.row.amountCents).toBe(260000)
+
+    const afterUpdate = changed.actions.find((action) => action.kind === 'update')
+    if (!afterUpdate || afterUpdate.kind !== 'update') throw new Error('missing update')
+    const third = planLegacySync({
+      source: [source({ amount: 2600, status: 'pending' })],
+      mirror: [{
+        ...mirror[0]!,
+        sourceHash: afterUpdate.nextHash,
+        commercialStatus: afterUpdate.row.commercialStatus,
+      }],
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(third.inserted).toBe(0)
+    expect(third.updated).toBe(0)
+    expect(third.unchanged).toBe(1)
+  })
+
+  it('keeps one row when the same source id arrives twice in one read', () => {
+    const plan = planLegacySync({
+      source: [source({ amount: 2500 }), source({ amount: 2600 })],
+      mirror: [],
+      overrides: [],
+      catalogCodes: catalog,
+    })
+    expect(plan.inserted).toBe(1)
+    expect(plan.actions.filter((action) => action.kind === 'insert')).toHaveLength(1)
+    const insert = plan.actions.find((action) => action.kind === 'insert')
+    expect(insert && insert.kind === 'insert' && insert.row.amountCents).toBe(260000)
+  })
+
   it('reads only the enforma registrations table', () => {
     expect(SOURCE_SELECT).toContain('public.hybrid_registro_inscripciones')
     expect(SOURCE_SELECT.startsWith('SELECT ')).toBe(true)

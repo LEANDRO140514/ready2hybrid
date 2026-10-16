@@ -185,6 +185,11 @@ export function planLegacySync(input: {
   catalogCodes: ReadonlySet<string>
 }): SyncPlan {
   const mirrorById = new Map(input.mirror.map((row) => [row.originalRecordId, row]))
+  const sourceById = new Map<string, SourceRegistration>()
+  for (const source of input.source) {
+    const recordId = text(source.id)
+    if (recordId) sourceById.set(recordId, source)
+  }
   const seen = new Set<string>()
   const actions: SyncAction[] = []
   let inserted = 0
@@ -194,7 +199,7 @@ export function planLegacySync(input: {
   let reappeared = 0
   let conflicts = 0
 
-  for (const source of input.source) {
+  for (const source of sourceById.values()) {
     const planned = planSourceRow(source, input.catalogCodes)
     if (!planned) continue
     const recordId = text(source.id)!

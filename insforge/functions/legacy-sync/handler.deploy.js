@@ -88,6 +88,11 @@ function sourceValue(row, field) {
 }
 function planLegacySync(input) {
   const mirrorById = new Map(input.mirror.map((row) => [row.originalRecordId, row]));
+  const sourceById = /* @__PURE__ */ new Map();
+  for (const source of input.source) {
+    const recordId = text(source.id);
+    if (recordId) sourceById.set(recordId, source);
+  }
   const seen = /* @__PURE__ */ new Set();
   const actions = [];
   let inserted = 0;
@@ -96,7 +101,7 @@ function planLegacySync(input) {
   let disappeared = 0;
   let reappeared = 0;
   let conflicts = 0;
-  for (const source of input.source) {
+  for (const source of sourceById.values()) {
     const planned = planSourceRow(source, input.catalogCodes);
     if (!planned) continue;
     const recordId = text(source.id);

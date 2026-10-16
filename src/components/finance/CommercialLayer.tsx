@@ -108,10 +108,10 @@ export function EventTotal({
     }
   const samePerson = ledger.review.filter((row) => row.kind === 'same-person-product').length
   return (
-    <section className="finance-panel event-total" data-testid="event-total" aria-label="Total del evento">
-      <h2>Total del evento</h2>
+    <section className="finance-panel event-total" data-testid="event-total" aria-label="Acumulado del evento, sin filtros">
+      <h2>Acumulado del evento, sin filtros</h2>
       <p className="muted">
-        Historia comercial conocida de {eventCode}. No usa el filtro de fecha ni el de producto.
+        Historia comercial conocida de {eventCode}.
         Un mismo id de pago cuenta una sola vez. Persona y producto iguales, sin ese id, siguen en el total y van a revisión.
       </p>
       <div className="kpi-grid">
