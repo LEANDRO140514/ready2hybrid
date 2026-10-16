@@ -1,12 +1,14 @@
 import { useState } from 'react'
 
 import { FinanceDashboard } from '../components/finance/FinanceDashboard'
+import { TreasuryProposal } from '../components/finance/TreasuryProposal'
 import { MarketingPage } from '../components/marketing/MarketingPage'
 import {
   HARNESS_FUNNEL,
   HARNESS_LEGACY,
   HARNESS_SNAPSHOT,
 } from '../sales-dashboard/harness-snapshot'
+import { buildSourceLedger } from '../sales-dashboard/source-ledger'
 import type { MarketingPayload } from '../sales-dashboard/marketing'
 
 const PREVIEW_NOW = new Date('2026-09-23T18:00:00.000Z')
@@ -77,7 +79,29 @@ const PREVIEW_MARKETING: MarketingPayload = {
 }
 
 export function DashboardPreviewPage() {
-  const [surface, setSurface] = useState<'finance' | 'marketing'>('finance')
+  const [surface, setSurface] = useState<'finance' | 'marketing' | 'treasury'>('finance')
+  const excludedSalesCents = buildSourceLedger({
+    orders: HARNESS_SNAPSHOT.orders.map((order) => ({
+      id: order.id,
+      state: order.state,
+      totalCents: order.totalCents,
+      email: order.buyerEmail,
+      productCode: order.lines[0]?.productCode ?? null,
+      approvedPaymentIds: order.payments
+        .filter((payment) => payment.normalizedState === 'APPROVED')
+        .map((payment) => payment.providerPaymentId),
+    })),
+    legacy: HARNESS_LEGACY.map((row) => ({
+      id: row.id,
+      commercialStatus: row.commercialStatus,
+      email: row.email,
+      productCode: row.categoryCode,
+      amountCents: row.amountCents,
+      paymentId: row.originalPaymentId ?? null,
+      missingSince: row.missingSince ?? null,
+    })),
+    manualOrderIds: new Set<string>(),
+  }).confirmedCents
   if (!import.meta.env.DEV) {
     return <p>Esta vista solo existe en el servidor local.</p>
   }
@@ -86,15 +110,20 @@ export function DashboardPreviewPage() {
       <p role="note" data-testid="preview-banner">
         Vista previa local. Todas las personas, fechas y montos de esta pantalla son de ejemplo.
         La sincronización con enforma no está publicada: esta lista no es la copia viva.
+        Tesorería es una propuesta: no se guarda y no vuelve a contar las ventas.
       </p>
       <div className="chip-row">
         <button type="button" className="chip" aria-pressed={surface === 'finance'} onClick={() => setSurface('finance')}>
           Ventas
         </button>
+        <button type="button" className="chip" aria-pressed={surface === 'treasury'} onClick={() => setSurface('treasury')}>
+          Tesorería
+        </button>
         <button type="button" className="chip" aria-pressed={surface === 'marketing'} onClick={() => setSurface('marketing')}>
           Marketing
         </button>
       </div>
+      {surface === 'treasury' ? <TreasuryProposal excludedSalesCents={excludedSalesCents} /> : null}
       {surface === 'finance' ? (
         <FinanceDashboard
           snapshot={HARNESS_SNAPSHOT}
@@ -106,9 +135,8 @@ export function DashboardPreviewPage() {
           role="OWNER"
           now={PREVIEW_NOW}
         />
-      ) : (
-        <MarketingPage example={PREVIEW_MARKETING} />
-      )}
+      ) : null}
+      {surface === 'marketing' ? <MarketingPage example={PREVIEW_MARKETING} /> : null}
     </div>
   )
 }
