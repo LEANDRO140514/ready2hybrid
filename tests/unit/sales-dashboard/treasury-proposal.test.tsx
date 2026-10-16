@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { TreasuryProposal } from '../../../src/components/finance/TreasuryProposal'
+import { formatMoney } from '../../../src/sales-dashboard/model'
 import { planTreasuryWrite, roleMayUseTreasury } from '../../../insforge/functions/_shared/treasury/write'
 import {
   movementsToCsv,
@@ -129,6 +130,21 @@ describe('treasury books', () => {
       notes: 'nota',
     }, 'robert@example.com')
     expect(planned).toMatchObject({ ok: false, code: 'POSTED_ONLY_CANCELS' })
+  })
+
+  it('keeps a scheduled expense out of cash until the payment is registered', async () => {
+    render(<TreasuryProposal />)
+    expect(screen.getByTestId('treasury-cash').textContent).toBe(formatMoney(500_000))
+    expect(screen.getByTestId('treasury-scheduled').textContent).toBe(formatMoney(300_000))
+    fireEvent.change(screen.getByLabelText('Forma de pago de Audio'), { target: { value: 'efectivo' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar pago' }))
+    expect((await screen.findByTestId('treasury-row')).textContent).toContain('Realizado')
+    expect(screen.getByTestId('treasury-cash').textContent).toBe(formatMoney(200_000))
+    expect(screen.getByTestId('treasury-scheduled').textContent).toBe(formatMoney(0))
+    expect(screen.getByTestId('treasury-row').textContent).toContain('Robert (ejemplo)')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(await screen.findByRole('cell', { name: 'Cancelado' })).toBeTruthy()
+    expect(screen.getByTestId('treasury-cash').textContent).toBe(formatMoney(500_000))
   })
 
   it('keeps MARKETING out of the page and the role gate', () => {

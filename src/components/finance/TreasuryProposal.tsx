@@ -33,9 +33,17 @@ const EXAMPLE: TreasuryBooks = {
 
 export function TreasuryProposal({
   role = 'FINANCE',
+  excludedSalesCents,
 }: {
   role?: string
   excludedSalesCents?: number
 }) {
-  return <TreasuryPage role={role} actor="Robert (ejemplo)" initial={EXAMPLE} />
+  return (
+    <TreasuryPage
+      role={role}
+      actor="Robert (ejemplo)"
+      initial={EXAMPLE}
+      excludedSalesCents={excludedSalesCents}
+    />
+  )
 }
