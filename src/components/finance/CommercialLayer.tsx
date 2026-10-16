@@ -3,6 +3,11 @@ import { useMemo, useState } from 'react'
 import type { OperationalRole } from '../../auth/types'
 import { buildSourceLedger } from '../../sales-dashboard/source-ledger'
 import {
+  countedSalesToCsv,
+  saleSourceLabel,
+  type SalesReport,
+} from '../../sales-dashboard/counted-sales'
+import {
   contactsToCsv,
   contactSearchMatch,
   currentFunnel,
@@ -22,6 +27,7 @@ import {
   registrationCountLabel,
   showDeclaredParticipants,
   buildContacts,
+  contactMatchesSalesFilters,
   normalizeEmail,
   CURRENT_SOURCE,
   type CommercialContact,
@@ -34,6 +40,7 @@ import {
 import {
   formatMoney,
   formatWhen,
+  matchesAttributes,
   productLabel,
   type SalesFilters,
   type SalesOrder,
@@ -104,7 +111,7 @@ export function EventTotal({
     <section className="finance-panel event-total" data-testid="event-total" aria-label="Total del evento">
       <h2>Total del evento</h2>
       <p className="muted">
-        Historia comercial conocida de {eventCode}. No cambia con Hoy, 7 días, 30 días ni el rango.
+        Historia comercial conocida de {eventCode}. No usa el filtro de fecha ni el de producto.
         Un mismo id de pago cuenta una sola vez. Persona y producto iguales, sin ese id, siguen en el total y van a revisión.
       </p>
       <div className="kpi-grid">
@@ -134,6 +141,7 @@ export function PeriodPanorama({
   now,
   source,
   manualSaleOrderIds = EMPTY_MANUAL_IDS,
+  report,
 }: {
   orders: SalesOrder[]
   legacy: LegacyRegistration[]
@@ -142,6 +150,7 @@ export function PeriodPanorama({
   now: Date
   source: CommercialSource
   manualSaleOrderIds?: ReadonlySet<string>
+  report: SalesReport
 }) {
   const period = periodCommercial(orders, legacy, eventCode, filters, now, source, manualSaleOrderIds)
   const totals = eventCommercialTotals(orders, legacy, eventCode)
@@ -154,16 +163,16 @@ export function PeriodPanorama({
         El ingreso neto conciliado, los costos y el bruto pendiente de conciliar siguen siendo solo de Ready2Hybrid.
       </p>
       <div className="kpi-grid kpi-secondary">
-        <Kpi testId="panorama-current-paid" label="Ventas actuales pagadas en el periodo" value={String(period.currentPaid)} />
-        <Kpi testId="panorama-legacy-paid" label="Inscripciones históricas pagadas en el periodo" value={String(period.legacyPaid)} />
-        <Kpi testId="panorama-known-paid" label="Inscripciones pagadas en el periodo" value={String(period.knownPaid)} />
+        <Kpi testId="panorama-current-paid" label="Ventas Ready2Hybrid en el filtro" value={String(report.readyCount + report.manualCount)} hint="Fecha de venta dentro del periodo. Incluye las resueltas a mano." />
+        <Kpi testId="panorama-legacy-paid" label="Inscripciones legacy en el filtro" value={String(report.legacyCount)} hint="Misma fecha de venta. Sin las que ya están en un pago de Ready2Hybrid." />
+        <Kpi testId="panorama-known-paid" label="Ventas contadas en el filtro" value={String(report.count)} />
         <Kpi testId="panorama-current-pending" label="Checkouts actuales pendientes" value={String(period.currentPending)} />
         <Kpi testId="panorama-legacy-pending" label="Registros históricos pendientes" value={String(period.legacyPending)} />
-        <Kpi testId="panorama-buyers" label="Compradores únicos" value={identityKnown ? String(totals.buyers) : '—'} hint="Contactos identificables. No depende del rango ni del conteo de registros." />
-        <Kpi testId="panorama-opportunities" label="Contactos sin convertir" value={identityKnown ? String(totals.opportunities) : '—'} hint={identityKnown ? 'Journeys comerciales, no registros repetidos' : 'Hace falta la lectura con identidad de contacto'} />
-        <Kpi testId="panorama-current-gross" label="Bruto actual del periodo" value={formatMoney(period.currentGrossCents)} />
-        <Kpi testId="panorama-legacy-gross" label="Bruto histórico reportado" value={formatMoney(period.legacyGrossCents)} />
-        <Kpi testId="panorama-known-gross" label="Bruto comercial conocido del periodo" value={formatMoney(period.knownGrossCents)} />
+        <Kpi testId="panorama-buyers" label="Compradores únicos" value={identityKnown ? String(totals.buyers) : '—'} hint="Del evento completo, una persona por correo. No cambia con el periodo." />
+        <Kpi testId="panorama-opportunities" label="Contactos sin convertir" value={identityKnown ? String(totals.opportunities) : '—'} hint={identityKnown ? 'Del evento completo. No es la cola de recuperación del periodo.' : 'Hace falta la lectura con identidad de contacto'} />
+        <Kpi testId="panorama-current-gross" label="Bruto Ready2Hybrid del filtro" value={formatMoney(report.readyCents + report.manualCents)} />
+        <Kpi testId="panorama-legacy-gross" label="Bruto legacy del filtro" value={formatMoney(report.legacyCents)} />
+        <Kpi testId="panorama-known-gross" label="Bruto contado del filtro" value={formatMoney(report.cents)} />
       </div>
     </div>
   )
@@ -235,7 +244,8 @@ export function CurrentOpportunities({
   now: Date
 }) {
   const period = periodCommercial(orders, legacy, eventCode, filters, now, 'current')
-  const recovery = recoverableOrders(period.currentPendingOrders, legacy, now)
+  const pending = period.currentPendingOrders.filter((order) => matchesAttributes(order, filters))
+  const recovery = recoverableOrders(pending, legacy, now)
   const expiredIds = new Set(recovery.expired.map((order) => order.id))
   const recoveryRows = [...recovery.open, ...recovery.expired]
   return (
@@ -432,14 +442,12 @@ function LegacyDetail({
           </dd>
           <dt>Monto</dt>
           <dd>{row.amountCents == null ? '—' : formatMoney(row.amountCents)}</dd>
-          <dt>Creado</dt>
+          <dt>Fecha de registro</dt>
           <dd>{formatWhen(row.originalCreatedAt)}</dd>
-          {paid ? (
-            <>
-              <dt>Confirmación histórica</dt>
-              <dd>{formatWhen(row.originalUpdatedAt)}</dd>
-            </>
-          ) : null}
+          <dt>Fecha de venta</dt>
+          <dd>{paid ? formatWhen(row.originalUpdatedAt) : 'Sin confirmación de pago'}</dd>
+          <dt>Fecha de importación</dt>
+          <dd>{formatWhen(row.importedAt ?? null)}</dd>
           {pair && row.teamName?.trim() ? (
             <>
               <dt>Equipo</dt>
@@ -487,20 +495,28 @@ export function CommercialDirectory({
   legacy,
   eventCode,
   role,
+  salesFilters,
+  now,
+  manualSaleOrderIds = EMPTY_MANUAL_IDS,
 }: {
   orders: SalesOrder[]
   legacy: LegacyRegistration[]
   eventCode: string
   role: OperationalRole | null
+  salesFilters?: SalesFilters
+  now?: Date
+  manualSaleOrderIds?: ReadonlySet<string>
 }) {
   const [filters, setFilters] = useState<DirectoryFilters>(EMPTY_DIRECTORY_FILTERS)
   const [page, setPage] = useState(0)
   const [openKey, setOpenKey] = useState<string | null>(null)
   const contacts = useMemo(
-    () => buildContacts(orders, legacy, eventCode),
-    [orders, legacy, eventCode],
+    () => buildContacts(orders, legacy, eventCode, manualSaleOrderIds),
+    [orders, legacy, eventCode, manualSaleOrderIds],
   )
-  const filtered = filterContacts(contacts, filters)
+  const filtered = filterContacts(contacts, filters).filter((contact) => (
+    salesFilters && now ? contactMatchesSalesFilters(contact, salesFilters, now) : true
+  ))
   const categories = [...new Set(contacts.flatMap((contact) => contact.categories).filter(Boolean))].sort()
   const partners = [...new Set(contacts.map((contact) => contact.partnerLabel).filter(Boolean))].sort()
   const pageSize = 8
@@ -568,7 +584,7 @@ export function CommercialDirectory({
             <span>{statusLabel(contact.status)}</span>
             <Interest contact={contact} query={filters.search} />
             <span>{registrationCountLabel(contact)}</span>
-            <span>{contact.paidCents ? formatMoney(contact.paidCents) : 'Sin pago confirmado'}</span>
+            <span>{contact.paidCents ? formatMoney(contact.paidCents) : contact.buyer ? 'Pago ya contado en Ready2Hybrid' : 'Sin pago confirmado'}</span>
             <span>{formatDay(contact.lastAt)}</span>
           </button>
         ))}
@@ -804,6 +820,131 @@ function Select({
         ))}
       </select>
     </label>
+  )
+}
+
+export function SalesReportPanel({ report }: { report: SalesReport }) {
+  const salesMax = Math.max(1, ...report.series.map((point) => point.sales))
+  const revenueMax = Math.max(1, ...report.series.map((point) => point.revenueCents))
+  function exportCsv() {
+    const blob = new Blob([countedSalesToCsv(report.sales)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'ventas-contadas.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <section className="finance-panel" data-testid="counted-sales">
+      <div className="panel-title">
+        <h2>Ventas contadas</h2>
+        <button type="button" onClick={exportCsv} data-testid="export-counted-csv">Exportar CSV</button>
+      </div>
+      <p className="muted">
+        El periodo y el producto recortan estas cifras, la gráfica y el CSV.
+        Fecha de venta: pago aprobado en Ready2Hybrid, o confirmación histórica en legacy.
+        Fecha de registro: creación de la orden o del registro. Fecha de importación: entrada de la copia legacy.
+        Esa importación no mueve el periodo. Community Partner solo existe en Ready2Hybrid; con ese filtro, legacy no entra.
+      </p>
+      {report.error ? <p role="alert">{report.error}</p> : null}
+      {report.series.length === 0 ? (
+        <p className="muted">Sin ventas contadas en el filtro.</p>
+      ) : (
+        <div className="day-charts">
+          <div>
+            <h3>Ventas por día</h3>
+            <p className="muted">Azul Ready2Hybrid, rosa legacy, amarillo resuelta a mano.</p>
+            <div className="bars" data-testid="sales-series">
+              {report.series.map((point) => (
+                <div key={point.day} className="bar-col">
+                  <div className="bar-stack" title={`${point.day}: ${point.ready} Ready2Hybrid, ${point.legacy} legacy, ${point.manual} manuales`}>
+                    <div className="bar-part ready" style={{ height: Math.round((point.ready / salesMax) * 120) }} />
+                    <div className="bar-part legacy" style={{ height: Math.round((point.legacy / salesMax) * 120) }} />
+                    <div className="bar-part manual" style={{ height: Math.round((point.manual / salesMax) * 120) }} />
+                  </div>
+                  <span>{point.sales}</span>
+                  <span>{point.day.slice(5)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3>Ingresos por día</h3>
+            <p className="muted">MXN, misma regla de cruce</p>
+            <div className="bars" data-testid="revenue-series">
+              {report.series.map((point) => (
+                <div key={point.day} className="bar-col">
+                  <div
+                    className="bar bar-money"
+                    style={{ height: Math.max(4, Math.round((point.revenueCents / revenueMax) * 120)) }}
+                    title={`${point.day}: ${formatMoney(point.revenueCents)}`}
+                  />
+                  <span>{formatMoney(point.revenueCents)}</span>
+                  <span>{point.day.slice(5)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="table-wrap">
+        <table>
+          <caption>Por producto, dentro del filtro</caption>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Ready2Hybrid</th>
+              <th>Legacy</th>
+              <th>Manual</th>
+              <th>Contadas</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.products.map((row) => (
+              <tr key={row.productCode}>
+                <td>{row.productName}</td>
+                <td>{row.ready}</td>
+                <td>{row.legacy}</td>
+                <td>{row.manual}</td>
+                <td>{row.sales}</td>
+                <td>{formatMoney(row.revenueCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <caption>Cada venta contada</caption>
+          <thead>
+            <tr>
+              <th>Fuente</th>
+              <th>Fecha de venta</th>
+              <th>Fecha de registro</th>
+              <th>Fecha de importación</th>
+              <th>Producto</th>
+              <th>Monto</th>
+              <th>Community Partner</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.sales.map((sale) => (
+              <tr key={`${sale.source}-${sale.id}`}>
+                <td>{saleSourceLabel(sale.source)}</td>
+                <td>{formatWhen(sale.saleAt)}</td>
+                <td>{formatWhen(sale.registeredAt)}</td>
+                <td>{sale.source === 'legacy' ? formatWhen(sale.importedAt) : '—'}</td>
+                <td>{sale.productName}</td>
+                <td>{formatMoney(sale.amountCents)}</td>
+                <td>{sale.partnerName ?? 'Sin atribución'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 

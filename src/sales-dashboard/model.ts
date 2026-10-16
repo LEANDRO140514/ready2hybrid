@@ -355,7 +355,7 @@ function inRange(iso: string | null, range: DateRange): boolean {
   return ms >= range.startMs && ms < range.endMs
 }
 
-function matchesAttributes(order: SalesOrder, filters: SalesFilters): boolean {
+export function matchesAttributes(order: SalesOrder, filters: SalesFilters): boolean {
   if (filters.orderState && order.state !== filters.orderState) return false
   if (filters.productCode) {
     const hit = order.lines.some((line) => line.productCode === filters.productCode)

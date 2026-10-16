@@ -326,6 +326,7 @@ export const HARNESS_LEGACY: LegacyRegistration[] = [
     categoryName: 'Dobles Hombres',
     amountCents: 250000,
     currency: 'MXN',
+    importedAt: '2026-09-26T18:00:00.000Z',
     teamName: 'FF Endurance',
     participants: 'Luis Peña, Andrés Col',
     hasPaymentId: true,

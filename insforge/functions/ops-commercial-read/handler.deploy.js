@@ -58,6 +58,7 @@ function assembleMarketingContacts(source) {
     ordered.add(contactId);
     const status = orderStatus(order.state);
     const total = typeof order.total_cents === "number" ? order.total_cents : 0;
+    const orderId = text(order.id);
     atoms.push({
       keyHint: `contact:${contactId}`,
       email: normalizeContactEmail(buyer.email),
@@ -68,6 +69,10 @@ function assembleMarketingContacts(source) {
       category: (categoriesByOrder.get(String(order.id)) ?? []).join(" \xB7 ") || null,
       paidCents: status === "PAID" ? total : 0,
       at: text(order.updated_at) ?? text(order.created_at),
+      saleAt: status === "PAID" ? source.saleAtByOrderId?.get(orderId ?? "") ?? text(order.updated_at) : null,
+      registeredAt: text(order.created_at),
+      importedAt: null,
+      paymentCountedOnCurrent: false,
       consent: text(buyer.contact_consent_at) != null
     });
   }
@@ -83,6 +88,10 @@ function assembleMarketingContacts(source) {
       category: null,
       paidCents: 0,
       at: text(buyer.created_at),
+      saleAt: null,
+      registeredAt: text(buyer.created_at),
+      importedAt: null,
+      paymentCountedOnCurrent: false,
       consent: text(buyer.contact_consent_at) != null
     });
   }
@@ -101,7 +110,10 @@ function assembleMarketingContacts(source) {
       category: text(row.category_name_raw) ?? text(row.category_code_raw),
       paidCents: status === "PAID" && !countedOnCurrent ? amount : 0,
       at: text(row.original_updated_at) ?? text(row.original_created_at),
-      // The legacy source never stored marketing consent.
+      saleAt: status === "PAID" ? text(row.original_updated_at) : null,
+      registeredAt: text(row.original_created_at),
+      importedAt: text(row.imported_at),
+      paymentCountedOnCurrent: countedOnCurrent,
       consent: false
     });
   }
@@ -121,6 +133,9 @@ function assembleMarketingContacts(source) {
     const hasLegacy = list.some((atom) => atom.legacy);
     const hasCurrent = list.some((atom) => !atom.legacy);
     const paid = list.reduce((sum, atom) => sum + atom.paidCents, 0);
+    const datedSale = list.map((atom) => atom.saleAt).filter((value) => value != null).sort();
+    const datedRegister = list.map((atom) => atom.registeredAt).filter((value) => value != null).sort();
+    const datedImport = list.map((atom) => atom.importedAt).filter((value) => value != null).sort();
     return {
       key,
       name: list.find((atom) => atom.name)?.name ?? null,
@@ -132,6 +147,10 @@ function assembleMarketingContacts(source) {
       paidCents: paid,
       firstAt: dated[0] ?? null,
       lastAt: dated[dated.length - 1] ?? null,
+      saleAt: datedSale[datedSale.length - 1] ?? null,
+      registeredAt: datedRegister[0] ?? null,
+      importedAt: datedImport[datedImport.length - 1] ?? null,
+      paymentCountedOnCurrent: list.some((atom) => atom.paymentCountedOnCurrent),
       consent: list.some((atom) => atom.consent) ? "recorded" : "not-recorded"
     };
   });
@@ -253,9 +272,11 @@ async function marketingContacts(admin, eventCode, headers) {
       readAll(() => admin.database.from("order_items").select("order_id,product_code")),
       readAll(() => admin.database.from("products").select("code,name")),
       readAll(() => admin.database.from("legacy_registrations").select(
-        "id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,original_payment_id"
+        "id,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,original_payment_id"
       ).eq("event_code", eventCode)),
-      readAll(() => admin.database.from("payments").select("provider_payment_id,normalized_state")),
+      readAll(() => admin.database.from("payments").select(
+        "provider_payment_id,normalized_state,order_id,provider_updated_at"
+      )),
       readAll(() => admin.database.from("marketing_events").select("visitor_id,event_type").eq("event_code", eventCode))
     ]);
     const visitors = /* @__PURE__ */ new Set();
@@ -266,12 +287,27 @@ async function marketingContacts(admin, eventCode, headers) {
       if (row.event_type === "LEAD_IDENTIFIED") identified.add(row.visitor_id);
     }
     const approvedPaymentIds = /* @__PURE__ */ new Set();
+    const saleAtByOrderId = /* @__PURE__ */ new Map();
     for (const row of payments) {
       if (row.normalized_state !== "APPROVED" || typeof row.provider_payment_id !== "string") continue;
       const id = row.provider_payment_id.trim();
       if (id) approvedPaymentIds.add(id);
+      if (typeof row.order_id === "string" && typeof row.provider_updated_at === "string") {
+        const previous = saleAtByOrderId.get(row.order_id);
+        if (!previous || Date.parse(row.provider_updated_at) > Date.parse(previous)) {
+          saleAtByOrderId.set(row.order_id, row.provider_updated_at);
+        }
+      }
     }
-    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy, approvedPaymentIds });
+    const contacts = assembleMarketingContacts({
+      buyers,
+      orders,
+      items,
+      products,
+      legacy,
+      approvedPaymentIds,
+      saleAtByOrderId
+    });
     return json(200, {
       ok: true,
       eventCode,
@@ -339,7 +375,7 @@ async function handler(req) {
   if (classified.view !== "aggregates" && !roleMayReadCommercialDirectory(role)) {
     return json(403, { ok: false, error: "FORBIDDEN" }, gate.headers);
   }
-  const legacyColumns = classified.view === "aggregates" ? "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since" : "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since";
+  const legacyColumns = classified.view === "aggregates" ? "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since" : "id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since";
   const [legacyResult, funnelResult, syncResult, manualResult, overrideResult] = await Promise.all([
     admin.database.from("legacy_registrations").select(legacyColumns).eq("event_code", eventCode),
     admin.database.from("marketing_events").select("event_code,visitor_id,event_type,occurred_at").eq("event_code", eventCode),
@@ -359,6 +395,7 @@ async function handler(req) {
       commercialStatus: record.commercial_status,
       originalCreatedAt: record.original_created_at,
       originalUpdatedAt: record.original_updated_at,
+      importedAt: record.imported_at ?? null,
       buyerContactId: classified.view === "aggregates" ? null : record.buyer_contact_id,
       name: classified.view === "aggregates" ? null : record.original_name,
       email: typeof record.original_email === "string" ? record.original_email : null,

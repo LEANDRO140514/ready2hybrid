@@ -16,6 +16,10 @@ export type MarketingContact = {
   paidCents: number
   firstAt: string | null
   lastAt: string | null
+  saleAt: string | null
+  registeredAt: string | null
+  importedAt: string | null
+  paymentCountedOnCurrent: boolean
   consent: 'recorded' | 'not-recorded'
 }
 
@@ -27,6 +31,8 @@ export type ContactSources = {
   legacy: Record<string, unknown>[]
   /** Approved Mercado Pago ids already counted on a current order. */
   approvedPaymentIds?: ReadonlySet<string>
+  /** Approved-payment time by order id. Falls back to the order update time. */
+  saleAtByOrderId?: ReadonlyMap<string, string>
 }
 
 const RANK: Record<MarketingContactStatus, number> = { PAID: 3, PENDING: 2, LEAD: 1 }
@@ -49,6 +55,10 @@ type Atom = {
   category: string | null
   paidCents: number
   at: string | null
+  saleAt: string | null
+  registeredAt: string | null
+  importedAt: string | null
+  paymentCountedOnCurrent: boolean
   consent: boolean
 }
 
@@ -106,6 +116,7 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     ordered.add(contactId!)
     const status = orderStatus(order.state)
     const total = typeof order.total_cents === 'number' ? order.total_cents : 0
+    const orderId = text(order.id)
     atoms.push({
       keyHint: `contact:${contactId}`,
       email: normalizeContactEmail(buyer.email),
@@ -116,6 +127,10 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       category: (categoriesByOrder.get(String(order.id)) ?? []).join(' · ') || null,
       paidCents: status === 'PAID' ? total : 0,
       at: text(order.updated_at) ?? text(order.created_at),
+      saleAt: status === 'PAID' ? source.saleAtByOrderId?.get(orderId ?? '') ?? text(order.updated_at) : null,
+      registeredAt: text(order.created_at),
+      importedAt: null,
+      paymentCountedOnCurrent: false,
       consent: text(buyer.contact_consent_at) != null,
     })
   }
@@ -132,6 +147,10 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       category: null,
       paidCents: 0,
       at: text(buyer.created_at),
+      saleAt: null,
+      registeredAt: text(buyer.created_at),
+      importedAt: null,
+      paymentCountedOnCurrent: false,
       consent: text(buyer.contact_consent_at) != null,
     })
   }
@@ -150,7 +169,10 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       category: text(row.category_name_raw) ?? text(row.category_code_raw),
       paidCents: status === 'PAID' && !countedOnCurrent ? amount : 0,
       at: text(row.original_updated_at) ?? text(row.original_created_at),
-      // The legacy source never stored marketing consent.
+      saleAt: status === 'PAID' ? text(row.original_updated_at) : null,
+      registeredAt: text(row.original_created_at),
+      importedAt: text(row.imported_at),
+      paymentCountedOnCurrent: countedOnCurrent,
       consent: false,
     })
   }
@@ -176,6 +198,9 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     const hasCurrent = list.some((atom) => !atom.legacy)
     // Only PAID atoms carry an amount, so pending duplicates add nothing.
     const paid = list.reduce((sum, atom) => sum + atom.paidCents, 0)
+    const datedSale = list.map((atom) => atom.saleAt).filter((value): value is string => value != null).sort()
+    const datedRegister = list.map((atom) => atom.registeredAt).filter((value): value is string => value != null).sort()
+    const datedImport = list.map((atom) => atom.importedAt).filter((value): value is string => value != null).sort()
     return {
       key,
       name: list.find((atom) => atom.name)?.name ?? null,
@@ -187,6 +212,10 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       paidCents: paid,
       firstAt: dated[0] ?? null,
       lastAt: dated[dated.length - 1] ?? null,
+      saleAt: datedSale[datedSale.length - 1] ?? null,
+      registeredAt: datedRegister[0] ?? null,
+      importedAt: datedImport[datedImport.length - 1] ?? null,
+      paymentCountedOnCurrent: list.some((atom) => atom.paymentCountedOnCurrent),
       consent: list.some((atom) => atom.consent) ? 'recorded' : 'not-recorded',
     }
   })

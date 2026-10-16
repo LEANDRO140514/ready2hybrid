@@ -63,9 +63,11 @@ async function marketingContacts(
       readAll(() => admin.database.from('order_items').select('order_id,product_code')),
       readAll(() => admin.database.from('products').select('code,name')),
       readAll(() => admin.database.from('legacy_registrations').select(
-        'id,original_status,commercial_status,original_created_at,original_updated_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,original_payment_id',
+        'id,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_name,original_email,original_phone,category_code_raw,category_name_raw,amount_cents,original_payment_id',
       ).eq('event_code', eventCode)),
-      readAll(() => admin.database.from('payments').select('provider_payment_id,normalized_state')),
+      readAll(() => admin.database.from('payments').select(
+        'provider_payment_id,normalized_state,order_id,provider_updated_at',
+      )),
       readAll(() => admin.database.from('marketing_events').select('visitor_id,event_type')
         .eq('event_code', eventCode)),
     ])
@@ -77,12 +79,21 @@ async function marketingContacts(
       if (row.event_type === 'LEAD_IDENTIFIED') identified.add(row.visitor_id)
     }
     const approvedPaymentIds = new Set<string>()
+    const saleAtByOrderId = new Map<string, string>()
     for (const row of payments) {
       if (row.normalized_state !== 'APPROVED' || typeof row.provider_payment_id !== 'string') continue
       const id = row.provider_payment_id.trim()
       if (id) approvedPaymentIds.add(id)
+      if (typeof row.order_id === 'string' && typeof row.provider_updated_at === 'string') {
+        const previous = saleAtByOrderId.get(row.order_id)
+        if (!previous || Date.parse(row.provider_updated_at) > Date.parse(previous)) {
+          saleAtByOrderId.set(row.order_id, row.provider_updated_at)
+        }
+      }
     }
-    const contacts = assembleMarketingContacts({ buyers, orders, items, products, legacy, approvedPaymentIds })
+    const contacts = assembleMarketingContacts({
+      buyers, orders, items, products, legacy, approvedPaymentIds, saleAtByOrderId,
+    })
     return json(200, {
       ok: true,
       eventCode,
@@ -160,8 +171,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const legacyColumns = classified.view === 'aggregates'
-    ? 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since'
-    : 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since'
+    ? 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since'
+    : 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since'
   const [legacyResult, funnelResult, syncResult, manualResult, overrideResult] = await Promise.all([
     admin.database
       .from('legacy_registrations')
@@ -195,6 +206,7 @@ export default async function handler(req: Request): Promise<Response> {
       commercialStatus: record.commercial_status,
       originalCreatedAt: record.original_created_at,
       originalUpdatedAt: record.original_updated_at,
+      importedAt: record.imported_at ?? null,
       buyerContactId: classified.view === 'aggregates' ? null : record.buyer_contact_id,
       name: classified.view === 'aggregates' ? null : record.original_name,
       email: typeof record.original_email === 'string' ? record.original_email : null,

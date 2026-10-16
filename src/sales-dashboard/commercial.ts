@@ -46,6 +46,7 @@ export type LegacyRegistration = {
   hasPaymentId?: boolean
   originalPaymentId?: string | null
   missingSince?: string | null
+  importedAt?: string | null
 }
 
 export type FunnelEvent = {
@@ -92,6 +93,7 @@ export type ContactRegistration = {
   participants: string | null
   notes: string | null
   hasPaymentId: boolean
+  paymentCountedOnCurrent?: boolean
 }
 
 export type SearchField = 'name' | 'email' | 'phone' | 'category' | 'team'
@@ -112,6 +114,7 @@ export type CommercialContact = {
   teamNames: string[]
   productCode: string | null
   partnerLabel: string
+  partnerCode: string | null
   consent: 'recorded' | 'not-recorded'
   firstAt: string | null
   lastAt: string | null
@@ -159,6 +162,7 @@ type Atom = {
   productCode: string | null
   amountCents: number
   partner: string
+  partnerCode: string | null
   consent: boolean
   firstTouch: string | null
   lastTouch: string | null
@@ -245,6 +249,7 @@ function atomsFromOrders(orders: SalesOrder[]): Atom[] {
       productCode: code,
       amountCents: paid ? order.totalCents : 0,
       partner,
+      partnerCode: order.affiliateCode,
       consent: order.consentRecorded === true,
       firstTouch: touchLabel(order.firstTouch),
       lastTouch: touchLabel(order.lastTouch),
@@ -271,7 +276,11 @@ function atomsFromOrders(orders: SalesOrder[]): Atom[] {
   })
 }
 
-function atomsFromLegacy(rows: LegacyRegistration[], eventCode: string): Atom[] {
+function atomsFromLegacy(
+  rows: LegacyRegistration[],
+  eventCode: string,
+  approvedPaymentIds: ReadonlySet<string>,
+): Atom[] {
   return rows
     .filter((row) => row.eventCode === eventCode)
     .flatMap((row) => {
@@ -302,6 +311,8 @@ function atomsFromLegacy(rows: LegacyRegistration[], eventCode: string): Atom[] 
       const email = normalizeEmail(row.email)
       const phone = row.phone?.trim() || null
       const category = row.categoryName || row.categoryCode || 'Sin categoría'
+      const paymentId = row.originalPaymentId?.trim() ?? ''
+      const countedOnCurrent = paid && paymentId !== '' && approvedPaymentIds.has(paymentId)
       return [{
         keyHint: row.id,
         contactId: row.buyerContactId,
@@ -313,8 +324,9 @@ function atomsFromLegacy(rows: LegacyRegistration[], eventCode: string): Atom[] 
         endAt: confirmed ?? created,
         category,
         productCode: row.categoryCode,
-        amountCents: paid ? row.amountCents ?? 0 : 0,
+        amountCents: paid && !countedOnCurrent ? row.amountCents ?? 0 : 0,
         partner: HISTORICAL_ATTRIBUTION,
+        partnerCode: null,
         consent: false,
         firstTouch: null,
         lastTouch: null,
@@ -329,13 +341,14 @@ function atomsFromLegacy(rows: LegacyRegistration[], eventCode: string): Atom[] 
           category,
           categoryCode: row.categoryCode,
           status,
-          amountCents: row.amountCents ?? 0,
+          amountCents: countedOnCurrent ? 0 : row.amountCents ?? 0,
           at: created,
           confirmedAt: paid ? confirmed : null,
           teamName: row.teamName?.trim() || null,
           participants: row.participants?.trim() || null,
           notes: row.notes?.trim() || null,
           hasPaymentId: row.hasPaymentId === true,
+          paymentCountedOnCurrent: countedOnCurrent,
         },
       }]
     })
@@ -356,8 +369,18 @@ export function buildContacts(
   orders: SalesOrder[],
   legacy: LegacyRegistration[],
   eventCode: string,
+  manualOrderIds: ReadonlySet<string> = new Set(),
 ): CommercialContact[] {
-  const atoms = [...atomsFromOrders(orders), ...atomsFromLegacy(legacy, eventCode)]
+  const approvedPaymentIds = new Set<string>()
+  for (const order of orders) {
+    if (order.state !== 'PAID' && !manualOrderIds.has(order.id)) continue
+    for (const payment of order.payments) {
+      if (payment.normalizedState !== 'APPROVED') continue
+      const id = payment.providerPaymentId.trim()
+      if (id) approvedPaymentIds.add(id)
+    }
+  }
+  const atoms = [...atomsFromOrders(orders), ...atomsFromLegacy(legacy, eventCode, approvedPaymentIds)]
   const emailOwners = new Map<string, Set<string>>()
   for (const atom of atoms) {
     if (!atom.email || !atom.contactId) continue
@@ -407,6 +430,7 @@ export function buildContacts(
       teamNames: distinctText(registrations.map((registration) => registration.teamName)),
       productCode: list.find((atom) => atom.productCode)?.productCode ?? null,
       partnerLabel: current?.partner ?? HISTORICAL_ATTRIBUTION,
+      partnerCode: current?.partnerCode ?? null,
       consent: list.some((atom) => atom.consent) ? 'recorded' : 'not-recorded',
       firstAt: dated[0] ?? null,
       lastAt: dated[dated.length - 1] ?? null,
@@ -725,6 +749,28 @@ export function legacyFunnel(
         inWindow(row.originalUpdatedAt, range.startMs, range.endMs),
     ).length,
   }
+}
+
+export function contactMatchesSalesFilters(
+  contact: CommercialContact,
+  filters: SalesFilters,
+  now: Date,
+): boolean {
+  const range = rangeForFilters(filters, now)
+  if ('error' in range) return false
+  if (filters.affiliate === 'DIRECT') {
+    if (contact.partnerCode || contact.currentRecordCount === 0) return false
+  } else if (filters.affiliate && contact.partnerCode !== filters.affiliate) {
+    return false
+  }
+  const registrations = contact.registrations.filter((registration) => (
+    !filters.productCode || registration.categoryCode === filters.productCode
+  ))
+  if (filters.productCode && registrations.length === 0) return false
+  return registrations.some((registration) => {
+    const paid = registration.status === 'CURRENT_PAID' || registration.status === 'LEGACY_PAID'
+    return inWindow(paid ? registration.confirmedAt ?? registration.at : registration.at, range.startMs, range.endMs)
+  })
 }
 
 export function filterContacts(contacts: CommercialContact[], filters: DirectoryFilters): CommercialContact[] {

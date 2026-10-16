@@ -305,6 +305,7 @@ function parseLegacy(value: unknown): LegacyRegistration[] {
     hasPaymentId: row.hasPaymentId === true || (typeof row.originalPaymentId === 'string' && row.originalPaymentId.trim() !== ''),
     originalPaymentId: nullableString(row.originalPaymentId),
     missingSince: nullableString(row.missingSince),
+    importedAt: nullableString(row.importedAt),
   }]
 }
 

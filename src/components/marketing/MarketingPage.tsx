@@ -98,8 +98,8 @@ export function MarketingPage() {
       </p>
       <p className="muted" data-testid="marketing-visitors">
         {payload.visitors} visitantes en la landing. {anonymous} no dejaron datos de contacto y no pueden exportarse
-        como lista; para ellos usa las audiencias del píxel. El consentimiento solo se registra en las órdenes
-        nuevas: el histórico no lo tiene.
+        como lista. Quien compró es PAID; quien no, es pendiente o dejó sus datos. La fecha de venta filtra a quien
+        compró. Quien no compró se filtra por la fecha de registro. Legacy no tiene Community Partner ni consentimiento.
       </p>
       <div className="filter-grid">
         <label>
@@ -126,6 +126,22 @@ export function MarketingPage() {
           </select>
         </label>
         <label>
+          Producto
+          <input
+            value={filters.product}
+            placeholder="Categoría o producto"
+            onChange={(event) => patch({ product: event.target.value })}
+          />
+        </label>
+        <label>
+          Venta desde
+          <input type="date" value={filters.saleFrom} onChange={(event) => patch({ saleFrom: event.target.value })} />
+        </label>
+        <label>
+          Venta hasta
+          <input type="date" value={filters.saleTo} onChange={(event) => patch({ saleTo: event.target.value })} />
+        </label>
+        <label>
           Buscar
           <input
             value={filters.search}
@@ -148,7 +164,9 @@ export function MarketingPage() {
               <th>Estado</th>
               <th>Categoría</th>
               <th>Pagado</th>
-              <th>Última actividad</th>
+              <th>Fecha de venta</th>
+              <th>Fecha de registro</th>
+              <th>Fecha de importación</th>
               <th>Consentimiento</th>
             </tr>
           </thead>
@@ -160,10 +178,12 @@ export function MarketingPage() {
                   <br />
                   <span className="muted">{[contact.email, contact.phone].filter(Boolean).join(' · ')}</span>
                 </td>
-                <td>{MARKETING_STATUS_LABEL[contact.status]}</td>
+                <td>{MARKETING_STATUS_LABEL[contact.status]}{contact.paymentCountedOnCurrent ? ' · pago ya contado' : ''}</td>
                 <td>{contact.categories.join(' · ') || '—'}</td>
                 <td>{contact.paidCents ? formatMoney(contact.paidCents) : '—'}</td>
-                <td>{formatDay(contact.lastAt)}</td>
+                <td>{formatDay(contact.saleAt)}</td>
+                <td>{formatDay(contact.registeredAt)}</td>
+                <td>{formatDay(contact.importedAt)}</td>
                 <td>{contact.consent === 'recorded' ? 'Registrado' : 'No registrado'}</td>
               </tr>
             ))}

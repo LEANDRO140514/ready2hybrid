@@ -89,10 +89,38 @@ describe('assembleMarketingContacts', () => {
     expect(byEmail(contacts, 'marta@example.com')?.consent).toBe('not-recorded')
   })
 
+  it('does not add the amount of a legacy row whose payment is already counted', () => {
+    const rows = assembleMarketingContacts({
+      ...sources,
+      approvedPaymentIds: new Set(['mp-shared']),
+      legacy: [
+        ...sources.legacy,
+        {
+          id: 'l-shared',
+          original_status: 'paid',
+          commercial_status: 'LEGACY_PAID',
+          original_created_at: '2026-09-01T00:00:00Z',
+          original_updated_at: '2026-09-02T00:00:00Z',
+          original_name: 'Otra Persona',
+          original_email: 'otra@example.com',
+          original_phone: null,
+          category_code_raw: 'IND-H',
+          category_name_raw: 'Individual Hombre',
+          amount_cents: 150000,
+          original_payment_id: 'mp-shared',
+        },
+      ],
+    })
+    const otra = byEmail(rows, 'otra@example.com')
+    expect(otra?.status).toBe('PAID')
+    expect(otra?.paidCents).toBe(0)
+    expect(otra?.paymentCountedOnCurrent).toBe(true)
+  })
+
   it('exposes no payment, fee, order id, or note fields', () => {
     const keys = new Set(contacts.flatMap((contact) => Object.keys(contact)))
     expect([...keys].sort()).toEqual([
-      'categories', 'consent', 'email', 'firstAt', 'key', 'lastAt', 'name', 'origin', 'paidCents', 'phone', 'status',
+      'categories', 'consent', 'email', 'firstAt', 'importedAt', 'key', 'lastAt', 'name', 'origin', 'paidCents', 'paymentCountedOnCurrent', 'phone', 'registeredAt', 'saleAt', 'status',
     ])
   })
 })
@@ -177,7 +205,7 @@ describe('marketing CSV and filters', () => {
   it('exports every contact with its status and consent', () => {
     const csv = marketingContactsToCsv(contacts)
     const lines = csv.split('\n')
-    expect(lines[0]).toBe('name,email,phone,status,categories,paid_amount_mxn,first_activity,last_activity,origin,consent')
+    expect(lines[0]).toBe('name,email,phone,status,categories,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent')
     expect(lines).toHaveLength(contacts.length + 1)
     expect(csv).toContain('pedro@example.com')
     expect(csv).toContain('PENDING')
@@ -197,6 +225,10 @@ describe('marketing CSV and filters', () => {
         paidCents: 0,
         firstAt: null,
         lastAt: null,
+        saleAt: null,
+        registeredAt: null,
+        importedAt: null,
+        paymentCountedOnCurrent: false,
         consent: 'not-recorded',
       },
     ])

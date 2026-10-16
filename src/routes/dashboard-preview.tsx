@@ -14,10 +14,7 @@ export function DashboardPreviewPage() {
   return (
     <div>
       <p role="note" data-testid="preview-banner">
-        Vista previa local. Los nombres de esta pantalla son de ejemplo.
-        Las cifras reales, leídas el 15 de octubre de 2026 y no conectadas aquí, fueron:
-        15 ventas Ready2Hybrid por $30,550; 30 inscripciones históricas pagadas por $59,900;
-        ningún id de pago compartido; 44 compradores; 52 reservas vencidas.
+        Vista previa local. Todas las personas, fechas y montos de esta pantalla son de ejemplo.
       </p>
       <FinanceDashboard
         snapshot={HARNESS_SNAPSHOT}

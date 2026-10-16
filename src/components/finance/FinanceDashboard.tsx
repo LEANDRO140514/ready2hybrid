@@ -8,7 +8,9 @@ import {
   FunnelBlock,
   HistoricalSales,
   PeriodPanorama,
+  SalesReportPanel,
 } from './CommercialLayer'
+import { buildSalesReport } from '../../sales-dashboard/counted-sales'
 import { splitAttention } from '../../sales-dashboard/source-ledger'
 import {
   ACTIVE_EVENT_CODE,
@@ -96,6 +98,19 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
     () => new Set(commercial?.manualSaleOrderIds ?? []),
     [commercial?.manualSaleOrderIds],
   )
+  const salesReport = useMemo(
+    () => buildSalesReport({
+      orders: snapshot.orders,
+      legacy,
+      eventCode,
+      filters,
+      now: clock,
+      source,
+      manualOrderIds: manualSaleOrderIds,
+      overrides: commercial?.overrides,
+    }),
+    [snapshot.orders, legacy, eventCode, filters, clock, source, manualSaleOrderIds, commercial?.overrides],
+  )
   const attention = useMemo(
     () => splitAttention(view.anomalies, manualSaleOrderIds),
     [view.anomalies, manualSaleOrderIds],
@@ -134,14 +149,12 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
     URL.revokeObjectURL(url)
   }
 
-  const productOptions = uniqueLines(snapshot.orders)
+  const productOptions = uniqueLines(snapshot.orders, legacy)
   const providerOptions = uniqueProviders(snapshot.orders)
   const affiliateOptions = uniqueAffiliates(snapshot.orders)
   const pendingOrders = view.table.filter(
     (order) => order.state === 'PAID' && order.adjustment == null,
   )
-  const salesMax = Math.max(1, ...view.series.map((point) => point.sales))
-  const revenueMax = Math.max(1, ...view.series.map((point) => point.revenueCents))
 
   return (
     <div className="finance">
@@ -149,7 +162,8 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
         <div>
           <p className="muted">
             Consulta ventas, oportunidades y lo que requiere atención.
-            Los filtros de abajo aplican a Ventas, Oportunidades y Atención. El total del evento no cambia con el periodo.
+            El periodo es la fecha de venta. El producto recorta cifras, gráficas, tablas y CSV.
+            El total del evento no usa ese filtro. Community Partner solo aplica donde hay atribución.
           </p>
         </div>
         <p className="muted" data-testid="snapshot-time">
@@ -175,7 +189,11 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       />
 
       <section className="finance-filters" aria-label="Filtros">
-        <h2 data-testid="period-label">Periodo seleccionado</h2>
+        <h2 data-testid="period-label">Fecha de venta</h2>
+        <p className="muted">
+          Ready2Hybrid usa el momento del pago aprobado. Legacy usa la confirmación histórica.
+          La fecha de registro y la de importación se ven en cada fila y no cambian este periodo.
+        </p>
         <div className="chip-row" aria-label="Fuente">
           {(
             [
@@ -407,6 +425,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           now={clock}
           source={source}
           manualSaleOrderIds={manualSaleOrderIds}
+          report={salesReport}
         />
         <FunnelBlock
           orders={snapshot.orders}
@@ -554,6 +573,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
 
       {section === 'ventas' ? (
       <>
+      <SalesReportPanel report={salesReport} />
       <div className="chip-row" aria-label="Modo de ventas">
         <button type="button" className={salesMode === 'current' ? 'chip chip-on' : 'chip'} onClick={() => setSalesMode('current')}>Ventas actuales</button>
         {role === 'OWNER' ? (
@@ -567,116 +587,6 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       ) : null}
       {salesMode === 'current' ? (
       <>
-      <section className="finance-panel">
-        <h2>Reporte comercial</h2>
-        <p className="muted">
-          Ventas Ready2Hybrid pagadas dentro del filtro. El mismo periodo, producto y Community Partner recortan esta tabla, el CSV y la conciliación. Legacy se ve en Ventas históricas. El cruce por id de pago está en el resumen.
-        </p>
-        {view.series.length === 0 ? (
-          <p className="muted">Sin ventas aprobadas en el periodo.</p>
-        ) : (
-          <div className="day-charts">
-            <div>
-              <h3>Ventas por día</h3>
-              <p className="muted">Número de operaciones</p>
-              <div className="bars" data-testid="sales-series">
-                {view.series.map((point) => (
-                  <div key={point.day} className="bar-col">
-                    <div
-                      className="bar"
-                      style={{ height: Math.max(4, Math.round((point.sales / salesMax) * 120)) }}
-                      title={`${point.day}: ${point.sales} ventas`}
-                    />
-                    <span>{point.sales}</span>
-                    <span>{point.day.slice(5)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3>Ingresos por día</h3>
-              <p className="muted">MXN</p>
-              <div className="bars" data-testid="revenue-series">
-                {view.series.map((point) => (
-                  <div key={point.day} className="bar-col">
-                    <div
-                      className="bar bar-money"
-                      style={{ height: Math.max(4, Math.round((point.revenueCents / revenueMax) * 120)) }}
-                      title={`${point.day}: ${formatMoney(point.revenueCents)}`}
-                    />
-                    <span>{formatMoney(point.revenueCents)}</span>
-                    <span>{point.day.slice(5)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        {view.series.length > 0 ? (
-            <div className="table-wrap">
-              <table>
-                <caption>Acumulado del periodo, día America/Mérida</caption>
-                <thead>
-                  <tr>
-                    <th>Día</th>
-                    <th>Ventas</th>
-                    <th>Ingresos</th>
-                    <th>Ventas acumuladas</th>
-                    <th>Ingresos acumulados</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.series.map((point) => (
-                    <tr key={point.day}>
-                      <td>{point.day}</td>
-                      <td>{point.sales}</td>
-                      <td>{formatMoney(point.revenueCents)}</td>
-                      <td>{point.cumulativeSales}</td>
-                      <td>{formatMoney(point.cumulativeRevenueCents)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-        ) : null}
-      </section>
-
-      <section className="finance-panel">
-        <h2>Ventas por producto</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Categoría</th>
-                <th>Producto</th>
-                <th>Código</th>
-                <th>Bloque</th>
-                <th>Ventas</th>
-                <th>Ingresos</th>
-                <th>Participantes</th>
-                <th>% ventas</th>
-                <th>% ingresos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {view.products.map((row) => (
-                <tr key={row.productCode}>
-                  <td>{row.groupLabel}</td>
-                  <td>{row.productName}</td>
-                  <td>{row.productCode}</td>
-                  <td>{row.block}</td>
-                  <td>{row.sales}</td>
-                  <td>{formatMoney(row.revenueCents)}</td>
-                  <td>{row.participants}</td>
-                  <td>{percent(row.salesShare)}</td>
-                  <td>{percent(row.revenueShare)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <section className="finance-panel">
         <h2>Etapa comercial pública</h2>
         <p className="muted">
@@ -696,9 +606,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       <section className="finance-panel">
         <h2>Community Partners</h2>
         <p className="muted">
-          El neto del partner solo incluye ventas ya conciliadas. Una orden sin
-          fila no se trata como costo cero. La comisión del procesador no es una
-          comisión al partner.
+          El neto del partner solo incluye ventas Ready2Hybrid ya conciliadas. Legacy no tiene Community Partner y no entra en esta tabla.
         </p>
         <div className="table-wrap">
           <table>
@@ -789,9 +697,9 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
 
       <section className="finance-panel finance-orders">
         <div className="panel-title">
-          <h2>Órdenes</h2>
+          <h2>Órdenes Ready2Hybrid</h2>
           <button type="button" onClick={exportCsv} data-testid="export-csv">
-            Exportar CSV
+            Exportar órdenes
           </button>
         </div>
         <p className="muted">{view.table.length} órdenes en el filtro.</p>
@@ -884,7 +792,15 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
       ) : null}
 
       {section === 'base' && role === 'OWNER' ? (
-        <CommercialDirectory orders={snapshot.orders} legacy={legacy} eventCode={eventCode} role={role} />
+        <CommercialDirectory
+          orders={snapshot.orders}
+          legacy={legacy}
+          eventCode={eventCode}
+          role={role}
+          salesFilters={filters}
+          now={clock}
+          manualSaleOrderIds={manualSaleOrderIds}
+        />
       ) : null}
 
       {section === 'conciliacion' ? (
@@ -1333,14 +1249,14 @@ function shortId(id: string): string {
   return id.slice(0, 8)
 }
 
-function percent(value: number): string {
-  return `${Math.round(value * 1000) / 10}%`
-}
-
-function uniqueLines(orders: SalesOrder[]): { code: string; name: string }[] {
+function uniqueLines(orders: SalesOrder[], legacy: LegacyRegistration[]): { code: string; name: string }[] {
   const map = new Map<string, string>()
   for (const order of orders) {
     for (const line of order.lines) map.set(line.productCode, line.productName)
+  }
+  for (const row of legacy) {
+    if (!row.categoryCode || map.has(row.categoryCode)) continue
+    map.set(row.categoryCode, row.categoryName || row.categoryCode)
   }
   return [...map.entries()]
     .map(([code, name]) => ({ code, name }))

@@ -477,6 +477,30 @@ button:disabled {
   background: #0f766e;
 }
 
+.bar-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  width: 1.1rem;
+  height: 120px;
+}
+
+.bar-part {
+  width: 100%;
+}
+
+.bar-part.ready {
+  background: #38bdf8;
+}
+
+.bar-part.legacy {
+  background: #e9c7df;
+}
+
+.bar-part.manual {
+  background: #fde68a;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
