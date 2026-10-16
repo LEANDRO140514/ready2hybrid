@@ -110,7 +110,7 @@ export function DashboardPreviewPage() {
       <p role="note" data-testid="preview-banner">
         Vista previa local. Todas las personas, fechas y montos de esta pantalla son de ejemplo.
         La sincronización con enforma no está publicada: esta lista no es la copia viva.
-        Tesorería es una propuesta: no se guarda y no vuelve a contar las ventas.
+        La tesorería de esta vista es un ejemplo local: no se guarda. La ruta operativa es /ops/finance/treasury.
       </p>
       <div className="chip-row">
         <button type="button" className="chip" aria-pressed={surface === 'finance'} onClick={() => setSurface('finance')}>

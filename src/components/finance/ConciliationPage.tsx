@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { formatMoney } from '../../sales-dashboard/model'
+import { meridaFileStamp } from '../../treasury/books'
+import { netIncomeToCsv } from '../../sales-dashboard/net-income'
+import { formatMoney, type SalesOrder } from '../../sales-dashboard/model'
+import { useOptionalSalesPort } from '../../sales-dashboard/port'
 import {
   centsToPesosText,
   isBankReconcilable,
@@ -19,7 +22,9 @@ import {
 const defaultPort = createEdgeLegacyReconcilePort()
 
 export function ConciliationPage({ port = defaultPort }: { port?: LegacyReconcilePort }) {
+  const sales = useOptionalSalesPort()
   const [rows, setRows] = useState<LegacyReconcileRow[] | null>(null)
+  const [orders, setOrders] = useState<SalesOrder[]>([])
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'pending' | 'done'>('pending')
 
@@ -36,6 +41,31 @@ export function ConciliationPage({ port = defaultPort }: { port?: LegacyReconcil
     void load()
   }, [load])
 
+  useEffect(() => {
+    let cancelled = false
+    if (!sales) return
+    sales.loadSnapshot()
+      .then((snapshot) => {
+        if (!cancelled) setOrders(snapshot.orders)
+      })
+      .catch(() => {
+        if (!cancelled) setOrders([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sales])
+
+  function exportNet() {
+    const blob = new Blob([netIncomeToCsv(orders, rows ?? [], filter)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `hex2026_neto_${meridaFileStamp(new Date())}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   // Courtesy / staff rows (amount 0) are not bank-reconcilable and never show here.
   const reconcilable = useMemo(() => (rows ?? []).filter(isBankReconcilable), [rows])
   const pending = reconcilable.filter((row) => !row.reconciliation)
@@ -47,6 +77,9 @@ export function ConciliationPage({ port = defaultPort }: { port?: LegacyReconcil
   return (
     <div data-testid="conciliation-page">
       <h1>Conciliación bancaria</h1>
+      <button type="button" data-testid="export-net-income" onClick={exportNet}>
+        Exportar ingreso neto
+      </button>
 
       <section className="finance-panel" data-testid="lane-a">
         <h2>Carril A · Ventas nativas (Mercado Pago / Openpay)</h2>

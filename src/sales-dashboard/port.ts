@@ -67,6 +67,10 @@ export function useSalesPort(): SalesPort {
   return port
 }
 
+export function useOptionalSalesPort(): SalesPort | null {
+  return useContext(SalesPortContext)
+}
+
 function expectObject(value: unknown, field: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`La lectura de ventas no trae ${field}.`)

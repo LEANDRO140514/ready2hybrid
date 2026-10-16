@@ -71,7 +71,7 @@ describe('operational navigation', () => {
     )
     expect((await screen.findByTestId('session-role')).textContent).toContain('FINANCE')
     expect(screen.getByTestId('session-user').textContent).toContain('finance@example.com')
-    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación'])
+    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación', 'Tesorería'])
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByText(/shell operativo|fundación PWA|manifiesto|build:/i)).toBeNull()
     expect(await screen.findByRole('link', { name: 'Ir a ventas' })).toBeTruthy()
@@ -132,6 +132,7 @@ describe('operational navigation', () => {
       'Mesa',
       'Ventas',
       'Conciliación',
+      'Tesorería',
       'Community Partners',
       'Marketing',
     ])
@@ -192,7 +193,7 @@ describe('operational navigation', () => {
     expect(screen.getByTestId('lane-b')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Importar estado de cuenta' })).toHaveProperty('disabled', true)
     expect(screen.getByTestId('lane-a').textContent).toContain('Ventas → Conciliación')
-    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación'])
+    expect(linkNames()).toEqual(['Inicio', 'Ventas', 'Conciliación', 'Tesorería'])
     finance.unmount()
 
     render(

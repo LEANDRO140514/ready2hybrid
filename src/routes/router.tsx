@@ -11,6 +11,7 @@ import { DashboardPreviewPage } from './dashboard-preview'
 import {
   CheckinShellPage,
   ConciliationShellPage,
+  TreasuryShellPage,
   DeskShellPage,
   FinanceShellPage,
   HomePage,
@@ -84,6 +85,12 @@ const conciliationRoute = createRoute({
   component: ConciliationShellPage,
 })
 
+const treasuryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/finance/treasury',
+  component: TreasuryShellPage,
+})
+
 const partnersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ops/partners',
@@ -112,6 +119,7 @@ const routeTree = rootRoute.addChildren([
   deskRoute,
   financeRoute,
   conciliationRoute,
+  treasuryRoute,
   partnersRoute,
   marketingRoute,
   previewRoute,

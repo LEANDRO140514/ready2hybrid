@@ -22,6 +22,7 @@
     "bundle:commercial-read": "node scripts/bundle-ops-commercial-read.mjs",
     "bundle:legacy-sync": "node scripts/bundle-legacy-sync.mjs",
     "bundle:legacy-reconcile": "node scripts/bundle-ops-legacy-reconcile.mjs",
+    "bundle:treasury": "node scripts/bundle-ops-treasury.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

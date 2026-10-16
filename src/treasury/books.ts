@@ -1,490 +1,334 @@
 /**
- * Treasury proposal for the operations dashboard.
- * Scheduled expenses are not cash. Sales already counted in Ventas are not movements.
- * Catalog rows are deactivated, never deleted, so past movements keep their name.
+ * Treasury books. Balance is recomputed on read. Sales are not movements.
+ * Posted transfers move cash between accounts and are not income or expense.
+ * Cancelled rows stay visible and affect neither cash nor the projection.
  */
 
-export type CatalogKind = 'category' | 'supplier' | 'account' | 'method'
+export type MovementType = 'income' | 'expense' | 'transfer'
+export type MovementStatus = 'scheduled' | 'posted' | 'cancelled'
+export type PaymentMethod = 'transferencia' | 'efectivo' | 'tarjeta' | 'cheque' | 'otro'
+export type CategoryKind = 'income' | 'expense'
 
-export type CatalogItem = {
+export type TreasuryAccount = {
   id: string
-  kind: CatalogKind
   name: string
   active: boolean
+  openingBalanceCents: number
+  openingDate: string
 }
 
-export type MovementKind = 'income' | 'expense' | 'opening'
-export type MovementStatus = 'scheduled' | 'posted'
-
-export type Revision = {
-  at: string
-  actor: string
-  field: string
-  before: string
-  after: string
+export type TreasuryCategory = {
+  id: string
+  name: string
+  kind: CategoryKind
+  active: boolean
 }
 
 export type TreasuryMovement = {
   id: string
-  kind: MovementKind
+  type: MovementType
   status: MovementStatus
   accountId: string
+  destinationAccountId: string | null
   categoryId: string | null
-  supplierId: string | null
-  methodId: string | null
+  paymentMethod: PaymentMethod | null
   amountCents: number
   occurredOn: string
   concept: string
-  reference: string | null
+  counterparty: string | null
+  notes: string | null
+  cancelReason: string | null
   createdBy: string
+  createdAt: string
   updatedBy: string
-  revisions: Revision[]
+  updatedAt: string
 }
 
 export type TreasuryBooks = {
-  catalogs: CatalogItem[]
+  accounts: TreasuryAccount[]
+  categories: TreasuryCategory[]
   movements: TreasuryMovement[]
 }
 
-export const TREASURY_CSV_HEADER =
-  'fecha,tipo,estado,cuenta,categoria,proveedor,forma_de_pago,concepto,monto,referencia'
-
-const SALES_ALREADY_INTEGRATED = /venta|boleto|inscrip|checkout|mercado pago/i
-
-export function looksLikeIntegratedSales(category: string, concept: string): boolean {
-  return SALES_ALREADY_INTEGRATED.test(`${category} ${concept}`)
+export type TreasuryFilters = {
+  accountId: string
+  categoryId: string
+  paymentMethod: string
+  type: string
+  from: string
+  to: string
+  status: string
 }
 
-export function catalogName(books: TreasuryBooks, id: string | null): string {
+export const EMPTY_TREASURY_FILTERS: TreasuryFilters = {
+  accountId: '',
+  categoryId: '',
+  paymentMethod: '',
+  type: '',
+  from: '',
+  to: '',
+  status: '',
+}
+
+export const FLOW_THROUGH = '2026-11-30'
+const MERIDA_SHIFT_MS = 6 * 60 * 60 * 1000
+
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  transferencia: 'Transferencia',
+  efectivo: 'Efectivo',
+  tarjeta: 'Tarjeta',
+  cheque: 'Cheque',
+  otro: 'Otro',
+}
+
+const TYPE_LABEL: Record<MovementType, string> = {
+  income: 'Ingreso',
+  expense: 'Egreso',
+  transfer: 'Transferencia',
+}
+
+const STATUS_LABEL: Record<MovementStatus, string> = {
+  posted: 'Realizado',
+  scheduled: 'Programado',
+  cancelled: 'Cancelado',
+}
+
+export function meridaToday(now: Date): string {
+  const shifted = new Date(now.getTime() - MERIDA_SHIFT_MS)
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getUTCDate()).padStart(2, '0')
+  return `${shifted.getUTCFullYear()}-${month}-${day}`
+}
+
+export function formatMeridaDate(value: string | null): string {
+  if (!value) return ''
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
+  const ms = Date.parse(value)
+  if (Number.isNaN(ms)) return ''
+  const shifted = new Date(ms - MERIDA_SHIFT_MS)
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getUTCDate()).padStart(2, '0')
+  return `${day}/${month}/${shifted.getUTCFullYear()}`
+}
+
+export function meridaFileStamp(now: Date): string {
+  const shifted = new Date(now.getTime() - MERIDA_SHIFT_MS)
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getUTCDate()).padStart(2, '0')
+  const hour = String(shifted.getUTCHours()).padStart(2, '0')
+  const minute = String(shifted.getUTCMinutes()).padStart(2, '0')
+  return `${shifted.getUTCFullYear()}${month}${day}-${hour}${minute}`
+}
+
+export function treasuryFileName(kind: 'movimientos' | 'programacion' | 'flujo', now: Date): string {
+  return `hex2026_${kind}_${meridaFileStamp(now)}.csv`
+}
+
+function pesos(cents: number): string {
+  return (cents / 100).toFixed(2)
+}
+
+function csvCell(value: string): string {
+  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
+function csvLine(cells: string[]): string {
+  return cells.map(csvCell).join(',')
+}
+
+function accountName(books: TreasuryBooks, id: string | null): string {
   if (!id) return ''
-  return books.catalogs.find((item) => item.id === id)?.name ?? ''
+  return books.accounts.find((account) => account.id === id)?.name ?? ''
 }
 
-export function activeCatalog(books: TreasuryBooks, kind: CatalogKind): CatalogItem[] {
-  return books.catalogs.filter((item) => item.kind === kind && item.active)
+function categoryName(books: TreasuryBooks, id: string | null): string {
+  if (!id) return ''
+  return books.categories.find((category) => category.id === id)?.name ?? ''
 }
 
-export function cashCents(books: TreasuryBooks, accountId?: string): number {
+export function accountCashCents(books: TreasuryBooks, accountId: string): number {
+  const account = books.accounts.find((row) => row.id === accountId)
+  if (!account) return 0
   return books.movements.reduce((sum, movement) => {
     if (movement.status !== 'posted') return sum
-    if (accountId && movement.accountId !== accountId) return sum
-    if (movement.kind === 'expense') return sum - movement.amountCents
-    return sum + movement.amountCents
-  }, 0)
+    if (movement.type === 'income' && movement.accountId === accountId) return sum + movement.amountCents
+    if (movement.type === 'expense' && movement.accountId === accountId) return sum - movement.amountCents
+    if (movement.type === 'transfer' && movement.accountId === accountId) return sum - movement.amountCents
+    if (movement.type === 'transfer' && movement.destinationAccountId === accountId) return sum + movement.amountCents
+    return sum
+  }, account.openingBalanceCents)
 }
 
-export function scheduledCents(books: TreasuryBooks, accountId?: string): number {
-  return books.movements.reduce((sum, movement) => {
-    if (movement.kind !== 'expense' || movement.status !== 'scheduled') return sum
-    if (accountId && movement.accountId !== accountId) return sum
-    return sum + movement.amountCents
-  }, 0)
+export function treasuryCashCents(books: TreasuryBooks, accountId = ''): number {
+  const accounts = accountId
+    ? books.accounts.filter((account) => account.id === accountId)
+    : books.accounts
+  return accounts.reduce((sum, account) => sum + accountCashCents(books, account.id), 0)
 }
 
-export function addCatalog(
-  books: TreasuryBooks,
-  kind: CatalogKind,
-  name: string,
-): { ok: true; books: TreasuryBooks } | { ok: false; error: string } {
-  const trimmed = name.trim()
-  if (!trimmed) return { ok: false, error: 'El nombre es obligatorio.' }
-  const existing = books.catalogs.find(
-    (item) => item.kind === kind && item.name.localeCompare(trimmed, 'es', { sensitivity: 'accent' }) === 0,
-  )
-  if (existing?.active) return { ok: false, error: 'Ese nombre ya está en el catálogo.' }
-  if (existing && !existing.active) return { ok: false, error: 'Ese nombre está inactivo. Actívalo en lugar de crear otro.' }
-  return {
-    ok: true,
-    books: {
-      ...books,
-      catalogs: [...books.catalogs, { id: nextId('cat'), kind, name: trimmed, active: true }],
-    },
+export function movementMatches(movement: TreasuryMovement, filters: TreasuryFilters): boolean {
+  if (filters.accountId && movement.accountId !== filters.accountId && movement.destinationAccountId !== filters.accountId) {
+    return false
   }
+  if (filters.categoryId && movement.categoryId !== filters.categoryId) return false
+  if (filters.paymentMethod && movement.paymentMethod !== filters.paymentMethod) return false
+  if (filters.type && movement.type !== filters.type) return false
+  if (filters.from && movement.occurredOn < filters.from) return false
+  if (filters.to && movement.occurredOn > filters.to) return false
+  if (filters.status && movement.status !== filters.status && movement.status !== 'cancelled') return false
+  return true
 }
 
-export function renameCatalog(
-  books: TreasuryBooks,
-  id: string,
-  name: string,
-): { ok: true; books: TreasuryBooks } | { ok: false; error: string } {
-  const trimmed = name.trim()
-  if (!trimmed) return { ok: false, error: 'El nombre es obligatorio.' }
-  const current = books.catalogs.find((item) => item.id === id)
-  if (!current) return { ok: false, error: 'No está en el catálogo.' }
-  const clash = books.catalogs.find(
-    (item) => item.id !== id && item.kind === current.kind && item.name.localeCompare(trimmed, 'es', { sensitivity: 'accent' }) === 0,
-  )
-  if (clash) return { ok: false, error: 'Ese nombre ya está en el catálogo.' }
-  return {
-    ok: true,
-    books: {
-      ...books,
-      catalogs: books.catalogs.map((item) => (item.id === id ? { ...item, name: trimmed } : item)),
-    },
-  }
+function commentOf(movement: TreasuryMovement): string {
+  const notes = movement.notes?.trim() ?? ''
+  if (movement.status !== 'cancelled') return notes
+  const reason = movement.cancelReason?.trim() ?? ''
+  if (notes && reason) return `${notes} | ${reason}`
+  return notes || reason
 }
 
-export function setCatalogActive(books: TreasuryBooks, id: string, active: boolean): TreasuryBooks {
-  return {
-    ...books,
-    catalogs: books.catalogs.map((item) => (item.id === id ? { ...item, active } : item)),
-  }
-}
-
-export type MovementDraft = {
-  kind: MovementKind
-  status: MovementStatus
-  accountId: string
-  categoryId: string | null
-  supplierId: string | null
-  methodId: string | null
-  amountCents: number
-  occurredOn: string
-  concept: string
-  reference: string | null
-}
-
-export function addMovement(
-  books: TreasuryBooks,
-  draft: MovementDraft,
-  actor: string,
-  _at: string,
-): { ok: true; books: TreasuryBooks } | { ok: false; error: string } {
-  const error = validateDraft(books, draft, null)
-  if (error) return { ok: false, error }
-  if (books.movements.some((movement) => signature(movement) === signature(draft))) {
-    return { ok: false, error: 'Ese movimiento ya está cargado.' }
-  }
-  const movement: TreasuryMovement = {
-    ...draft,
-    id: nextId('mov'),
-    concept: draft.concept.trim(),
-    reference: blankToNull(draft.reference),
-    createdBy: actor,
-    updatedBy: actor,
-    revisions: [],
-  }
-  return { ok: true, books: { ...books, movements: [...books.movements, movement] } }
-}
-
-export function correctMovement(
-  books: TreasuryBooks,
-  id: string,
-  draft: MovementDraft,
-  actor: string,
-  at: string,
-): { ok: true; books: TreasuryBooks } | { ok: false; error: string } {
-  const current = books.movements.find((movement) => movement.id === id)
-  if (!current) return { ok: false, error: 'El movimiento no existe.' }
-  const error = validateDraft(books, draft, id)
-  if (error) return { ok: false, error }
-  if (books.movements.some((movement) => movement.id !== id && signature(movement) === signature(draft))) {
-    return { ok: false, error: 'Ese movimiento ya está cargado.' }
-  }
-  const revisions = diffMovement(current, draft, actor, at)
-  return {
-    ok: true,
-    books: {
-      ...books,
-      movements: books.movements.map((movement) =>
-        movement.id === id
-          ? {
-            ...movement,
-            ...draft,
-            concept: draft.concept.trim(),
-            reference: blankToNull(draft.reference),
-            updatedBy: revisions.length > 0 ? actor : movement.updatedBy,
-            revisions: [...movement.revisions, ...revisions],
-          }
-          : movement,
-      ),
-    },
-  }
-}
-
-export type ImportIssue = { line: number; level: 'error' | 'duplicate'; message: string }
-
-export type ImportPlan = {
-  issues: ImportIssue[]
-  ready: MovementDraft[]
-}
-
-export function parseTreasuryCsv(text: string): { ok: true; rows: string[][] } | { ok: false; error: string } {
-  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-  if (lines.length === 0) return { ok: false, error: 'El archivo está vacío.' }
-  const header = splitCsvLine(lines[0] ?? '')
-  const expected = TREASURY_CSV_HEADER.split(',')
-  if (header.length !== expected.length || header.some((cell, index) => cell !== expected[index])) {
-    return { ok: false, error: `La primera fila debe ser: ${TREASURY_CSV_HEADER}` }
-  }
-  return { ok: true, rows: lines.slice(1).map(splitCsvLine) }
-}
-
-export function planImport(books: TreasuryBooks, text: string): { ok: true; plan: ImportPlan } | { ok: false; error: string } {
-  const parsed = parseTreasuryCsv(text)
-  if (!parsed.ok) return parsed
-  const issues: ImportIssue[] = []
-  const ready: MovementDraft[] = []
-  const seen = new Set(books.movements.map(signature))
-  parsed.rows.forEach((cells, index) => {
-    const line = index + 2
-    if (cells.length !== 10) {
-      issues.push({ line, level: 'error', message: 'La fila no tiene 10 columnas.' })
-      return
-    }
-    const [fecha, tipo, estado, cuenta, categoria, proveedor, forma, concepto, monto, referencia] = cells as [
-      string, string, string, string, string, string, string, string, string, string,
-    ]
-    const draft = draftFromCells({ fecha, tipo, estado, cuenta, categoria, proveedor, forma, concepto, monto, referencia }, books)
-    if (!draft.ok) {
-      issues.push({ line, level: 'error', message: draft.error })
-      return
-    }
-    const key = signature(draft.draft)
-    if (seen.has(key)) {
-      issues.push({ line, level: 'duplicate', message: 'Ya existe un movimiento con la misma referencia o la misma fecha, cuenta, tipo, monto y concepto.' })
-      return
-    }
-    seen.add(key)
-    ready.push(draft.draft)
-  })
-  return { ok: true, plan: { issues, ready } }
-}
-
-export function confirmImport(
-  books: TreasuryBooks,
-  ready: MovementDraft[],
-  actor: string,
-  at: string,
-): TreasuryBooks {
-  return ready.reduce((next, draft) => {
-    const added = addMovement(next, draft, actor, at)
-    return added.ok ? added.books : next
-  }, books)
-}
-
-export function parsePesosToCents(value: string): number | null {
-  const trimmed = value.trim()
-  if (!/^\d+(?:[.,]\d{1,2})?$/.test(trimmed)) return null
-  const normalized = trimmed.replace(',', '.')
-  const pesos = Number(normalized)
-  if (!Number.isFinite(pesos) || pesos <= 0) return null
-  return Math.round(pesos * 100)
-}
-
-export const EXAMPLE_ACTOR = 'Robert (ejemplo)'
-
-export const EXAMPLE_BOOKS: TreasuryBooks = {
-  catalogs: [
-    { id: 'acc-caja', kind: 'account', name: 'Caja del evento', active: true },
-    { id: 'acc-bbva', kind: 'account', name: 'Cuenta BBVA', active: true },
-    { id: 'cat-renta', kind: 'category', name: 'Renta de sede', active: true },
-    { id: 'cat-honorarios', kind: 'category', name: 'Honorarios', active: true },
-    { id: 'cat-patrocinio', kind: 'category', name: 'Patrocinio', active: true },
-    { id: 'sup-audio', kind: 'supplier', name: 'Audio Norte', active: true },
-    { id: 'sup-sede', kind: 'supplier', name: 'Municipio', active: true },
-    { id: 'met-transfer', kind: 'method', name: 'Transferencia', active: true },
-    { id: 'met-efectivo', kind: 'method', name: 'Efectivo', active: true },
-  ],
-  movements: [
-    movement('mov-open', 'opening', 'posted', 'acc-caja', null, null, null, 500000, '2026-08-01', 'Saldo inicial de caja', null),
-    movement('mov-sponsor', 'income', 'posted', 'acc-bbva', 'cat-patrocinio', null, 'met-transfer', 2000000, '2026-09-02', 'Patrocinio local', 'PAT-01'),
-    movement('mov-rent', 'expense', 'posted', 'acc-bbva', 'cat-renta', 'sup-sede', 'met-transfer', 800000, '2026-09-10', 'Anticipo de sede', 'RENTA-01'),
-    movement('mov-audio', 'expense', 'scheduled', 'acc-bbva', 'cat-honorarios', 'sup-audio', 'met-transfer', 300000, '2026-10-20', 'Audio del viernes', 'AUDIO-01'),
-  ],
-}
-
-function movement(
-  id: string,
-  kind: MovementKind,
-  status: MovementStatus,
-  accountId: string,
-  categoryId: string | null,
-  supplierId: string | null,
-  methodId: string | null,
-  amountCents: number,
-  occurredOn: string,
-  concept: string,
-  reference: string | null,
-): TreasuryMovement {
-  return {
-    id,
-    kind,
-    status,
-    accountId,
-    categoryId,
-    supplierId,
-    methodId,
-    amountCents,
-    occurredOn,
-    concept,
-    reference,
-    createdBy: EXAMPLE_ACTOR,
-    updatedBy: EXAMPLE_ACTOR,
-    revisions: [],
-  }
-}
-
-function validateDraft(books: TreasuryBooks, draft: MovementDraft, ignoreId: string | null): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.occurredOn)) return 'La fecha debe ser AAAA-MM-DD.'
-  if (!Number.isInteger(draft.amountCents) || draft.amountCents <= 0) return 'El monto debe ser mayor que cero.'
-  if (!draft.concept.trim()) return 'El concepto es obligatorio.'
-  if (looksLikeIntegratedSales(catalogName(books, draft.categoryId), draft.concept)) {
-    return 'Ese ingreso ya está en Ventas. No se captura otra vez en tesorería.'
-  }
-  const account = books.catalogs.find((item) => item.id === draft.accountId && item.kind === 'account')
-  if (!account?.active) return 'La cuenta no está activa.'
-  if (draft.kind !== 'opening') {
-    const category = books.catalogs.find((item) => item.id === draft.categoryId && item.kind === 'category')
-    if (!category?.active) return 'La categoría no está activa.'
-  }
-  if (draft.supplierId) {
-    const supplier = books.catalogs.find((item) => item.id === draft.supplierId && item.kind === 'supplier')
-    if (!supplier?.active) return 'El proveedor no está activo.'
-  }
-  if (draft.methodId) {
-    const method = books.catalogs.find((item) => item.id === draft.methodId && item.kind === 'method')
-    if (!method?.active) return 'La forma de pago no está activa.'
-  }
-  if (draft.kind !== 'expense' && draft.status === 'scheduled') return 'Solo un egreso puede quedar programado.'
-  if (draft.kind === 'opening') {
-    const other = books.movements.find((movement) => movement.kind === 'opening' && movement.accountId === draft.accountId && movement.id !== ignoreId)
-    if (other) return 'Esa cuenta ya tiene saldo inicial.'
-  }
-  return null
-}
-
-function draftFromCells(
-  cells: {
-    fecha: string
-    tipo: string
-    estado: string
-    cuenta: string
-    categoria: string
-    proveedor: string
-    forma: string
-    concepto: string
-    monto: string
-    referencia: string
-  },
-  books: TreasuryBooks,
-): { ok: true; draft: MovementDraft } | { ok: false; error: string } {
-  const kind = kindFromLabel(cells.tipo)
-  if (!kind) return { ok: false, error: 'El tipo debe ser ingreso, egreso o saldo_inicial.' }
-  const status = cells.estado.trim().toLowerCase()
-  if (status !== 'programado' && status !== 'realizado') return { ok: false, error: 'El estado debe ser programado o realizado.' }
-  if (looksLikeIntegratedSales(cells.categoria, cells.concepto)) {
-    return { ok: false, error: 'Ese ingreso ya está en Ventas. No se captura otra vez en tesorería.' }
-  }
-  const amountCents = parsePesosToCents(cells.monto)
-  if (amountCents == null) return { ok: false, error: 'El monto debe ser un número mayor que cero, con hasta dos decimales.' }
-  const account = findByName(books, 'account', cells.cuenta)
-  if (!account) return { ok: false, error: `La cuenta "${cells.cuenta}" no está en el catálogo activo.` }
-  const category = cells.categoria.trim() ? findByName(books, 'category', cells.categoria) : null
-  if (kind !== 'opening' && !category) return { ok: false, error: `La categoría "${cells.categoria}" no está en el catálogo activo.` }
-  if (kind === 'opening' && cells.categoria.trim() && !category) {
-    return { ok: false, error: `La categoría "${cells.categoria}" no está en el catálogo activo.` }
-  }
-  const supplier = cells.proveedor.trim() ? findByName(books, 'supplier', cells.proveedor) : null
-  if (cells.proveedor.trim() && !supplier) return { ok: false, error: `El proveedor "${cells.proveedor}" no está en el catálogo activo.` }
-  const method = cells.forma.trim() ? findByName(books, 'method', cells.forma) : null
-  if (cells.forma.trim() && !method) return { ok: false, error: `La forma de pago "${cells.forma}" no está en el catálogo activo.` }
-  const draft: MovementDraft = {
-    kind,
-    status: status === 'programado' ? 'scheduled' : 'posted',
-    accountId: account.id,
-    categoryId: category?.id ?? null,
-    supplierId: supplier?.id ?? null,
-    methodId: method?.id ?? null,
-    amountCents,
-    occurredOn: cells.fecha.trim(),
-    concept: cells.concepto,
-    reference: cells.referencia,
-  }
-  const error = validateDraft(books, draft, null)
-  if (error) return { ok: false, error }
-  return { ok: true, draft }
-}
-
-function findByName(books: TreasuryBooks, kind: CatalogKind, name: string): CatalogItem | null {
-  const trimmed = name.trim()
-  return books.catalogs.find(
-    (item) => item.kind === kind && item.active && item.name.localeCompare(trimmed, 'es', { sensitivity: 'accent' }) === 0,
-  ) ?? null
-}
-
-function kindFromLabel(value: string): MovementKind | null {
-  const label = value.trim().toLowerCase()
-  if (label === 'ingreso') return 'income'
-  if (label === 'egreso') return 'expense'
-  if (label === 'saldo_inicial') return 'opening'
-  return null
-}
-
-function signature(movement: Pick<TreasuryMovement, 'kind' | 'accountId' | 'amountCents' | 'occurredOn' | 'concept' | 'reference'> | MovementDraft): string {
-  const reference = blankToNull(movement.reference)
-  if (reference) return `ref:${reference.toLowerCase()}`
-  return [
-    'fp',
-    movement.occurredOn,
-    movement.accountId,
-    movement.kind,
-    String(movement.amountCents),
-    movement.concept.trim().toLowerCase(),
-  ].join('|')
-}
-
-function diffMovement(current: TreasuryMovement, draft: MovementDraft, actor: string, at: string): Revision[] {
-  const pairs: [string, string, string][] = [
-    ['tipo', current.kind, draft.kind],
-    ['estado', current.status, draft.status],
-    ['cuenta', current.accountId, draft.accountId],
-    ['categoría', current.categoryId ?? '', draft.categoryId ?? ''],
-    ['proveedor', current.supplierId ?? '', draft.supplierId ?? ''],
-    ['forma de pago', current.methodId ?? '', draft.methodId ?? ''],
-    ['monto', String(current.amountCents), String(draft.amountCents)],
-    ['fecha', current.occurredOn, draft.occurredOn],
-    ['concepto', current.concept, draft.concept.trim()],
-    ['referencia', current.reference ?? '', blankToNull(draft.reference) ?? ''],
+export function movementsToCsv(books: TreasuryBooks, filters: TreasuryFilters): string {
+  const header = [
+    'FECHA', 'PROYECTO', 'PROVEEDOR', 'CONCEPTO', 'CONCEPTO GENERAL', 'MONTO',
+    'TIPO DE MOVIMIENTO', 'FORMA DE PAGO', 'CUENTA', 'COMENTARIO', 'ESTATUS',
+    'CUENTA DESTINO', 'ID', 'CAPTURADO POR', 'FECHA CAPTURA',
   ]
-  return pairs
-    .filter(([, before, after]) => before !== after)
-    .map(([field, before, after]) => ({ at, actor, field, before, after }))
+  const lines = books.movements
+    .filter((movement) => movementMatches(movement, filters))
+    .map((movement) => csvLine([
+      formatMeridaDate(movement.occurredOn),
+      'HEX-2026',
+      movement.counterparty ?? '',
+      movement.concept,
+      categoryName(books, movement.categoryId),
+      pesos(movement.amountCents),
+      TYPE_LABEL[movement.type],
+      movement.paymentMethod ? METHOD_LABEL[movement.paymentMethod] : '',
+      accountName(books, movement.accountId),
+      commentOf(movement),
+      STATUS_LABEL[movement.status],
+      accountName(books, movement.destinationAccountId),
+      movement.id,
+      movement.createdBy,
+      formatMeridaDate(movement.createdAt),
+    ]))
+  return `\uFEFF${[header.join(','), ...lines].join('\n')}\n`
 }
 
-function blankToNull(value: string | null): string | null {
-  const trimmed = value?.trim() ?? ''
-  return trimmed ? trimmed : null
+function mondayOf(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(year!, (month ?? 1) - 1, day))
+  const weekday = date.getUTCDay()
+  date.setUTCDate(date.getUTCDate() + (weekday === 0 ? -6 : 1 - weekday))
+  return date.toISOString().slice(0, 10)
 }
 
-let sequence = 0
-function nextId(prefix: string): string {
-  sequence += 1
-  return `${prefix}-${sequence}`
+function addDays(iso: string, days: number): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(year!, (month ?? 1) - 1, day))
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
-export function splitCsvLine(line: string): string[] {
-  const cells: string[] = []
-  let current = ''
-  let quoted = false
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index]
-    if (char === '"') {
-      if (quoted && line[index + 1] === '"') {
-        current += '"'
-        index += 1
-      } else {
-        quoted = !quoted
-      }
-      continue
-    }
-    if (char === ',' && !quoted) {
-      cells.push(current.trim())
-      current = ''
-      continue
-    }
-    current += char
+function scheduleLabel(occurredOn: string, today: string): string {
+  if (occurredOn < today) return 'Vencido'
+  const thisEnd = addDays(mondayOf(today), 6)
+  if (occurredOn <= thisEnd) return 'Esta semana'
+  if (occurredOn <= addDays(thisEnd, 7)) return 'Próxima'
+  return 'Después'
+}
+
+export function scheduleToCsv(
+  books: TreasuryBooks,
+  filters: TreasuryFilters,
+  today: string,
+  selectedIds: string[],
+): string {
+  const header = ['CONCEPTO', 'PROVEEDOR', 'CATEGORÍA', 'FECHA', 'ESTADO', 'IMPORTE', 'CUENTA', 'OBSERVACIÓN']
+  const rows = books.movements.filter(
+    (movement) => movement.status === 'scheduled' && movementMatches(movement, { ...filters, status: '' }),
+  )
+  const lines = rows.map((movement) => csvLine([
+    movement.concept,
+    movement.counterparty ?? '',
+    categoryName(books, movement.categoryId),
+    formatMeridaDate(movement.occurredOn),
+    scheduleLabel(movement.occurredOn, today),
+    pesos(movement.amountCents),
+    accountName(books, movement.accountId),
+    movement.notes ?? '',
+  ]))
+  const marked = selectedIds.length > 0
+  const selected = marked
+    ? rows.filter((movement) => selectedIds.includes(movement.id))
+    : rows
+  const selectedCents = selected.reduce((sum, movement) => sum + movement.amountCents, 0)
+  const available = treasuryCashCents(books, filters.accountId)
+  const deficit = Math.max(0, selectedCents - available)
+  const selectedLabel = marked ? 'Seleccionado (filas marcadas)' : 'Seleccionado (suma exportada)'
+  lines.push(
+    csvLine(['Disponible', '', '', '', '', pesos(available), '', '']),
+    csvLine([selectedLabel, '', '', '', '', pesos(selectedCents), '', '']),
+    csvLine(['Déficit', '', '', '', '', pesos(deficit), '', '']),
+  )
+  return `\uFEFF${[header.join(','), ...lines].join('\n')}\n`
+}
+
+export type WeekFlow = {
+  week: string
+  openingCents: number
+  incomeCents: number
+  expenseCents: number
+  closingCents: number
+  deficit: boolean
+}
+
+export function weeklyFlow(books: TreasuryBooks, today: string, through = FLOW_THROUGH): WeekFlow[] {
+  const scheduled = books.movements.filter(
+    (movement) => movement.status === 'scheduled' && (movement.type === 'income' || movement.type === 'expense'),
+  )
+  const weeks: WeekFlow[] = []
+  let opening = treasuryCashCents(books)
+  let cursor = mondayOf(today)
+  const firstEnd = addDays(cursor, 6)
+  while (cursor <= through) {
+    const end = addDays(cursor, 6)
+    const inWeek = scheduled.filter((movement) => {
+      if (cursor === mondayOf(today)) return movement.occurredOn <= firstEnd
+      return movement.occurredOn >= cursor && movement.occurredOn <= end
+    })
+    const incomeCents = inWeek
+      .filter((movement) => movement.type === 'income')
+      .reduce((sum, movement) => sum + movement.amountCents, 0)
+    const expenseCents = inWeek
+      .filter((movement) => movement.type === 'expense')
+      .reduce((sum, movement) => sum + movement.amountCents, 0)
+    const closing = opening + incomeCents - expenseCents
+    weeks.push({
+      week: formatMeridaDate(cursor),
+      openingCents: opening,
+      incomeCents,
+      expenseCents,
+      closingCents: closing,
+      deficit: closing < 0,
+    })
+    opening = closing
+    cursor = addDays(end, 1)
   }
-  cells.push(current.trim())
-  return cells
+  return weeks
+}
+
+export function weeklyFlowToCsv(books: TreasuryBooks, today: string): string {
+  const header = ['SEMANA', 'SALDO INICIAL', 'INGRESOS ESPERADOS', 'EGRESOS PROGRAMADOS', 'SALDO FINAL', 'DÉFICIT']
+  const lines = weeklyFlow(books, today).map((week) => csvLine([
+    week.week,
+    pesos(week.openingCents),
+    pesos(week.incomeCents),
+    pesos(week.expenseCents),
+    pesos(week.closingCents),
+    week.deficit ? 'Sí' : 'No',
+  ]))
+  return `\uFEFF${[header.join(','), ...lines].join('\n')}\n`
 }
