@@ -133,6 +133,7 @@ function assembleMarketingContacts(source) {
     const hasLegacy = list.some((atom) => atom.legacy);
     const hasCurrent = list.some((atom) => !atom.legacy);
     const paid = list.reduce((sum, atom) => sum + atom.paidCents, 0);
+    const purchases = list.filter((atom) => atom.status === "PAID" && !atom.paymentCountedOnCurrent);
     const datedSale = list.map((atom) => atom.saleAt).filter((value) => value != null).sort();
     const datedRegister = list.map((atom) => atom.registeredAt).filter((value) => value != null).sort();
     const datedImport = list.map((atom) => atom.importedAt).filter((value) => value != null).sort();
@@ -145,6 +146,8 @@ function assembleMarketingContacts(source) {
       origin: hasLegacy && hasCurrent ? "current+legacy" : hasLegacy ? "legacy" : "current",
       categories: [...new Set(list.map((atom) => atom.category).filter((c) => c != null))],
       paidCents: paid,
+      purchaseCount: purchases.length,
+      purchasedProducts: [...new Set(purchases.map((atom) => atom.category).filter((c) => c != null))],
       firstAt: dated[0] ?? null,
       lastAt: dated[dated.length - 1] ?? null,
       saleAt: datedSale[datedSale.length - 1] ?? null,

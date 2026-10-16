@@ -20,6 +20,8 @@ export type MarketingContact = {
   registeredAt: string | null
   importedAt: string | null
   paymentCountedOnCurrent: boolean
+  purchaseCount: number
+  purchasedProducts: string[]
   consent: 'recorded' | 'not-recorded'
 }
 
@@ -198,6 +200,7 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     const hasCurrent = list.some((atom) => !atom.legacy)
     // Only PAID atoms carry an amount, so pending duplicates add nothing.
     const paid = list.reduce((sum, atom) => sum + atom.paidCents, 0)
+    const purchases = list.filter((atom) => atom.status === 'PAID' && !atom.paymentCountedOnCurrent)
     const datedSale = list.map((atom) => atom.saleAt).filter((value): value is string => value != null).sort()
     const datedRegister = list.map((atom) => atom.registeredAt).filter((value): value is string => value != null).sort()
     const datedImport = list.map((atom) => atom.importedAt).filter((value): value is string => value != null).sort()
@@ -210,6 +213,8 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
       origin: hasLegacy && hasCurrent ? 'current+legacy' : hasLegacy ? 'legacy' : 'current',
       categories: [...new Set(list.map((atom) => atom.category).filter((c): c is string => c != null))],
       paidCents: paid,
+      purchaseCount: purchases.length,
+      purchasedProducts: [...new Set(purchases.map((atom) => atom.category).filter((c): c is string => c != null))],
       firstAt: dated[0] ?? null,
       lastAt: dated[dated.length - 1] ?? null,
       saleAt: datedSale[datedSale.length - 1] ?? null,

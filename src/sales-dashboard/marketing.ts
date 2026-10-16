@@ -20,6 +20,10 @@ export type MarketingContact = {
   registeredAt: string | null
   importedAt: string | null
   paymentCountedOnCurrent: boolean
+  /** Counted sales after the payment-id cross. Pending and rejected rows are not included. */
+  purchaseCount: number
+  /** Products on those counted sales. Pending registrations stay in categories. */
+  purchasedProducts: string[]
   consent: 'recorded' | 'not-recorded'
 }
 
@@ -82,6 +86,10 @@ function parseContact(value: unknown): MarketingContact[] {
     registeredAt: text(row.registeredAt),
     importedAt: text(row.importedAt),
     paymentCountedOnCurrent: row.paymentCountedOnCurrent === true,
+    purchaseCount: typeof row.purchaseCount === 'number' && row.purchaseCount > 0 ? row.purchaseCount : 0,
+    purchasedProducts: Array.isArray(row.purchasedProducts)
+      ? row.purchasedProducts.filter((item): item is string => typeof item === 'string')
+      : [],
     consent: row.consent === 'recorded' ? 'recorded' : 'not-recorded',
   }]
 }
@@ -152,15 +160,30 @@ function csvCell(value: string | number | null): string {
 }
 
 /**
- * Meta customer-list file for Ads Manager.
- * Column names and normalization follow Meta's published customer-list
- * format (Business Help 2082575038703844): a header row, plaintext
- * identifiers, phone digits with a country code, and lowercase names
- * without punctuation. Ads Manager hashes the file. This export does not.
- * A 10-digit number is treated as a Mexican mobile and prefixed with 52.
- * Rows without an email or a phone are omitted: Meta cannot match them.
+ * Meta customer-list columns checked against the accessible formatting guide
+ * at https://help.bir.ch/en/articles/6303601-custom-audiences-formatting-guidelines
+ * on 2026-10-16. That guide states the headers and examples Meta accepts.
+ * Meta's own help page returned 403, so this is a structural check, not an
+ * upload. Ads Manager hashes the file; this export stays plaintext.
+ *
+ * A phone keeps an international code that is already present. 52 is not
+ * added to a local number. Country is the ISO code only when that calling
+ * code identifies one country; otherwise the cell stays empty.
  */
 export const META_CUSTOMER_COLUMNS = ['email', 'phone', 'fn', 'ln', 'country'] as const
+
+export const META_ACCEPTED_COLUMNS = [
+  'email',
+  'phone',
+  'fn',
+  'st',
+  'country',
+  'doby',
+  'dobm',
+  'dobd',
+  'zip',
+  'extern_id',
+] as const
 
 function metaEmail(value: string | null): string {
   const email = value?.trim().toLowerCase() ?? ''
@@ -168,19 +191,27 @@ function metaEmail(value: string | null): string {
 }
 
 function metaPhone(value: string | null): { phone: string; country: string } {
-  const digits = (value ?? '').replace(/\D/g, '').replace(/^0+/, '')
-  if (digits.startsWith('52') && digits.length === 12) return { phone: digits, country: 'mx' }
-  if (digits.startsWith('1') && digits.length === 11) return { phone: digits, country: 'us' }
-  if (digits.length === 10) return { phone: `52${digits}`, country: 'mx' }
-  return { phone: '', country: '' }
+  const raw = value?.trim() ?? ''
+  if (!raw) return { phone: '', country: '' }
+  const compact = raw.replace(/[\s().-]/g, '')
+  const explicit = compact.startsWith('+') || compact.startsWith('00')
+  let digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (!digits) return { phone: '', country: '' }
+  if (digits.startsWith('52') && digits.length === 12) return { phone: digits, country: 'MX' }
+  if (explicit && digits.startsWith('521') && digits.length === 13) {
+    return { phone: `52${digits.slice(3)}`, country: 'MX' }
+  }
+  if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: digits, country: 'GB' }
+  if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: digits, country: 'ES' }
+  if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: digits, country: 'FR' }
+  return { phone: digits, country: '' }
 }
 
 function metaName(value: string | null): { fn: string; ln: string } {
   const letters = (value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z\s]/g, ' ')
+    .replace(/[^\p{L}\s]/gu, ' ')
     .trim()
     .replace(/\s+/g, ' ')
   const [fn, ...rest] = letters.split(' ').filter(Boolean)
@@ -206,6 +237,8 @@ export function marketingContactsToCsv(contacts: MarketingContact[]): string {
     'phone',
     'status',
     'categories',
+    'purchase_count',
+    'purchased_products',
     'paid_amount_mxn',
     'fecha_venta',
     'fecha_registro',
@@ -219,6 +252,8 @@ export function marketingContactsToCsv(contacts: MarketingContact[]): string {
     contact.phone,
     contact.status,
     contact.categories.join(' | '),
+    contact.purchaseCount ?? 0,
+    (contact.purchasedProducts ?? []).join(' | '),
     (contact.paidCents / 100).toFixed(2),
     contact.saleAt,
     contact.registeredAt,

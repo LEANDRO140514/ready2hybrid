@@ -25,6 +25,8 @@ import {
   filterMarketingContacts,
   marketingContactsToCsv,
   marketingContactsToMetaCsv,
+  META_ACCEPTED_COLUMNS,
+  META_CUSTOMER_COLUMNS,
   parseMarketingPayload,
   type MarketingContact,
 } from '../../../src/sales-dashboard/marketing'
@@ -81,6 +83,8 @@ describe('assembleMarketingContacts', () => {
     expect(ana[0]?.origin).toBe('current+legacy')
     // current paid 150000 + legacy paid 100000; the pending order adds nothing.
     expect(ana[0]?.paidCents).toBe(250000)
+    expect(ana[0]?.purchaseCount).toBe(2)
+    expect(ana[0]?.purchasedProducts).toEqual(['Individual Hombre'])
     expect(ana[0]?.categories).toContain('Individual Hombre')
   })
 
@@ -116,12 +120,16 @@ describe('assembleMarketingContacts', () => {
     expect(otra?.status).toBe('PAID')
     expect(otra?.paidCents).toBe(0)
     expect(otra?.paymentCountedOnCurrent).toBe(true)
+    expect(otra?.purchaseCount).toBe(0)
+    expect(otra?.purchasedProducts).toEqual([])
+    expect(byEmail(contacts, 'pedro@example.com')?.purchaseCount).toBe(0)
+    expect(byEmail(contacts, 'pedro@example.com')?.purchasedProducts).toEqual([])
   })
 
   it('exposes no payment, fee, order id, or note fields', () => {
     const keys = new Set(contacts.flatMap((contact) => Object.keys(contact)))
     expect([...keys].sort()).toEqual([
-      'categories', 'consent', 'email', 'firstAt', 'importedAt', 'key', 'lastAt', 'name', 'origin', 'paidCents', 'paymentCountedOnCurrent', 'phone', 'registeredAt', 'saleAt', 'status',
+      'categories', 'consent', 'email', 'firstAt', 'importedAt', 'key', 'lastAt', 'name', 'origin', 'paidCents', 'paymentCountedOnCurrent', 'phone', 'purchaseCount', 'purchasedProducts', 'registeredAt', 'saleAt', 'status',
     ])
   })
 })
@@ -206,7 +214,7 @@ describe('marketing CSV and filters', () => {
   it('exports every contact with its status and consent', () => {
     const csv = marketingContactsToCsv(contacts)
     const lines = csv.split('\n')
-    expect(lines[0]).toBe('name,email,phone,status,categories,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent')
+    expect(lines[0]).toBe('name,email,phone,status,categories,purchase_count,purchased_products,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent')
     expect(lines).toHaveLength(contacts.length + 1)
     expect(csv).toContain('pedro@example.com')
     expect(csv).toContain('PENDING')
@@ -245,7 +253,7 @@ describe('marketing CSV and filters', () => {
     const general = marketingContactsToCsv(pending)
     const meta = marketingContactsToMetaCsv(pending)
     expect(general.split('\n')[0]).toBe(
-      'name,email,phone,status,categories,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent',
+      'name,email,phone,status,categories,purchase_count,purchased_products,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent',
     )
     expect(general).toContain('pedro@example.com')
     expect(general).toContain('not_recorded')
@@ -294,7 +302,48 @@ describe('marketing CSV and filters', () => {
         consent: 'not-recorded',
       },
     ])
-    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,529992222222,luis,pena,mx')
+    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,9992222222,luis,peña,')
+  })
+
+  it('keeps an existing calling code and does not invent Mexico', () => {
+    const row = {
+      key: 'x',
+      name: 'Ana López',
+      email: 'ana@example.com',
+      phone: '+52 999 111 1111',
+      status: 'PAID' as const,
+      origin: 'current' as const,
+      categories: ['Individual Hombre'],
+      purchasedProducts: ['Individual Hombre'],
+      purchaseCount: 1,
+      paidCents: 150000,
+      firstAt: null,
+      lastAt: null,
+      saleAt: null,
+      registeredAt: null,
+      importedAt: null,
+      paymentCountedOnCurrent: false,
+      consent: 'recorded' as const,
+    }
+    expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,529991111111,ana,lópez,MX')
+    expect(marketingContactsToMetaCsv([{ ...row, phone: '9991111111' }]).split('\n')[1]).toBe(
+      'ana@example.com,9991111111,ana,lópez,',
+    )
+    expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 415 555 0142' }]).split('\n')[1]).toBe(
+      'ana@example.com,14155550142,ana,lópez,',
+    )
+    expect(marketingContactsToMetaCsv([{ ...row, phone: '529991111111' }]).split('\n')[1]).toBe(
+      'ana@example.com,529991111111,ana,lópez,MX',
+    )
+    const header = marketingContactsToMetaCsv([row]).split('\n')[0]!.split(',')
+    expect(header).toEqual([...META_CUSTOMER_COLUMNS])
+    for (const column of ['email', 'phone', 'fn', 'country'] as const) {
+      expect(META_ACCEPTED_COLUMNS).toContain(column)
+      expect(header).toContain(column)
+    }
+    expect(header).toContain('ln')
+    expect(header).not.toContain('purchase_count')
+    expect(marketingContactsToMetaCsv([row])).not.toMatch(/[0-9a-f]{64}/)
     expect(marketingContactsToCsv([
       {
         key: 'blank',
@@ -424,7 +473,8 @@ describe('marketing page', () => {
     expect(general).toContain('recorded')
     expect(general).not.toContain('pedro@example.com')
     expect(meta?.split('\n')[0]).toBe('email,phone,fn,ln,country')
-    expect(meta).toContain('ana@example.com,529991111111,ana,lopez,mx')
+    expect(general).toContain('Individual Hombre,2,Individual Hombre,2500.00')
+    expect(meta).toContain('ana@example.com,9991111111,ana,lópez,')
     expect(meta).not.toContain('pedro@example.com')
     expect(meta).not.toContain('pay-')
     vi.restoreAllMocks()

@@ -173,8 +173,9 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
         <span className="muted" data-testid="marketing-count">{filtered.length} contactos</span>
       </div>
       <p className="muted">
-        La base general conserva estado, fechas, origen y consentimiento. Meta recibe solo email, phone, fn, ln y country,
-        en el formato de su lista de clientes. Quien no tiene correo ni teléfono no entra en ese archivo.
+        La base general conserva compras contadas, productos, importe, fechas, origen y consentimiento.
+        Meta recibe solo email, phone, fn, ln y country. Un teléfono conserva el código internacional si ya lo trae;
+        si no trae país, ese campo queda vacío. Quien no tiene correo ni teléfono no entra en el archivo de Meta.
       </p>
       <div className="table-wrap">
         <table>
@@ -183,6 +184,8 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
               <th>Contacto</th>
               <th>Estado</th>
               <th>Categoría</th>
+              <th>Compras</th>
+              <th>Productos comprados</th>
               <th>Pagado</th>
               <th>Fecha de venta</th>
               <th>Fecha de registro</th>
@@ -200,6 +203,8 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
                 </td>
                 <td>{MARKETING_STATUS_LABEL[contact.status]}{contact.paymentCountedOnCurrent ? ' · pago ya contado' : ''}</td>
                 <td>{contact.categories.join(' · ') || '—'}</td>
+                <td>{contact.purchaseCount}</td>
+                <td>{contact.purchasedProducts.join(' · ') || '—'}</td>
                 <td>{contact.paidCents ? formatMoney(contact.paidCents) : '—'}</td>
                 <td>{formatDay(contact.saleAt)}</td>
                 <td>{formatDay(contact.registeredAt)}</td>

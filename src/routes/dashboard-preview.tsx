@@ -31,6 +31,8 @@ const PREVIEW_MARKETING: MarketingPayload = {
       registeredAt: '2026-08-01T12:00:00.000Z',
       importedAt: null,
       paymentCountedOnCurrent: false,
+      purchaseCount: 1,
+      purchasedProducts: ['Individual Hombre'],
       consent: 'recorded',
     },
     {
@@ -48,6 +50,8 @@ const PREVIEW_MARKETING: MarketingPayload = {
       registeredAt: '2026-07-01T12:00:00.000Z',
       importedAt: '2026-09-26T18:00:00.000Z',
       paymentCountedOnCurrent: false,
+      purchaseCount: 1,
+      purchasedProducts: ['Dobles Hombres'],
       consent: 'not-recorded',
     },
     {
@@ -65,6 +69,8 @@ const PREVIEW_MARKETING: MarketingPayload = {
       registeredAt: '2026-09-20T12:00:00.000Z',
       importedAt: null,
       paymentCountedOnCurrent: false,
+      purchaseCount: 0,
+      purchasedProducts: [],
       consent: 'not-recorded',
     },
   ],
