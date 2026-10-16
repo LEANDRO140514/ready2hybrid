@@ -309,6 +309,19 @@ export function meridaDayKey(iso: string): string {
   return `${y}-${month}-${day}`
 }
 
+/** CSV date. Calendar dates stay as written. Instants use America/Merida. */
+export function formatCsvDate(value: string | null): string {
+  if (!value) return ''
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
+  const ms = Date.parse(value)
+  if (Number.isNaN(ms)) return ''
+  const { y, m, d } = meridaParts(ms)
+  const month = String(m + 1).padStart(2, '0')
+  const day = String(d).padStart(2, '0')
+  return `${day}/${month}/${y}`
+}
+
 export type DateRange = { startMs: number; endMs: number }
 
 export function rangeForFilters(
@@ -1013,8 +1026,8 @@ export function ordersToCsv(orders: SalesOrder[]): string {
     return [
       order.id,
       order.trackingRef,
-      order.createdAt,
-      approvedAt(order) ?? '',
+      formatCsvDate(order.createdAt),
+      formatCsvDate(approvedAt(order)),
       order.buyerName ?? '',
       order.buyerEmail ?? '',
       order.buyerPhone ?? '',

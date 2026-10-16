@@ -39,7 +39,10 @@ describe('counted sales', () => {
     expect(report.legacyCount).toBeGreaterThan(0)
     expect(report.count).toBe(report.readyCount + report.legacyCount + report.manualCount)
     const csv = countedSalesToCsv(report.sales)
+    expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(csv.split('\n')[0]).toContain('fecha_venta')
+    expect(csv).toContain('23/09/2026')
+    expect(csv).not.toContain('2026-09-23T')
     expect(csv).not.toContain('legacy-same-payment')
   })
 

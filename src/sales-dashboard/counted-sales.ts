@@ -9,6 +9,7 @@ import type { LegacyRegistration } from './commercial'
 import {
   approvedAt,
   matchesAttributes,
+  formatCsvDate,
   meridaDayKey,
   participantCount,
   productLabel,
@@ -318,9 +319,9 @@ export function countedSalesToCsv(sales: CountedSale[]): string {
   ]
   const lines = sales.map((sale) => [
     SOURCE_LABEL[sale.source],
-    sale.saleAt ?? '',
-    sale.registeredAt ?? '',
-    sale.importedAt ?? '',
+    formatCsvDate(sale.saleAt),
+    formatCsvDate(sale.registeredAt),
+    formatCsvDate(sale.importedAt),
     sale.productCode,
     sale.productName,
     (sale.amountCents / 100).toFixed(2),
@@ -328,5 +329,5 @@ export function countedSalesToCsv(sales: CountedSale[]): string {
     sale.buyerName ?? '',
     sale.partnerCode ?? '',
   ].map(csvCell).join(','))
-  return [header.join(','), ...lines].join('\n')
+  return `\uFEFF${[header.join(','), ...lines].join('\n')}\n`
 }

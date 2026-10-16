@@ -172,6 +172,8 @@ describe('sales dashboard model', () => {
     expect(csv).not.toContain('TRK-IND')
     expect(csv).not.toContain('ana@example.com')
     expect(csv.startsWith('\uFEFF')).toBe(true)
+    expect(csv).toContain('23/09/2026')
+    expect(csv).not.toContain('2026-09-23T')
   })
 
   it('builds a timeline only from persisted timestamps', () => {
