@@ -308,3 +308,19 @@ Key patterns:
 - Usa las skills de InsForge antes de improvisar contra el SDK o el CLI.
 - El pago corre por **Mercado Pago Checkout Pro**, no por la integración
   Stripe que menciona el bloque genérico.
+
+---
+
+## Cursor Cloud specific instructions
+
+- Dev server para agentes: `npm run dev -- --host 0.0.0.0 --port 5173`.
+  El shell y los guards de `/ops/*` arrancan sin claves de InsForge. El
+  inicio de sesión con contraseña necesita `VITE_INSFORGE_URL` y
+  `VITE_INSFORGE_ANON_KEY` (cliente anon público; nunca claves admin).
+- `npm test` lee el repo público `hybrid-event-landing` en
+  `/hybrid-event-landing`. `tests/unit/tickets/ticket-pdf-image.test.ts`
+  sube cuatro directorios desde el archivo de test; con el checkout en
+  `/workspace` eso es `/`. El install del entorno clona
+  `https://github.com/LEANDRO140514/hybrid-event-landing` ahí si falta
+  `src/pages/LandingPage.tsx`.
+- `npm run lint` termina en 0 con warnings ya existentes en bundles y tests.
