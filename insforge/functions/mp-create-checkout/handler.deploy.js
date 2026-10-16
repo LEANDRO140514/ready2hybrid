@@ -221,10 +221,10 @@ var STAGE_WINDOWS = {
   },
   PRESALE: {
     startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0)
+    endMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0)
   },
   REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 17, 0, 0, 0),
+    startMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0),
     endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
   }
 };

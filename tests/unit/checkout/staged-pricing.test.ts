@@ -17,7 +17,7 @@ import {
 describe('staged pricing — time boundaries (America/Merida half-open)', () => {
   const launchStart = dateFromMeridaWall(2026, 8, 11, 0, 0, 0)
   const presaleStart = dateFromMeridaWall(2026, 9, 25, 0, 0, 0)
-  const regularStart = dateFromMeridaWall(2026, 10, 17, 0, 0, 0)
+  const regularStart = dateFromMeridaWall(2026, 10, 20, 0, 0, 0)
   const salesClosed = dateFromMeridaWall(2026, 11, 13, 0, 0, 0)
   /** Test probe only: authority is the half-open boundary, not 23:59:59. */
   const immediatelyBefore = (boundary: Date) => new Date(boundary.getTime() - 1)
@@ -208,7 +208,9 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
     ['30 sep 12:00', dateFromMeridaWall(2026, 9, 30, 12, 0, 0), 'PRESALE'],
     ['1 oct 12:00', dateFromMeridaWall(2026, 10, 1, 12, 0, 0), 'PRESALE'],
     ['16 oct 23:59', dateFromMeridaWall(2026, 10, 16, 23, 59, 0), 'PRESALE'],
-    ['17 oct 00:01', dateFromMeridaWall(2026, 10, 17, 0, 1, 0), 'REGULAR'],
+    ['17 oct 00:01', dateFromMeridaWall(2026, 10, 17, 0, 1, 0), 'PRESALE'],
+    ['19 oct 23:59', dateFromMeridaWall(2026, 10, 19, 23, 59, 0), 'PRESALE'],
+    ['20 oct 00:01', dateFromMeridaWall(2026, 10, 20, 0, 1, 0), 'REGULAR'],
     ['7 nov 12:00', dateFromMeridaWall(2026, 11, 7, 12, 0, 0), 'REGULAR'],
     ['10 nov 12:00', dateFromMeridaWall(2026, 11, 10, 12, 0, 0), 'REGULAR'],
     ['12 nov 23:59', dateFromMeridaWall(2026, 11, 12, 23, 59, 0), 'REGULAR'],
@@ -234,7 +236,7 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
 
   it('stage does not flip the evening before in UTC (24 sep 18:30 Merida = 25 sep 00:30 UTC)', () => {
     expect(resolveCalendarStage(new Date('2026-09-25T00:30:00Z'))).toBe('LAUNCH')
-    expect(resolveCalendarStage(new Date('2026-10-17T00:30:00Z'))).toBe('PRESALE')
+    expect(resolveCalendarStage(new Date('2026-10-20T00:30:00Z'))).toBe('PRESALE')
     expect(resolveCalendarStage(new Date('2026-11-13T00:30:00Z'))).toBe('REGULAR')
   })
 
