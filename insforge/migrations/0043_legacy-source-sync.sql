@@ -89,7 +89,7 @@ CREATE TABLE public.manual_sale_resolutions (
 );
 
 COMMENT ON TABLE public.manual_sale_resolutions IS
-  'Marks an order that was settled by hand, such as Los Toros. Counts as one sale. Does not issue, reissue, or revoke a ticket.';
+  'Records that a person already settled an order by hand. Counts as one sale. Does not issue, reissue, or revoke a ticket. This migration inserts no row.';
 
 ALTER TABLE public.legacy_sync_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.legacy_sync_runs FORCE ROW LEVEL SECURITY;
