@@ -4,6 +4,37 @@ import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 // src/legacy-sync/plan.ts
 var SOURCE_TABLE = "public.hybrid_registro_inscripciones";
 var SOURCE_SELECT = `SELECT id::text AS id, category_code, category_name, category_bloque, team_name, participants, contact_name, contact_email, contact_phone, amount, currency, status, created_at, updated_at, mp_payment_id, notes FROM ${SOURCE_TABLE}`;
+var SOURCE_PAGE_SIZE = 200;
+function sourceCountQuery() {
+  return `SELECT count(*)::int AS total FROM ${SOURCE_TABLE}`;
+}
+function sourcePageQuery(offset) {
+  if (!Number.isInteger(offset) || offset < 0) throw new Error("SOURCE_PAGE_INVALID");
+  return `${SOURCE_SELECT} ORDER BY id LIMIT ${SOURCE_PAGE_SIZE} OFFSET ${offset}`;
+}
+function collectSourcePages(total, pages) {
+  if (!Number.isInteger(total) || total < 0) throw new Error("SOURCE_COUNT_INVALID");
+  if (total === 0) {
+    if (pages.some((page) => page.length > 0)) throw new Error("SOURCE_INCOMPLETE");
+    return [];
+  }
+  const rows = [];
+  for (const page of pages) {
+    if (page.length === 0) throw new Error("SOURCE_PAGE_EMPTY");
+    const remaining = total - rows.length;
+    if (page.length > SOURCE_PAGE_SIZE || page.length > remaining) throw new Error("SOURCE_INCOMPLETE");
+    if (page.length < SOURCE_PAGE_SIZE && page.length !== remaining) throw new Error("SOURCE_INCOMPLETE");
+    rows.push(...page);
+  }
+  if (rows.length !== total) throw new Error("SOURCE_INCOMPLETE");
+  const ids = /* @__PURE__ */ new Set();
+  for (const row of rows) {
+    const id = row.id?.trim();
+    if (!id || ids.has(id)) throw new Error("SOURCE_INCOMPLETE");
+    ids.add(id);
+  }
+  return rows;
+}
 var CANCELLED = /* @__PURE__ */ new Set(["cancelled", "canceled", "refunded", "rejected", "anulado", "cancelado"]);
 function mapSourceStatus(status) {
   const value = status?.trim().toLowerCase() ?? "";
@@ -161,20 +192,38 @@ function secretsEqual(expected, actual) {
   for (let index = 0; index < left.length; index += 1) mismatch |= left[index] ^ right[index];
   return mismatch === 0;
 }
-async function readSource(baseUrl, apiKey) {
-  if (!SOURCE_SELECT.startsWith("SELECT ") || /\b(insert|update|delete|drop|alter)\b/i.test(SOURCE_SELECT)) {
+function assertReadQuery(query) {
+  if (!query.startsWith("SELECT ") || /\b(insert|update|delete|drop|alter)\b/i.test(query)) {
     throw new Error("SOURCE_QUERY_REJECTED");
   }
+}
+async function readSql(baseUrl, apiKey, query) {
+  assertReadQuery(query);
   const response = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: SOURCE_SELECT })
+    body: JSON.stringify({ query })
   });
   if (!response.ok) throw new Error(`SOURCE_HTTP_${response.status}`);
   const body = await response.json();
   const rows = body.rows ?? body.result?.rows;
   if (!Array.isArray(rows)) throw new Error("SOURCE_SHAPE");
   return rows;
+}
+async function readSource(baseUrl, apiKey) {
+  const counted = await readSql(baseUrl, apiKey, sourceCountQuery());
+  const rawTotal = counted[0]?.total;
+  const total = typeof rawTotal === "number" ? rawTotal : Number(rawTotal);
+  if (!Number.isInteger(total) || total < 0) throw new Error("SOURCE_COUNT_INVALID");
+  const pages = [];
+  let offset = 0;
+  while (offset < total) {
+    const page = await readSql(baseUrl, apiKey, sourcePageQuery(offset));
+    pages.push(page);
+    if (page.length === 0) break;
+    offset += page.length;
+  }
+  return collectSourcePages(total, pages);
 }
 async function runLegacySync(sql, source, catalogCodes) {
   const [mirrorRows, overrideRows] = await Promise.all([

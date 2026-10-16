@@ -7,6 +7,45 @@
 export const LEGACY_SOURCE_SYSTEM = 'LEGACY_HYBRID_REGISTRO'
 export const SOURCE_TABLE = 'public.hybrid_registro_inscripciones'
 export const SOURCE_SELECT = `SELECT id::text AS id, category_code, category_name, category_bloque, team_name, participants, contact_name, contact_email, contact_phone, amount, currency, status, created_at, updated_at, mp_payment_id, notes FROM ${SOURCE_TABLE}`
+export const SOURCE_PAGE_SIZE = 200
+
+export function sourceCountQuery(): string {
+  return `SELECT count(*)::int AS total FROM ${SOURCE_TABLE}`
+}
+
+export function sourcePageQuery(offset: number): string {
+  if (!Number.isInteger(offset) || offset < 0) throw new Error('SOURCE_PAGE_INVALID')
+  return `${SOURCE_SELECT} ORDER BY id LIMIT ${SOURCE_PAGE_SIZE} OFFSET ${offset}`
+}
+
+/**
+ * Joins pages only when their rows add up to the counted total and every id
+ * is present once. A short page, an empty page, or a repeated id is incomplete
+ * and must not be planned: the caller marks nothing absent.
+ */
+export function collectSourcePages(total: number, pages: readonly SourceRegistration[][]): SourceRegistration[] {
+  if (!Number.isInteger(total) || total < 0) throw new Error('SOURCE_COUNT_INVALID')
+  if (total === 0) {
+    if (pages.some((page) => page.length > 0)) throw new Error('SOURCE_INCOMPLETE')
+    return []
+  }
+  const rows: SourceRegistration[] = []
+  for (const page of pages) {
+    if (page.length === 0) throw new Error('SOURCE_PAGE_EMPTY')
+    const remaining = total - rows.length
+    if (page.length > SOURCE_PAGE_SIZE || page.length > remaining) throw new Error('SOURCE_INCOMPLETE')
+    if (page.length < SOURCE_PAGE_SIZE && page.length !== remaining) throw new Error('SOURCE_INCOMPLETE')
+    rows.push(...page)
+  }
+  if (rows.length !== total) throw new Error('SOURCE_INCOMPLETE')
+  const ids = new Set<string>()
+  for (const row of rows) {
+    const id = row.id?.trim()
+    if (!id || ids.has(id)) throw new Error('SOURCE_INCOMPLETE')
+    ids.add(id)
+  }
+  return rows
+}
 
 export type CommercialStatus = 'LEGACY_PAID' | 'LEGACY_PENDING' | 'LEGACY_CANCELLED'
 

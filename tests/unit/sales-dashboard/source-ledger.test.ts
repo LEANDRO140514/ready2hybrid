@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { marketingContactsToCsv } from '../../../src/sales-dashboard/marketing'
-import { planLegacySync, SOURCE_SELECT } from '../../../src/legacy-sync/plan'
+import { collectSourcePages, planLegacySync, SOURCE_PAGE_SIZE, SOURCE_SELECT, sourceCountQuery, sourcePageQuery } from '../../../src/legacy-sync/plan'
 import { buildSourceLedger, splitAttention } from '../../../src/sales-dashboard/source-ledger'
 
 const catalog = new Set(['DOB-SAB-HH', 'IND-H'])
@@ -287,8 +287,22 @@ describe('legacy sync plan', () => {
 
   it('reads only the enforma registrations table', () => {
     expect(SOURCE_SELECT).toContain('public.hybrid_registro_inscripciones')
+    expect(sourceCountQuery()).toBe('SELECT count(*)::int AS total FROM public.hybrid_registro_inscripciones')
+    expect(sourcePageQuery(200)).toContain('ORDER BY id LIMIT 200 OFFSET 200')
     expect(SOURCE_SELECT.startsWith('SELECT ')).toBe(true)
     expect(SOURCE_SELECT.toLowerCase()).not.toContain('insert')
+  })
+
+  it('refuses a short page before any absence can be planned', () => {
+    const rows = Array.from({ length: SOURCE_PAGE_SIZE + 1 }, (_, index) => source({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    }))
+    const complete = collectSourcePages(rows.length, [rows.slice(0, SOURCE_PAGE_SIZE), rows.slice(SOURCE_PAGE_SIZE)])
+    expect(complete).toHaveLength(rows.length)
+    expect(() => collectSourcePages(rows.length, [rows.slice(0, SOURCE_PAGE_SIZE)])).toThrow('SOURCE_INCOMPLETE')
+    expect(() => collectSourcePages(rows.length, [rows.slice(0, SOURCE_PAGE_SIZE), []])).toThrow('SOURCE_PAGE_EMPTY')
+    expect(() => collectSourcePages(2, [[source({}), source({})]])).toThrow('SOURCE_INCOMPLETE')
+    expect(collectSourcePages(0, [])).toEqual([])
   })
 })
 

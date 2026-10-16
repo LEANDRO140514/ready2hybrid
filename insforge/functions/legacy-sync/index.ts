@@ -1,6 +1,13 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 
-import { planLegacySync, SOURCE_SELECT, type MirrorRegistration, type SourceRegistration } from '../../../src/legacy-sync/plan.ts'
+import {
+  collectSourcePages,
+  planLegacySync,
+  sourceCountQuery,
+  sourcePageQuery,
+  type MirrorRegistration,
+  type SourceRegistration,
+} from '../../../src/legacy-sync/plan.ts'
 
 function env(key: string): string | undefined {
   return Deno.env.get(key) ?? undefined
@@ -26,20 +33,40 @@ type SqlClient = {
   query: (sql: string) => Promise<Record<string, unknown>[]>
 }
 
-async function readSource(baseUrl: string, apiKey: string): Promise<SourceRegistration[]> {
-  if (!SOURCE_SELECT.startsWith('SELECT ') || /\b(insert|update|delete|drop|alter)\b/i.test(SOURCE_SELECT)) {
+function assertReadQuery(query: string) {
+  if (!query.startsWith('SELECT ') || /\b(insert|update|delete|drop|alter)\b/i.test(query)) {
     throw new Error('SOURCE_QUERY_REJECTED')
   }
+}
+
+async function readSql(baseUrl: string, apiKey: string, query: string): Promise<Record<string, unknown>[]> {
+  assertReadQuery(query)
   const response = await fetch(`${baseUrl}/api/database/advance/rawsql`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: SOURCE_SELECT }),
+    body: JSON.stringify({ query }),
   })
   if (!response.ok) throw new Error(`SOURCE_HTTP_${response.status}`)
-  const body = await response.json() as { rows?: SourceRegistration[]; result?: { rows?: SourceRegistration[] } }
+  const body = await response.json() as { rows?: Record<string, unknown>[]; result?: { rows?: Record<string, unknown>[] } }
   const rows = body.rows ?? body.result?.rows
   if (!Array.isArray(rows)) throw new Error('SOURCE_SHAPE')
   return rows
+}
+
+async function readSource(baseUrl: string, apiKey: string): Promise<SourceRegistration[]> {
+  const counted = await readSql(baseUrl, apiKey, sourceCountQuery())
+  const rawTotal = counted[0]?.total
+  const total = typeof rawTotal === 'number' ? rawTotal : Number(rawTotal)
+  if (!Number.isInteger(total) || total < 0) throw new Error('SOURCE_COUNT_INVALID')
+  const pages: SourceRegistration[][] = []
+  let offset = 0
+  while (offset < total) {
+    const page = await readSql(baseUrl, apiKey, sourcePageQuery(offset)) as SourceRegistration[]
+    pages.push(page)
+    if (page.length === 0) break
+    offset += page.length
+  }
+  return collectSourcePages(total, pages)
 }
 
 export async function runLegacySync(sql: SqlClient, source: SourceRegistration[], catalogCodes: ReadonlySet<string>): Promise<unknown> {
