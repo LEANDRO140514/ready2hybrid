@@ -163,7 +163,7 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           <p className="muted">
             Consulta ventas, oportunidades y lo que requiere atención.
             El periodo es la fecha de venta. El producto recorta cifras, gráficas, tablas y CSV.
-            El total del evento no usa ese filtro. Community Partner solo aplica donde hay atribución.
+            El acumulado del evento, sin filtros, no cambia con ese recorte. Community Partner solo aplica donde hay atribución.
           </p>
         </div>
         <p className="muted" data-testid="snapshot-time">
