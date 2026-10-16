@@ -173,9 +173,11 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
         <span className="muted" data-testid="marketing-count">{filtered.length} contactos</span>
       </div>
       <p className="muted">
-        La base general conserva compras contadas, productos, importe, fechas, origen y consentimiento.
-        Meta recibe solo email, phone, fn, ln y country. Un teléfono conserva el código internacional si ya lo trae;
-        si no trae país, ese campo queda vacío. Quien no tiene correo ni teléfono no entra en el archivo de Meta.
+        La base general conserva el teléfono original, las compras contadas, los productos, el importe, las fechas,
+        el origen y el consentimiento. Meta incluye el teléfono solo cuando el código internacional ya está
+        confirmado; si no se puede determinar, phone queda vacío y se conservan correo y nombre. La compatibilidad
+        de este archivo con Meta está pendiente de una comprobación oficial o de una importación. Quien no tiene
+        correo ni teléfono confirmado no entra en el archivo de Meta.
       </p>
       <div className="table-wrap">
         <table>

@@ -160,30 +160,17 @@ function csvCell(value: string | number | null): string {
 }
 
 /**
- * Meta customer-list columns checked against the accessible formatting guide
- * at https://help.bir.ch/en/articles/6303601-custom-audiences-formatting-guidelines
- * on 2026-10-16. That guide states the headers and examples Meta accepts.
- * Meta's own help page returned 403, so this is a structural check, not an
- * upload. Ads Manager hashes the file; this export stays plaintext.
+ * Meta customer file. Compatibility is pending an official check or a real
+ * import. This exporter does not claim that check.
  *
- * A phone keeps an international code that is already present. 52 is not
- * added to a local number. Country is the ISO code only when that calling
- * code identifies one country; otherwise the cell stays empty.
+ * Phone is written only when the number already has a confirmed international
+ * calling code. A local number leaves phone empty and keeps email, fn and ln.
+ * Country is filled only when that code identifies one country. The general
+ * export keeps the original phone.
  */
 export const META_CUSTOMER_COLUMNS = ['email', 'phone', 'fn', 'ln', 'country'] as const
 
-export const META_ACCEPTED_COLUMNS = [
-  'email',
-  'phone',
-  'fn',
-  'st',
-  'country',
-  'doby',
-  'dobm',
-  'dobd',
-  'zip',
-  'extern_id',
-] as const
+export const META_FORMAT_STATUS = 'pending-official-check' as const
 
 function metaEmail(value: string | null): string {
   const email = value?.trim().toLowerCase() ?? ''
@@ -205,7 +192,8 @@ function metaPhone(value: string | null): { phone: string; country: string } {
   if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: digits, country: 'GB' }
   if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: digits, country: 'ES' }
   if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: digits, country: 'FR' }
-  return { phone: digits, country: '' }
+  if (explicit && digits.startsWith('1') && digits.length === 11) return { phone: digits, country: '' }
+  return { phone: '', country: '' }
 }
 
 function metaName(value: string | null): { fn: string; ln: string } {

@@ -25,8 +25,8 @@ import {
   filterMarketingContacts,
   marketingContactsToCsv,
   marketingContactsToMetaCsv,
-  META_ACCEPTED_COLUMNS,
   META_CUSTOMER_COLUMNS,
+  META_FORMAT_STATUS,
   parseMarketingPayload,
   type MarketingContact,
 } from '../../../src/sales-dashboard/marketing'
@@ -302,7 +302,26 @@ describe('marketing CSV and filters', () => {
         consent: 'not-recorded',
       },
     ])
-    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,9992222222,luis,peña,')
+    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,,luis,peña,')
+    expect(marketingContactsToCsv([
+      {
+        key: 'luis',
+        name: 'Luis Peña',
+        email: 'Luis@Example.com',
+        phone: '9992222222',
+        status: 'PAID',
+        origin: 'legacy',
+        categories: ['Dobles'],
+        paidCents: 250000,
+        firstAt: null,
+        lastAt: null,
+        saleAt: '2026-07-02T12:00:00.000Z',
+        registeredAt: '2026-07-01T12:00:00.000Z',
+        importedAt: '2026-09-26T18:00:00.000Z',
+        paymentCountedOnCurrent: false,
+        consent: 'not-recorded',
+      },
+    ])).toContain('9992222222')
   })
 
   it('keeps an existing calling code and does not invent Mexico', () => {
@@ -325,9 +344,14 @@ describe('marketing CSV and filters', () => {
       paymentCountedOnCurrent: false,
       consent: 'recorded' as const,
     }
+    expect(META_FORMAT_STATUS).toBe('pending-official-check')
     expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,529991111111,ana,lópez,MX')
+    expect(marketingContactsToCsv([{ ...row, phone: '9991111111' }])).toContain('9991111111')
     expect(marketingContactsToMetaCsv([{ ...row, phone: '9991111111' }]).split('\n')[1]).toBe(
-      'ana@example.com,9991111111,ana,lópez,',
+      'ana@example.com,,ana,lópez,',
+    )
+    expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '9991111111' }]).trim()).toBe(
+      'email,phone,fn,ln,country',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 415 555 0142' }]).split('\n')[1]).toBe(
       'ana@example.com,14155550142,ana,lópez,',
@@ -337,10 +361,6 @@ describe('marketing CSV and filters', () => {
     )
     const header = marketingContactsToMetaCsv([row]).split('\n')[0]!.split(',')
     expect(header).toEqual([...META_CUSTOMER_COLUMNS])
-    for (const column of ['email', 'phone', 'fn', 'country'] as const) {
-      expect(META_ACCEPTED_COLUMNS).toContain(column)
-      expect(header).toContain(column)
-    }
     expect(header).toContain('ln')
     expect(header).not.toContain('purchase_count')
     expect(marketingContactsToMetaCsv([row])).not.toMatch(/[0-9a-f]{64}/)
@@ -473,8 +493,13 @@ describe('marketing page', () => {
     expect(general).toContain('recorded')
     expect(general).not.toContain('pedro@example.com')
     expect(meta?.split('\n')[0]).toBe('email,phone,fn,ln,country')
+    expect(general).toContain('9991111111')
     expect(general).toContain('Individual Hombre,2,Individual Hombre,2500.00')
-    expect(meta).toContain('ana@example.com,9991111111,ana,lópez,')
+    expect(meta).toContain('ana@example.com,,ana,lópez,')
+    expect(meta).not.toContain('9991111111')
+    expect(screen.getByTestId('marketing-contacts').textContent).toContain(
+      'pendiente de una comprobación oficial o de una importación',
+    )
     expect(meta).not.toContain('pedro@example.com')
     expect(meta).not.toContain('pay-')
     vi.restoreAllMocks()
