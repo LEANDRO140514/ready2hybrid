@@ -5,6 +5,7 @@ import {
   MARKETING_STATUS_LABEL,
   filterMarketingContacts,
   marketingContactsToCsv,
+  marketingContactsToMetaCsv,
   marketingCounts,
   type MarketingFilters,
   type MarketingPayload,
@@ -30,15 +31,16 @@ function formatMoney(cents: number): string {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(cents / 100)
 }
 
-export function MarketingPage() {
+export function MarketingPage({ example }: { example?: MarketingPayload } = {}) {
   const port = useSalesPort()
-  const [payload, setPayload] = useState<MarketingPayload | null>(null)
+  const [payload, setPayload] = useState<MarketingPayload | null>(example ?? null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<MarketingFilters>(EMPTY_MARKETING_FILTERS)
   const [page, setPage] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    if (example) return
     if (!port.loadContacts) {
       setError('La lista de contactos no está disponible en este entorno.')
       return
@@ -56,7 +58,7 @@ export function MarketingPage() {
     return () => {
       cancelled = true
     }
-  }, [port])
+  }, [example, port])
 
   const contacts = useMemo(() => payload?.contacts ?? [], [payload])
   const counts = useMemo(() => marketingCounts(contacts), [contacts])
@@ -79,12 +81,12 @@ export function MarketingPage() {
     setFilters((current) => ({ ...current, ...partial }))
   }
 
-  function download() {
-    const blob = new Blob([marketingContactsToCsv(filtered)], { type: 'text/csv;charset=utf-8' })
+  function download(filename: string, csv: string) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'contactos-marketing.csv'
+    link.download = filename
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -100,6 +102,7 @@ export function MarketingPage() {
         {payload.visitors} visitantes en la landing. {anonymous} no dejaron datos de contacto y no pueden exportarse
         como lista. Quien compró es PAID; quien no, es pendiente o dejó sus datos. La fecha de venta filtra a quien
         compró. Quien no compró se filtra por la fecha de registro. Legacy no tiene Community Partner ni consentimiento.
+        Los dos archivos de abajo usan este mismo filtro.
       </p>
       <div className="filter-grid">
         <label>
@@ -151,11 +154,28 @@ export function MarketingPage() {
         </label>
       </div>
       <div className="chip-row">
-        <button type="button" className="chip" data-testid="marketing-export" onClick={download}>
-          Exportar CSV
+        <button
+          type="button"
+          className="chip"
+          data-testid="export-base-general"
+          onClick={() => download('base-general.csv', marketingContactsToCsv(filtered))}
+        >
+          Exportar base general
+        </button>
+        <button
+          type="button"
+          className="chip"
+          data-testid="export-meta"
+          onClick={() => download('meta-clientes.csv', marketingContactsToMetaCsv(filtered))}
+        >
+          Exportar para Meta
         </button>
         <span className="muted" data-testid="marketing-count">{filtered.length} contactos</span>
       </div>
+      <p className="muted">
+        La base general conserva estado, fechas, origen y consentimiento. Meta recibe solo email, phone, fn, ln y country,
+        en el formato de su lista de clientes. Quien no tiene correo ni teléfono no entra en ese archivo.
+      </p>
       <div className="table-wrap">
         <table>
           <thead>

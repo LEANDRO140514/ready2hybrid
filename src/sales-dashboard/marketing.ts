@@ -151,6 +151,54 @@ function csvCell(value: string | number | null): string {
   return cell
 }
 
+/**
+ * Meta customer-list file for Ads Manager.
+ * Column names and normalization follow Meta's published customer-list
+ * format (Business Help 2082575038703844): a header row, plaintext
+ * identifiers, phone digits with a country code, and lowercase names
+ * without punctuation. Ads Manager hashes the file. This export does not.
+ * A 10-digit number is treated as a Mexican mobile and prefixed with 52.
+ * Rows without an email or a phone are omitted: Meta cannot match them.
+ */
+export const META_CUSTOMER_COLUMNS = ['email', 'phone', 'fn', 'ln', 'country'] as const
+
+function metaEmail(value: string | null): string {
+  const email = value?.trim().toLowerCase() ?? ''
+  return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email) ? email : ''
+}
+
+function metaPhone(value: string | null): { phone: string; country: string } {
+  const digits = (value ?? '').replace(/\D/g, '').replace(/^0+/, '')
+  if (digits.startsWith('52') && digits.length === 12) return { phone: digits, country: 'mx' }
+  if (digits.startsWith('1') && digits.length === 11) return { phone: digits, country: 'us' }
+  if (digits.length === 10) return { phone: `52${digits}`, country: 'mx' }
+  return { phone: '', country: '' }
+}
+
+function metaName(value: string | null): { fn: string; ln: string } {
+  const letters = (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+  const [fn, ...rest] = letters.split(' ').filter(Boolean)
+  return { fn: fn ?? '', ln: rest.join(' ') }
+}
+
+export function marketingContactsToMetaCsv(contacts: MarketingContact[]): string {
+  const lines = [META_CUSTOMER_COLUMNS.join(',')]
+  for (const contact of contacts) {
+    const email = metaEmail(contact.email)
+    const { phone, country } = metaPhone(contact.phone)
+    if (!email && !phone) continue
+    const { fn, ln } = metaName(contact.name)
+    lines.push([email, phone, fn, ln, phone ? country : ''].join(','))
+  }
+  return lines.join('\n')
+}
+
 export function marketingContactsToCsv(contacts: MarketingContact[]): string {
   const header = [
     'name',

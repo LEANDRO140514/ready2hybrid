@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import App from '../../../src/App'
 import { closedAccountAuth } from '../../../src/auth/fixture-ports'
@@ -24,6 +24,7 @@ import {
   EMPTY_MARKETING_FILTERS,
   filterMarketingContacts,
   marketingContactsToCsv,
+  marketingContactsToMetaCsv,
   parseMarketingPayload,
   type MarketingContact,
 } from '../../../src/sales-dashboard/marketing'
@@ -239,6 +240,82 @@ describe('marketing CSV and filters', () => {
     expect(row).toContain("'-1+1")
   })
 
+  it('exports the general base and a Meta customer list from the same filter', () => {
+    const pending = filterMarketingContacts(contacts, { ...EMPTY_MARKETING_FILTERS, status: 'PENDING' })
+    const general = marketingContactsToCsv(pending)
+    const meta = marketingContactsToMetaCsv(pending)
+    expect(general.split('\n')[0]).toBe(
+      'name,email,phone,status,categories,paid_amount_mxn,fecha_venta,fecha_registro,fecha_importacion,origin,consent',
+    )
+    expect(general).toContain('pedro@example.com')
+    expect(general).toContain('not_recorded')
+    expect(general).not.toContain('ana@example.com')
+    expect(meta.split('\n')[0]).toBe('email,phone,fn,ln,country')
+    expect(meta).toContain('pedro@example.com')
+    expect(meta).not.toContain('ana@example.com')
+    expect(meta).not.toContain('not_recorded')
+    expect(meta).not.toContain('PENDING')
+  })
+
+  it('formats a Meta row with a country code and omits a contact Meta cannot match', () => {
+    const csv = marketingContactsToMetaCsv([
+      {
+        key: 'luis',
+        name: 'Luis Peña',
+        email: 'Luis@Example.com',
+        phone: '9992222222',
+        status: 'PAID',
+        origin: 'legacy',
+        categories: ['Dobles'],
+        paidCents: 250000,
+        firstAt: null,
+        lastAt: null,
+        saleAt: '2026-07-02T12:00:00.000Z',
+        registeredAt: '2026-07-01T12:00:00.000Z',
+        importedAt: '2026-09-26T18:00:00.000Z',
+        paymentCountedOnCurrent: false,
+        consent: 'not-recorded',
+      },
+      {
+        key: 'blank',
+        name: 'Sin Datos',
+        email: null,
+        phone: null,
+        status: 'LEAD',
+        origin: 'legacy',
+        categories: [],
+        paidCents: 0,
+        firstAt: null,
+        lastAt: null,
+        saleAt: null,
+        registeredAt: null,
+        importedAt: null,
+        paymentCountedOnCurrent: false,
+        consent: 'not-recorded',
+      },
+    ])
+    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,529992222222,luis,pena,mx')
+    expect(marketingContactsToCsv([
+      {
+        key: 'blank',
+        name: 'Sin Datos',
+        email: null,
+        phone: null,
+        status: 'LEAD',
+        origin: 'legacy',
+        categories: [],
+        paidCents: 0,
+        firstAt: null,
+        lastAt: null,
+        saleAt: null,
+        registeredAt: null,
+        importedAt: null,
+        paymentCountedOnCurrent: false,
+        consent: 'not-recorded',
+      },
+    ])).toContain('Sin Datos')
+  })
+
   it('filters by status, consent and search', () => {
     expect(
       filterMarketingContacts(contacts, { ...EMPTY_MARKETING_FILTERS, status: 'PENDING' }).every(
@@ -318,7 +395,39 @@ describe('marketing page', () => {
     ])
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PENDING' } })
     expect(screen.getByTestId('marketing-count').textContent).toBe('2 contactos')
-    expect(screen.getByTestId('marketing-export')).toBeTruthy()
+    expect(screen.getByTestId('export-base-general')).toBeTruthy()
+    expect(screen.getByTestId('export-meta')).toBeTruthy()
+  })
+
+  it('downloads both exports for the contacts that remain after the filter', async () => {
+    const created: Blob[] = []
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      created.push(blob as Blob)
+      return 'blob:csv'
+    })
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    render(
+      <App
+        initialPath="/ops/marketing"
+        authPort={session}
+        authorizationPort={authz('MARKETING')}
+        salesPort={portWithContacts()}
+      />,
+    )
+    await waitFor(() => expect(screen.getByTestId('marketing-contacts')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PAID' } })
+    fireEvent.click(screen.getByTestId('export-base-general'))
+    fireEvent.click(screen.getByTestId('export-meta'))
+    const general = await created[0]?.text()
+    const meta = await created[1]?.text()
+    expect(general).toContain('ana@example.com')
+    expect(general).toContain('recorded')
+    expect(general).not.toContain('pedro@example.com')
+    expect(meta?.split('\n')[0]).toBe('email,phone,fn,ln,country')
+    expect(meta).toContain('ana@example.com,529991111111,ana,lopez,mx')
+    expect(meta).not.toContain('pedro@example.com')
+    expect(meta).not.toContain('pay-')
+    vi.restoreAllMocks()
   })
 
   it('keeps FINANCE and MARKETING out of each other\'s pages', async () => {
