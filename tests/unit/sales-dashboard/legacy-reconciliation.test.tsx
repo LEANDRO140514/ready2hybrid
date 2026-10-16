@@ -133,7 +133,7 @@ describe('legacy reconcile edge input', () => {
 
 describe('legacy reconciliation storage', () => {
   it('writes only legacy_reconciliations and does not touch orders, payments, or finance adjustments', () => {
-    const sql = readFileSync(resolve('insforge/migrations/0040_legacy-reconciliations.sql'), 'utf8')
+    const sql = readFileSync(resolve('insforge/migrations/0044_legacy-reconciliations.sql'), 'utf8')
     const fn = readFileSync(resolve('insforge/functions/ops-legacy-reconcile/index.ts'), 'utf8')
     expect(sql).toContain('CREATE TABLE public.legacy_reconciliations')
     expect(sql).not.toMatch(/INSERT\s+INTO\s+public\.(orders|payments|tickets|payment_finance_adjustments)\b/i)

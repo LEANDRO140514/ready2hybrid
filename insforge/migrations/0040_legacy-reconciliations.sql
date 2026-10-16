@@ -5,8 +5,9 @@
 --          Separate from payment_finance_adjustments. Legacy never mixes with
 --          native orders/payments (see 0036 header).
 -- Predecessor: 0036_legacy-hybrid-registrations.sql
--- Number 0040 is unused on this branch. 0041 stays with Openpay.
--- This file does not change 0042 or 0043. Apply it alone, not with --all.
+-- Production cannot apply version 40: 42 is already the remote head.
+-- The same schema is applied as 0044_legacy-reconciliations.sql.
+-- 0041 stays with Openpay. Do not apply this file on 4bg9ufz2.
 --
 -- Touches no existing table. Creates one table, one guard function and one
 -- trigger. Rollback:
