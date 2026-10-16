@@ -85,7 +85,14 @@ describe('sales dashboard model', () => {
     expect(paid?.tickets[0]?.emailState).toBe('SENT')
   })
 
-  it('flags an approved charge that never received a ticket', () => {
+  it('keeps an approved charge in review when the order never became PAID', () => {
+    // The ticket gap is an alert only after the order is PAID
+    // ("Orden PAID sin boleto"). This order is REQUIRES_REVIEW: the
+    // approved payment is reported as "Pago APPROVED y la orden no está
+    // PAID", and the review state stays visible. "Pago APPROVED sin boleto"
+    // is not a dashboard alert; the operational manual and the data audit
+    // do not list it. A missing ticket on a non-PAID order is the same fact
+    // as the order not being PAID.
     const types = anomaliesFor(
       {
         id: '0fc38f29-394e-4802-aa4d-21822de213f6',
@@ -113,9 +120,10 @@ describe('sales dashboard model', () => {
       },
       Date.parse('2026-10-07T16:00:00.000Z'),
     ).map((row) => row.type)
-    expect(types).toContain('Pago APPROVED sin boleto')
     expect(types).toContain('Pago APPROVED y la orden no está PAID')
     expect(types).toContain('Orden en REQUIRES_REVIEW')
+    expect(types).not.toContain('Pago APPROVED sin boleto')
+    expect(types).not.toContain('Orden PAID sin boleto')
   })
 
   it('flags amount mismatch, missing ticket, approved-but-not-paid, and rejected verification', () => {
