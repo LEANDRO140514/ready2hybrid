@@ -4,12 +4,14 @@ Congelado hasta esa ventana. La preventa cierra el 19 oct 2026 a las 23:59
 (America/Mérida). Nada de esto se aplica antes, y solo con un pase explícito.
 No toca `mp-webhook`. No incluye 0037. No usa `db migrations up --all` ni `--to`.
 
-El archivo que se aplica es el commiteado
-`insforge/migrations/0046_dual-provider-payment-core.sql`.
-El CLI lee `migrations/` del checkout enlazado a `4bg9ufz2`, no
-`insforge/migrations/`. Ese día se copia solo ese archivo al `migrations/`
-del checkout cuyo `npx -y @insforge/cli current` muestre el proyecto
-`ready2hybrid` / `4bg9ufz2`. No se copian 0032, 0037 ni 0045 en ese pase.
+El archivo está aparcado en
+`docs/openpay/0046_dual-provider-payment-core.sql`.
+No vive en `insforge/migrations/` ni en `migrations/`.
+Vuelve a `migrations/` solo con un pase explícito, el día que se aplique,
+después de la cita con Openpay del lunes. Ese día se copia solo ese archivo
+al `migrations/` del checkout cuyo `npx -y @insforge/cli current` muestre
+`ready2hybrid` / `4bg9ufz2`. El CLI lee esa carpeta, no `insforge/migrations/`.
+No se copian 0032, 0037 ni 0045 en ese pase.
 
 ## Preflight, en solo lectura
 

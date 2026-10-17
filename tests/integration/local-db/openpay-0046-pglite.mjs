@@ -24,7 +24,7 @@ if (!schemaMatch) throw new Error('could not read the local payment schema')
 
 const liveFn = readFileSync(resolve(root, 'docs/openpay/live-webhook-apply-payment-tx.sql'), 'utf8')
 const migration = readFileSync(
-  resolve(root, 'insforge/migrations/0046_dual-provider-payment-core.sql'),
+  resolve(root, 'docs/openpay/0046_dual-provider-payment-core.sql'),
   'utf8',
 )
 const rollback = readFileSync(
