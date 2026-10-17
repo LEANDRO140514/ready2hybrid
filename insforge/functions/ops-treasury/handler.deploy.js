@@ -1,7 +1,7 @@
 // insforge/functions/ops-treasury/index.ts
 import { createAdminClient } from "npm:@insforge/sdk@1.5.0";
 
-// insforge/functions/_shared/treasury/write.ts
+// src/treasury/write.ts
 var METHODS = /* @__PURE__ */ new Set(["transferencia", "efectivo", "tarjeta", "cheque", "otro"]);
 var TYPES = /* @__PURE__ */ new Set(["income", "expense", "transfer"]);
 var STATUSES = /* @__PURE__ */ new Set(["scheduled", "posted", "cancelled"]);

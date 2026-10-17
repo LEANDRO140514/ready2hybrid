@@ -1,4 +1,4 @@
-import { planTreasuryWrite } from '../../insforge/functions/_shared/treasury/write'
+import { planTreasuryWrite } from './write'
 import type { TreasuryBooks, TreasuryMovement } from './books'
 
 function id(): string {

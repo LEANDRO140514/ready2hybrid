@@ -4,7 +4,7 @@ import {
   planTreasuryWrite,
   roleMayUseTreasury,
   updatedRowCount,
-} from '../_shared/treasury/write.ts'
+} from '../../../src/treasury/write.ts'
 import type { TreasuryBooks, TreasuryMovement } from '../../../src/treasury/books.ts'
 import {
   gateRequestOrigin,

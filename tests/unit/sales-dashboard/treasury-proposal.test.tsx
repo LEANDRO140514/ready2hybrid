@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TreasuryProposal } from '../../../src/components/finance/TreasuryProposal'
 import { formatMoney } from '../../../src/sales-dashboard/model'
-import { planTreasuryWrite, roleMayUseTreasury, updatedRowCount } from '../../../insforge/functions/_shared/treasury/write'
+import { planTreasuryWrite, roleMayUseTreasury, updatedRowCount } from '../../../src/treasury/write'
 import {
   movementsToCsv,
   scheduleToCsv,
