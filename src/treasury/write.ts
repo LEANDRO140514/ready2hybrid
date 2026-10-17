@@ -211,6 +211,16 @@ function planMovement(books: TreasuryBooks, input: Row, actor: string, id: strin
   if (type !== 'transfer' && (!category || category.kind !== type)) {
     return { ok: false, status: 400, code: 'CATEGORY_KIND' }
   }
+  const source = books.accounts.find((row) => row.id === accountId)
+  const destination = destinationAccountId
+    ? books.accounts.find((row) => row.id === destinationAccountId)
+    : null
+  if (
+    (source && occurredOn < source.openingDate) ||
+    (destination && occurredOn < destination.openingDate)
+  ) {
+    return { ok: false, status: 409, code: 'DATE_BEFORE_OPENING' }
+  }
   const row: Row = {
     type,
     status,

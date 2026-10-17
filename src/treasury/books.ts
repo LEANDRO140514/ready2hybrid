@@ -100,6 +100,20 @@ export function meridaToday(now: Date): string {
   return `${shifted.getUTCFullYear()}-${month}-${day}`
 }
 
+const SPANISH_MONTHS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+export function formatSpanishDate(value: string | null): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '')
+  if (!match) return ''
+  const month = SPANISH_MONTHS[Number(match[2]) - 1]
+  const day = Number(match[3])
+  if (!month || day < 1 || day > 31) return ''
+  return `${day} de ${month} de ${match[1]}`
+}
+
 export function formatMeridaDate(value: string | null): string {
   if (!value) return ''
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)

@@ -5,6 +5,7 @@ import {
   EMPTY_TREASURY_FILTERS,
   accountCashCents,
   formatMeridaDate,
+  formatSpanishDate,
   meridaToday,
   movementMatches,
   movementsToCsv,
@@ -19,6 +20,7 @@ import {
   type TreasuryFilters,
   type TreasuryMovement,
 } from '../../treasury/books'
+import { explainTreasuryError } from '../../treasury/messages'
 
 const TYPE_LABEL: Record<MovementType, string> = {
   income: 'Ingreso',
@@ -38,22 +40,6 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   tarjeta: 'Tarjeta',
   cheque: 'Cheque',
   otro: 'Otro',
-}
-
-const ERROR_TEXT: Record<string, string> = {
-  INVALID_REQUEST: 'Revisa cuenta, monto, fecha y concepto.',
-  PAYMENT_METHOD_REQUIRED: 'Un movimiento realizado necesita forma de pago.',
-  CANCEL_REASON_REQUIRED: 'Cancelar pide un motivo.',
-  CATEGORY_KIND: 'La categoría no corresponde al tipo de movimiento.',
-  OPENING_FROZEN: 'El saldo inicial queda fijo cuando la cuenta ya tiene movimientos.',
-  NOT_FOUND: 'Ese registro ya no está.',
-  TERMINAL: 'Un movimiento cancelado no se reabre.',
-  TYPE_IMMUTABLE: 'El tipo de movimiento no se cambia.',
-  POSTED_ONLY_CANCELS: 'Un movimiento realizado solo puede cancelarse.',
-  POSTED_NOT_EDITABLE: 'Para corregir un realizado, cancélalo y captura uno nuevo.',
-  REJECTED: 'No se pudo guardar.',
-  FORBIDDEN: 'Esta cuenta no entra a tesorería.',
-  UNAUTHORIZED: 'La sesión no está vigente.',
 }
 
 function download(name: string, csv: string) {
@@ -94,6 +80,9 @@ export function TreasuryDesk({
   const [filters, setFilters] = useState<TreasuryFilters>(EMPTY_TREASURY_FILTERS)
   const [selected, setSelected] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [attempt, setAttempt] = useState<Record<string, unknown> | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [formKey, setFormKey] = useState(0)
   const today = meridaToday(new Date())
   const scheduled = books.movements
     .filter((movement) => movement.status === 'scheduled' && movement.type === 'expense')
@@ -103,9 +92,20 @@ export function TreasuryDesk({
 
   async function save(body: Record<string, unknown>, form?: HTMLFormElement): Promise<boolean> {
     setBusy(true)
+    setNotice(null)
+    setAttempt(body)
     try {
       const saved = await onSave(body)
-      if (saved) form?.reset()
+      if (saved) {
+        form?.reset()
+        setFormKey((current) => current + 1)
+        const intent = body.intent
+        setNotice(intent === 'create-account' || intent === 'update-account'
+          ? 'Cuenta guardada.'
+          : intent === 'create-category' || intent === 'update-category'
+            ? 'Categoría guardada.'
+            : 'Movimiento guardado.')
+      }
       return saved
     } finally {
       setBusy(false)
@@ -114,7 +114,6 @@ export function TreasuryDesk({
 
   return (
     <div className="finance" data-testid="treasury-page">
-      <h1>Tesorería</h1>
       <p className="muted">
         {excludedSalesCents == null
           ? 'El monto comercial de Ventas no se suma aquí y no se importa como ingreso ni como saldo inicial.'
@@ -141,7 +140,8 @@ export function TreasuryDesk({
         </article>
       </div>
 
-      {error ? <p role="alert">{ERROR_TEXT[error] ?? error}</p> : null}
+      {error ? <p role="alert">{explainTreasuryError(error, books, attempt)}</p> : null}
+      {notice ? <p role="status">{notice}</p> : null}
 
       <div className="chip-row">
         <button type="button" onClick={() => download(treasuryFileName('movimientos', new Date()), movementsToCsv(books, filters))}>
@@ -166,23 +166,23 @@ export function TreasuryDesk({
           ))}
         </ul>
         <form
+          key={formKey}
           onSubmit={(event) => {
             event.preventDefault()
             const form = new FormData(event.currentTarget)
             const openingBalanceCents = pesosToCents(form.get('opening'), true)
-            if (openingBalanceCents == null) return
             void save({
               intent: 'create-account',
               name: form.get('name'),
-              openingBalanceCents,
+              openingBalanceCents: openingBalanceCents ?? Number.NaN,
               openingDate: form.get('openingDate'),
             }, event.currentTarget)
           }}
         >
           <label>Nombre <input name="name" aria-label="Nombre de cuenta" required /></label>
           <label>Saldo inicial <input name="opening" inputMode="decimal" aria-label="Saldo inicial" required /></label>
-          <label>Fecha <input name="openingDate" type="date" aria-label="Fecha de apertura" required /></label>
-          <button type="submit" disabled={busy}>Nueva cuenta</button>
+          <DateField name="openingDate" label="Fecha de apertura" />
+          <button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Nueva cuenta'}</button>
         </form>
       </section>
 
@@ -207,11 +207,12 @@ export function TreasuryDesk({
               <option value="income">Ingreso</option>
             </select>
           </label>
-          <button type="submit" disabled={busy}>Nueva categoría</button>
+          <button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Nueva categoría'}</button>
         </form>
       </section>
 
       <MovementForm
+        key={formKey}
         books={books}
         accounts={activeAccounts}
         busy={busy}
@@ -291,7 +292,6 @@ function MovementForm({
           event.preventDefault()
           const form = new FormData(event.currentTarget)
           const amountCents = pesosToCents(form.get('amount'))
-          if (amountCents == null) return
           void onSave({
             intent: 'create-movement',
             type,
@@ -300,7 +300,7 @@ function MovementForm({
             destinationAccountId: type === 'transfer' ? form.get('destinationAccountId') : null,
             categoryId: type === 'transfer' ? null : form.get('categoryId'),
             paymentMethod: form.get('paymentMethod') || null,
-            amountCents,
+            amountCents: amountCents ?? 0,
             occurredOn: form.get('occurredOn'),
             concept: form.get('concept'),
             counterparty: form.get('counterparty') || null,
@@ -359,14 +359,33 @@ function MovementForm({
           </select>
         </label>
         <label>Monto <input name="amount" inputMode="decimal" aria-label="Monto" required /></label>
-        <label>Fecha <input name="occurredOn" type="date" aria-label="Fecha" required /></label>
+        <DateField name="occurredOn" label="Fecha" />
         <label>Concepto <input name="concept" aria-label="Concepto" required /></label>
         <label>Proveedor <input name="counterparty" aria-label="Proveedor" /></label>
         <label>Notas <input name="notes" aria-label="Notas" /></label>
         <label>Motivo de cancelación <input name="cancelReason" aria-label="Motivo" /></label>
-        <button type="submit" disabled={busy}>Guardar movimiento</button>
+        <button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar movimiento'}</button>
       </form>
     </section>
+  )
+}
+
+function DateField({ name, label }: { name: string; label: string }) {
+  const [value, setValue] = useState('')
+  const written = formatSpanishDate(value)
+  return (
+    <label>
+      {label}
+      <input
+        name={name}
+        type="date"
+        aria-label={label}
+        required
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+      />
+      {written ? <span>{written}</span> : null}
+    </label>
   )
 }
 

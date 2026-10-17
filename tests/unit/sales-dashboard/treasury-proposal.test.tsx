@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
+import { TreasuryDesk } from '../../../src/components/finance/TreasuryDesk'
+import { TreasuryPage } from '../../../src/components/finance/TreasuryPage'
 import { TreasuryProposal } from '../../../src/components/finance/TreasuryProposal'
 import { formatMoney } from '../../../src/sales-dashboard/model'
+import { explainTreasuryError, treasuryFailureCode } from '../../../src/treasury/messages'
 import { planTreasuryWrite, roleMayUseTreasury, updatedRowCount } from '../../../src/treasury/write'
 import {
   movementsToCsv,
@@ -179,6 +182,66 @@ describe('treasury books', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     expect(await screen.findByRole('cell', { name: 'Cancelado' })).toBeTruthy()
     expect(screen.getByTestId('treasury-cash').textContent).toBe(formatMoney(500_000))
+  })
+
+  it('rejects a movement dated before the account opening', () => {
+    const planned = planTreasuryWrite(books, {
+      intent: 'create-movement',
+      type: 'expense',
+      status: 'scheduled',
+      accountId: 'caja',
+      categoryId: 'renta',
+      amountCents: 100,
+      occurredOn: '2026-07-01',
+      concept: 'Luz',
+    }, 'robert@example.com')
+    expect(planned).toMatchObject({ ok: false, status: 409, code: 'DATE_BEFORE_OPENING' })
+  })
+
+  it('shows the opening date in Spanish and explains a date that is too early', async () => {
+    const early: TreasuryBooks = {
+      accounts: [{
+        id: 'prueba', name: 'PRUEBA-DEPLOY', active: true, openingBalanceCents: 0, openingDate: '2026-12-10',
+      }],
+      categories: [{ id: 'cat', name: 'PRUEBA-CAT', kind: 'expense', active: true }],
+      movements: [],
+    }
+    render(<TreasuryPage initial={early} />)
+    expect(screen.queryByRole('heading', { name: 'Tesorería' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('Fecha de apertura'), { target: { value: '2026-12-10' } })
+    expect(screen.getByText('10 de diciembre de 2026')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-10-20' } })
+    expect(screen.getByText('20 de octubre de 2026')).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Cuenta' }), { target: { value: 'prueba' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Categoría' }), { target: { value: 'cat' } })
+    fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Prueba de deploy' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar movimiento' }))
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'La fecha es anterior a la apertura de la cuenta (10 de diciembre de 2026).',
+    )
+    expect(explainTreasuryError('REJECTED', early, {
+      accountId: 'prueba', occurredOn: '2026-10-20',
+    })).toBe('La fecha es anterior a la apertura de la cuenta (10 de diciembre de 2026).')
+    expect(treasuryFailureCode({ statusCode: 409, error: 'REJECTED', message: '' })).toBe('REJECTED')
+    expect(treasuryFailureCode({ statusCode: 401, error: 'REQUEST_FAILED', message: '' })).toBe('UNAUTHORIZED')
+    expect(treasuryFailureCode({ statusCode: 0, message: 'Failed to fetch' })).toBe('NETWORK')
+  })
+
+  it('shows Guardando and then a confirmation', async () => {
+    let release: (value: boolean) => void = () => {}
+    const pending = new Promise<boolean>((resolve) => { release = resolve })
+    render(<TreasuryDesk books={books} error={null} onSave={() => pending} />)
+    fireEvent.change(screen.getByLabelText('Monto'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-11-01' } })
+    fireEvent.change(screen.getByLabelText('Concepto'), { target: { value: 'Luz' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Cuenta' }), { target: { value: 'caja' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Categoría' }), { target: { value: 'renta' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar movimiento' }))
+    const saving = await screen.findAllByRole('button', { name: 'Guardando…' })
+    expect(saving.every((button) => (button as HTMLButtonElement).disabled)).toBe(true)
+    release(true)
+    expect((await screen.findByRole('status')).textContent).toBe('Movimiento guardado.')
   })
 
   it('keeps MARKETING out of the page and the role gate', () => {

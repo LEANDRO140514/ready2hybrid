@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { explainTreasuryError, treasuryFailureCode } from '../../treasury/messages'
 import { loadTreasury, saveTreasury } from '../../treasury/port'
+import { planTreasuryWrite } from '../../treasury/write'
 import type { TreasuryBooks } from '../../treasury/books'
 import { TreasuryDesk } from './TreasuryDesk'
 
@@ -19,7 +21,13 @@ export function TreasuryLive() {
         if (!cancelled) setBooks(next)
       })
       .catch((caught: unknown) => {
-        if (!cancelled) setError(caught instanceof Error ? caught.message : 'No se pudo leer tesorería.')
+        if (!cancelled) {
+          setError(explainTreasuryError(
+            treasuryFailureCode(caught),
+            { accounts: [], categories: [], movements: [] },
+            null,
+          ))
+        }
       })
     return () => {
       cancelled = true
@@ -34,13 +42,18 @@ export function TreasuryLive() {
         books={books}
         error={error}
         onSave={async (body) => {
+          const planned = planTreasuryWrite(books, body, 'pantalla')
+          if (!planned.ok) {
+            setError(planned.code)
+            return false
+          }
           try {
             await saveTreasury(body)
             setError(null)
             await reload()
             return true
           } catch (caught) {
-            setError(caught instanceof Error ? caught.message : 'REJECTED')
+            setError(treasuryFailureCode(caught))
             return false
           }
         }}
