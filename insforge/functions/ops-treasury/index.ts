@@ -3,6 +3,7 @@ import {
   classifyTreasuryIntent,
   planTreasuryWrite,
   roleMayUseTreasury,
+  updatedRowCount,
 } from '../_shared/treasury/write.ts'
 import type { TreasuryBooks, TreasuryMovement } from '../../../src/treasury/books.ts'
 import {
@@ -176,9 +177,15 @@ export default async function handler(req: Request): Promise<Response> {
   const planned = planTreasuryWrite(books, { ...(body as object), intent: classified.intent }, actor.label)
   if (!planned.ok) return json(planned.status, { ok: false, error: planned.code }, gate.headers)
   const query = admin.database.from(planned.table)
-  const result = planned.op === 'insert'
-    ? await query.insert([planned.row])
-    : await query.update(planned.row).eq('id', planned.id ?? '')
+  if (planned.op === 'insert') {
+    const result = await query.insert([planned.row])
+    if (result.error) return json(409, { ok: false, error: 'REJECTED' }, gate.headers)
+    return json(200, { ok: true }, gate.headers)
+  }
+  const result = await query.update(planned.row).eq('id', planned.id ?? '').select('id')
   if (result.error) return json(409, { ok: false, error: 'REJECTED' }, gate.headers)
+  if (updatedRowCount(result.data) !== 1) {
+    return json(404, { ok: false, error: 'NOT_FOUND' }, gate.headers)
+  }
   return json(200, { ok: true }, gate.headers)
 }

@@ -39,11 +39,22 @@ function planTreasuryWrite(books, body, actor) {
     return { ok: false, status: 400, code: "INVALID_REQUEST" };
   }
   if (classified.intent === "create-account") return planAccount(books, input, actor, null);
-  if (classified.intent === "update-account") return planAccount(books, input, actor, text(input.id));
+  if (classified.intent === "update-account") return planUpdate(books, input, actor, "account");
   if (classified.intent === "create-category") return planCategory(input, actor, null);
-  if (classified.intent === "update-category") return planCategory(input, actor, text(input.id));
+  if (classified.intent === "update-category") return planUpdate(books, input, actor, "category");
   if (classified.intent === "create-movement") return planMovement(books, input, actor, null);
-  return planMovement(books, input, actor, text(input.id));
+  return planUpdate(books, input, actor, "movement");
+}
+function planUpdate(books, input, actor, kind) {
+  const id = text(input.id);
+  const exists = kind === "account" ? books.accounts.some((account) => account.id === id) : kind === "category" ? books.categories.some((category) => category.id === id) : books.movements.some((movement) => movement.id === id);
+  if (!id || !exists) return { ok: false, status: 404, code: "NOT_FOUND" };
+  if (kind === "account") return planAccount(books, input, actor, id);
+  if (kind === "category") return planCategory(input, actor, id);
+  return planMovement(books, input, actor, id);
+}
+function updatedRowCount(data) {
+  return Array.isArray(data) ? data.length : 0;
 }
 function planAccount(books, input, actor, id) {
   const name = text(input.name);
@@ -378,8 +389,16 @@ async function handler(req) {
   const planned = planTreasuryWrite(books, { ...body, intent: classified.intent }, actor.label);
   if (!planned.ok) return json(planned.status, { ok: false, error: planned.code }, gate.headers);
   const query = admin.database.from(planned.table);
-  const result = planned.op === "insert" ? await query.insert([planned.row]) : await query.update(planned.row).eq("id", planned.id ?? "");
+  if (planned.op === "insert") {
+    const result2 = await query.insert([planned.row]);
+    if (result2.error) return json(409, { ok: false, error: "REJECTED" }, gate.headers);
+    return json(200, { ok: true }, gate.headers);
+  }
+  const result = await query.update(planned.row).eq("id", planned.id ?? "").select("id");
   if (result.error) return json(409, { ok: false, error: "REJECTED" }, gate.headers);
+  if (updatedRowCount(result.data) !== 1) {
+    return json(404, { ok: false, error: "NOT_FOUND" }, gate.headers);
+  }
   return json(200, { ok: true }, gate.headers);
 }
 export {

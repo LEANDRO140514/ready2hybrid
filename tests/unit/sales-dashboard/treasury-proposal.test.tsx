@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { TreasuryProposal } from '../../../src/components/finance/TreasuryProposal'
 import { formatMoney } from '../../../src/sales-dashboard/model'
-import { planTreasuryWrite, roleMayUseTreasury } from '../../../insforge/functions/_shared/treasury/write'
+import { planTreasuryWrite, roleMayUseTreasury, updatedRowCount } from '../../../insforge/functions/_shared/treasury/write'
 import {
   movementsToCsv,
   scheduleToCsv,
@@ -130,6 +130,40 @@ describe('treasury books', () => {
       notes: 'nota',
     }, 'robert@example.com')
     expect(planned).toMatchObject({ ok: false, code: 'POSTED_ONLY_CANCELS' })
+  })
+
+  it('returns 404 for an update whose id is empty or absent', () => {
+    const account = {
+      name: 'Caja',
+      openingDate: '2026-08-01',
+      openingBalanceCents: 0,
+    }
+    expect(planTreasuryWrite(books, { intent: 'update-account', ...account, id: '' }, 'robert@example.com'))
+      .toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    expect(planTreasuryWrite(books, { intent: 'update-account', ...account, id: 'missing' }, 'robert@example.com'))
+      .toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    expect(planTreasuryWrite(books, {
+      intent: 'update-category', id: ' ', name: 'Renta', kind: 'expense',
+    }, 'robert@example.com')).toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    expect(planTreasuryWrite(books, {
+      intent: 'update-category', id: 'missing', name: 'Renta', kind: 'expense',
+    }, 'robert@example.com')).toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    const movement = {
+      type: 'expense',
+      status: 'scheduled',
+      accountId: 'caja',
+      categoryId: 'renta',
+      amountCents: 100,
+      occurredOn: '2026-11-01',
+      concept: 'Luz',
+    }
+    expect(planTreasuryWrite(books, { intent: 'update-movement', ...movement }, 'robert@example.com'))
+      .toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    expect(planTreasuryWrite(books, { intent: 'update-movement', ...movement, id: 'missing' }, 'robert@example.com'))
+      .toMatchObject({ ok: false, status: 404, code: 'NOT_FOUND' })
+    expect(updatedRowCount(null)).toBe(0)
+    expect(updatedRowCount([])).toBe(0)
+    expect(updatedRowCount([{ id: 'caja' }])).toBe(1)
   })
 
   it('keeps a scheduled expense out of cash until the payment is registered', async () => {
