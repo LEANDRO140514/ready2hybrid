@@ -20,6 +20,7 @@
     "bundle:send-ticket-email": "node scripts/bundle-send-ticket-email.mjs",
     "bundle:sales-read": "node scripts/bundle-ops-sales-read.mjs",
     "bundle:commercial-read": "node scripts/bundle-ops-commercial-read.mjs",
+    "bundle:access": "node scripts/bundle-ops-access-read.mjs",
     "bundle:legacy-sync": "node scripts/bundle-legacy-sync.mjs",
     "bundle:legacy-reconcile": "node scripts/bundle-ops-legacy-reconcile.mjs",
     "bundle:treasury": "node scripts/bundle-ops-treasury.mjs",

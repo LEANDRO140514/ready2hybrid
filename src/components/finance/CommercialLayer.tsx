@@ -84,6 +84,7 @@ export function EventTotal({
       amountCents: row.amountCents,
       paymentId: row.originalPaymentId ?? null,
       missingSince: row.missingSince ?? null,
+      courtesy: row.courtesy === true,
     })),
     manualOrderIds: new Set(manualSaleOrderIds),
     overrides,
@@ -99,11 +100,11 @@ export function EventTotal({
     }
     : {
       ...computed,
-      knownPaid: ledger.confirmedSales,
+      knownPaid: ledger.confirmedSales + computed.courtesyInscriptions,
       knownGrossCents: ledger.confirmedCents,
       currentPaid: ledger.currentSales,
       currentGrossCents: ledger.currentCents,
-      legacyPaid: ledger.legacySales,
+      legacyPaid: ledger.legacySales + computed.courtesyInscriptions,
       legacyGrossCents: ledger.legacyCents,
     }
   const samePerson = ledger.review.filter((row) => row.kind === 'same-person-product').length
@@ -120,7 +121,7 @@ export function EventTotal({
         <Kpi testId="event-current-paid" label="Ventas actuales pagadas" value={String(totals.currentPaid)} hint={formatMoney(totals.currentGrossCents)} />
         <Kpi testId="event-manual-paid" label="Resueltas manualmente" value={String(ledger.manualSales)} hint={formatMoney(ledger.manualCents)} />
         <Kpi testId="event-current-people" label="Participantes confirmados actuales" value={String(totals.currentParticipants)} hint="Solo boletos/órdenes actuales. El histórico no se cuenta como personas." />
-        <Kpi testId="event-legacy-paid" label="Inscripciones históricas pagadas" value={String(totals.legacyPaid)} hint={`${formatMoney(totals.legacyGrossCents)} reportados, sin los pagos ya contados en Ready2Hybrid`} />
+        <Kpi testId="event-legacy-paid" label="Inscripciones históricas pagadas" value={String(totals.legacyPaid)} hint={`${formatMoney(totals.legacyGrossCents)} reportados, sin los pagos ya contados en Ready2Hybrid. Las cortesías cuentan como inscripción y no como ingreso.`} />
         <Kpi testId="event-legacy-pending" label="Registros históricos pendientes" value={String(totals.legacyPendingRegistrations)} hint={identityKnown ? `${totals.legacyPendingPeople} contactos identificables sin compra conocida` : 'Los contactos identificables se calculan en la lectura OWNER'} />
         <Kpi testId="event-buyers" label="Compradores" value={identityKnown ? String(computed.buyers) : '—'} hint="Una persona por correo, en cualquiera de las dos fuentes. No es el número de inscripciones." />
         <Kpi testId="event-registrations" label="Inscripciones contadas" value={String(totals.currentParticipants + totals.legacyPaid)} hint="Participantes de las órdenes actuales más las inscripciones históricas que sí entraron al total." />
@@ -541,7 +542,7 @@ export function CommercialDirectory({
       <div className="filter-grid">
         <Select label="Audiencia" value={filters.audience} onChange={(audience) => patch({ audience: audience as DirectoryFilters['audience'] })} options={[['all', 'Todos'], ['buyers', 'Compradores'], ['opportunities', 'Oportunidades sin convertir']]} />
         <Select label="Origen" value={filters.origin} onChange={(origin) => patch({ origin: origin as DirectoryFilters['origin'] })} options={[['all', 'Todos'], ['current', 'Ready2Hybrid'], ['legacy', 'Legacy']]} />
-        <Select label="Estado" value={filters.status} onChange={(status) => patch({ status: status as DirectoryFilters['status'] })} options={[['all', 'Todos'], ['CURRENT_PAID', 'Comprador actual'], ['LEGACY_PAID', 'Comprador histórico'], ['CURRENT_PENDING', 'Pendiente actual'], ['LEGACY_PENDING', 'Oportunidad histórica']]} />
+        <Select label="Estado" value={filters.status} onChange={(status) => patch({ status: status as DirectoryFilters['status'] })} options={[['all', 'Todos'], ['CURRENT_PAID', 'Comprador actual'], ['LEGACY_PAID', 'Comprador histórico'], ['COURTESY', 'Cortesía'], ['CURRENT_PENDING', 'Pendiente actual'], ['LEGACY_PENDING', 'Oportunidad histórica']]} />
         <Select label="Consentimiento" value={filters.consent} onChange={(consent) => patch({ consent: consent as DirectoryFilters['consent'] })} options={[['all', 'Todos'], ['recorded', 'Con consentimiento registrado'], ['not-recorded', 'Sin consentimiento registrado']]} />
         <Select label="Categoría / producto" value={filters.productCode} onChange={(productCode) => patch({ productCode })} options={[['', 'Todas'], ...categories.map((category) => [category, category] as [string, string])]} />
         <Select label="Community Partner" value={filters.partner} onChange={(partner) => patch({ partner })} options={[['', 'Todos'], ['historical', 'Sin atribución histórica'], ['direct', 'Venta directa'], ...partners.filter((partner) => partner !== HISTORICAL_ATTRIBUTION && partner !== 'Venta directa').map((partner) => [partner, partner] as [string, string])]} />
@@ -749,7 +750,7 @@ function RegistrationCard({ registration }: { registration: ContactRegistration 
     <article className="registration-card" data-testid="registration-card">
       <strong>{formatWhen(registration.at)} · {registration.category}</strong>
       <span>{registration.source === CURRENT_SOURCE ? 'Ready2Hybrid' : 'Legacy'} · {registrationStatus(registration.status)}</span>
-      <span>{formatMoney(registration.amountCents)}</span>
+      <span>{registration.status === 'COURTESY' ? 'Cortesía' : formatMoney(registration.amountCents)}</span>
       {paid && registration.confirmedAt ? <span>Confirmación: {formatWhen(registration.confirmedAt)}</span> : null}
       {pair && registration.teamName ? <span>Equipo: {registration.teamName}</span> : null}
       {participants ? <span>Participantes declarados: {registration.participants}</span> : null}
@@ -782,12 +783,14 @@ function formatDay(iso: string | null | undefined): string {
 }
 
 function statusLabel(status: CommercialContact['status']): string {
+  if (status === 'COURTESY') return 'Cortesía'
   if (status === 'CURRENT_PAID' || status === 'LEGACY_PAID') return 'Comprador'
   if (status === 'CURRENT_PENDING') return 'Pendiente actual'
   return 'Oportunidad'
 }
 
 function registrationStatus(status: CommercialContact['status']): string {
+  if (status === 'COURTESY') return 'Cortesía'
   if (status === 'CURRENT_PAID') return 'Pagado'
   if (status === 'LEGACY_PAID') return 'Pagado histórico'
   if (status === 'CURRENT_PENDING') return 'Pendiente actual'

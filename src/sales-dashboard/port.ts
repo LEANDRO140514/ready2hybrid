@@ -310,6 +310,7 @@ function parseLegacy(value: unknown): LegacyRegistration[] {
     originalPaymentId: nullableString(row.originalPaymentId),
     missingSince: nullableString(row.missingSince),
     importedAt: nullableString(row.importedAt),
+    courtesy: row.courtesy === true,
   }]
 }
 

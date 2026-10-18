@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
+import { AccessLive } from '../components/access/AccessListPage'
 import { ConciliationPage } from '../components/finance/ConciliationPage'
 import { TreasuryLive } from '../components/finance/TreasuryLive'
 import { FinancePage } from '../components/finance/FinancePage'
@@ -224,6 +225,17 @@ function OpsGuard({
       <h1>{title}</h1>
       {children}
     </section>
+  )
+}
+
+export function AccessShellPage() {
+  return (
+    <OpsGuard path="/ops/access" title="Lista de acceso">
+      <p className="muted">
+        Personas con lugar confirmado. Sin montos. Una fila por persona. El mismo pago no se lista dos veces.
+      </p>
+      <AccessLive />
+    </OpsGuard>
   )
 }
 

@@ -17,6 +17,7 @@ export function isOperationalRole(value: unknown): value is OperationalRole {
  */
 export const ROUTE_ROLE_POLICY = {
   '/ops/checkin': ['OWNER', 'OPERATIONS_MANAGER', 'CHECKIN_STAFF'] as const,
+  '/ops/access': ['OWNER', 'OPERATIONS_MANAGER', 'CHECKIN_STAFF'] as const,
   '/ops/desk': ['OWNER', 'OPERATIONS_MANAGER', 'SOLUTION_DESK'] as const,
   '/ops/finance': ['OWNER', 'FINANCE'] as const,
   '/ops/finance/conciliation': ['OWNER', 'FINANCE'] as const,
@@ -34,7 +35,8 @@ export function routeRequiresAssignment(path: ProtectedOpsPath): boolean {
     path !== '/ops/finance/conciliation' &&
     path !== '/ops/finance/treasury' &&
     path !== '/ops/partners' &&
-    path !== '/ops/marketing'
+    path !== '/ops/marketing' &&
+    path !== '/ops/access'
   )
 }
 

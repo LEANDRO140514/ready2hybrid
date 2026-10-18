@@ -22,6 +22,7 @@ export type LedgerLegacy = {
   amountCents: number | null
   paymentId: string | null
   missingSince: string | null
+  courtesy?: boolean
 }
 
 export type LedgerOverride = {
@@ -96,7 +97,7 @@ export function buildSourceLedger(input: {
   const countedLegacy: LedgerLegacy[] = []
 
   for (const row of input.legacy) {
-    if (row.commercialStatus !== 'LEGACY_PAID') continue
+    if (row.courtesy || row.commercialStatus !== 'LEGACY_PAID') continue
     if (row.missingSince) {
       review.push({ kind: 'missing-from-source', legacyId: row.id, orderId: null })
     }
@@ -149,6 +150,19 @@ export function buildSourceLedger(input: {
 
 export const EXPIRED_HOLD_ANOMALY = 'Checkout vencido sigue en PAYMENT_PENDING'
 export const APPROVED_NOT_PAID_ANOMALY = 'Pago APPROVED y la orden no está PAID'
+
+/** Date-independent. A hand resolution is the boleto that already exists elsewhere. */
+export function approvedWithoutTicket<T extends {
+  id: string
+  state: string
+  payments: { normalizedState: string }[]
+}>(orders: readonly T[], manualOrderIds: ReadonlySet<string>): T[] {
+  return orders.filter((order) =>
+    order.state !== 'PAID'
+    && !manualOrderIds.has(order.id)
+    && order.payments.some((payment) => payment.normalizedState === 'APPROVED'),
+  )
+}
 
 export function splitAttention<T extends { type: string; orderId: string }>(
   anomalies: T[],

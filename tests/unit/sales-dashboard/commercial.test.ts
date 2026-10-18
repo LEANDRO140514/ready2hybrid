@@ -87,6 +87,32 @@ describe('unified commercial intelligence', () => {
     expect(roleMayReadCommercialDirectory('FINANCE')).toBe(false)
   })
 
+  it('keeps a courtesy inscription out of buyers and revenue', () => {
+    const courtesy = legacy({
+      id: 'courtesy',
+      originalStatus: 'paid',
+      amountCents: 0,
+      courtesy: true,
+      email: 'staff@example.com',
+      originalCreatedAt: '2026-09-20T12:00:00.000Z',
+      originalUpdatedAt: '2026-09-20T12:00:00.000Z',
+    })
+    const paid = legacy({ id: 'paid', originalStatus: 'paid', amountCents: 250000 })
+    const totals = eventCommercialTotals([], [courtesy, paid], 'HEX-2026')
+    expect(totals.legacyPaid).toBe(1)
+    expect(totals.legacyGrossCents).toBe(250000)
+    expect(totals.buyers).toBe(1)
+    expect(totals.courtesyInscriptions).toBe(1)
+    const courtesyContacts = buildContacts([], [courtesy], 'HEX-2026')
+    expect(courtesyContacts).toHaveLength(1)
+    expect(courtesyContacts[0]?.buyer).toBe(false)
+    expect(courtesyContacts[0]?.status).toBe('COURTESY')
+    expect(courtesyContacts[0]?.paidCents).toBe(0)
+    expect(courtesyContacts[0]?.registrations[0]?.status).toBe('COURTESY')
+    expect(legacyFunnel([courtesy], 'HEX-2026', EMPTY_FILTERS, now).registrations).toBe(1)
+    expect(legacyFunnel([courtesy], 'HEX-2026', EMPTY_FILTERS, now).paid).toBe(0)
+  })
+
   it('keeps the event total independent of the date range and out of reconciliation', () => {
     const current = order({ id: 'cur-1', state: 'PAID', totalCents: 150000, adjustment: null })
     const historical = legacy({ id: 'leg-1', originalStatus: 'paid', amountCents: 999900 })

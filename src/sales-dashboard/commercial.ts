@@ -47,6 +47,13 @@ export type LegacyRegistration = {
   originalPaymentId?: string | null
   missingSince?: string | null
   importedAt?: string | null
+  /** Staff, judge, or courtesy seat. It is an inscription and not a sale. */
+  courtesy?: boolean
+}
+
+export function isLegacySale(row: Pick<LegacyRegistration, 'commercialStatus' | 'originalStatus' | 'courtesy'>): boolean {
+  if (row.courtesy) return false
+  return row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid'
 }
 
 export type FunnelEvent = {
@@ -62,12 +69,14 @@ export type CommercialStatus =
   | 'LEGACY_PAID'
   | 'CURRENT_PENDING'
   | 'LEGACY_PENDING'
+  | 'COURTESY'
 
 const RANK: Record<CommercialStatus, number> = {
   CURRENT_PAID: 4,
   LEGACY_PAID: 3,
   CURRENT_PENDING: 2,
   LEGACY_PENDING: 1,
+  COURTESY: 0,
 }
 
 export type JourneyItem = {
@@ -284,14 +293,15 @@ function atomsFromLegacy(
   return rows
     .filter((row) => row.eventCode === eventCode)
     .flatMap((row) => {
-      const paid = row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid'
-      const pending = row.commercialStatus === 'LEGACY_PENDING' || row.originalStatus === 'pending'
-      if (!paid && !pending) return []
-      const status: CommercialStatus = paid ? 'LEGACY_PAID' : 'LEGACY_PENDING'
+      const courtesy = row.courtesy === true
+      const paid = !courtesy && isLegacySale(row)
+      const pending = !courtesy && (row.commercialStatus === 'LEGACY_PENDING' || row.originalStatus === 'pending')
+      if (!courtesy && !paid && !pending) return []
+      const status: CommercialStatus = courtesy ? 'COURTESY' : paid ? 'LEGACY_PAID' : 'LEGACY_PENDING'
       const created = row.originalCreatedAt
       const confirmed = row.originalUpdatedAt
       const journey: JourneyItem[] = []
-      if (created) {
+      if (created && !courtesy) {
         journey.push({
           at: created,
           source: LEGACY_SOURCE,
@@ -299,7 +309,15 @@ function atomsFromLegacy(
           detail: row.categoryName,
         })
       }
-      if (paid && confirmed) {
+      const courtesyAt = confirmed ?? created
+      if (courtesy && courtesyAt) {
+        journey.push({
+          at: courtesyAt,
+          source: LEGACY_SOURCE,
+          title: 'Inscripción de cortesía',
+          detail: row.categoryName,
+        })
+      } else if (paid && confirmed) {
         journey.push({
           at: confirmed,
           source: LEGACY_SOURCE,
@@ -324,7 +342,7 @@ function atomsFromLegacy(
         endAt: confirmed ?? created,
         category,
         productCode: row.categoryCode,
-        amountCents: paid && !countedOnCurrent ? row.amountCents ?? 0 : 0,
+        amountCents: courtesy || !paid || countedOnCurrent ? 0 : row.amountCents ?? 0,
         partner: HISTORICAL_ATTRIBUTION,
         partnerCode: null,
         consent: false,
@@ -341,7 +359,7 @@ function atomsFromLegacy(
           category,
           categoryCode: row.categoryCode,
           status,
-          amountCents: countedOnCurrent ? 0 : row.amountCents ?? 0,
+          amountCents: courtesy || countedOnCurrent ? 0 : row.amountCents ?? 0,
           at: created,
           confirmedAt: paid ? confirmed : null,
           teamName: row.teamName?.trim() || null,
@@ -474,6 +492,8 @@ export function registrationCountLabel(contact: Pick<CommercialContact, 'legacyR
   const total = contact.legacyRecordCount + contact.currentRecordCount
   const paid = contact.registrations.filter((registration) =>
     registration.status === 'CURRENT_PAID' || registration.status === 'LEGACY_PAID').length
+  const courtesy = contact.registrations.filter((registration) => registration.status === 'COURTESY').length
+  if (courtesy > 0 && courtesy === total) return total === 1 ? '1 cortesía' : `${total} cortesías`
   if (paid >= 2 && paid === total) return `${paid} inscripciones pagadas`
   if (contact.legacyRecordCount > 0 && contact.currentRecordCount === 0) {
     return total === 1 ? '1 registro histórico' : `${total} registros históricos`
@@ -549,6 +569,7 @@ export type EventCommercialTotals = {
   currentReconciledNetCents: number
   currentPendingReconciliationCount: number
   currentPendingReconciliationGrossCents: number
+  courtesyInscriptions: number
 }
 
 export function eventCommercialTotals(
@@ -558,7 +579,7 @@ export function eventCommercialTotals(
 ): EventCommercialTotals {
   const currentPaid = orders.filter(isSale)
   const legacyPaid = legacy.filter(
-    (row) => row.eventCode === eventCode && (row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid'),
+    (row) => row.eventCode === eventCode && isLegacySale(row),
   )
   const legacyPending = legacy.filter(
     (row) => row.eventCode === eventCode && (row.commercialStatus === 'LEGACY_PENDING' || row.originalStatus === 'pending'),
@@ -583,6 +604,9 @@ export function eventCommercialTotals(
     currentReconciledNetCents: currentPaid.reduce((sum, order) => sum + (netRevenueCents(order) ?? 0), 0),
     currentPendingReconciliationCount: unreconciled.length,
     currentPendingReconciliationGrossCents: unreconciled.reduce((sum, order) => sum + order.totalCents, 0),
+    courtesyInscriptions: legacy.filter(
+      (row) => row.eventCode === eventCode && row.courtesy === true && (row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid'),
+    ).length,
   }
 }
 
@@ -626,7 +650,7 @@ export function periodCommercial(
   )
   const legacyPaid = scoped.filter(
     (row) =>
-      (row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid') &&
+      isLegacySale(row) &&
       inWindow(row.originalUpdatedAt, range.startMs, range.endMs),
   )
   const legacyPending = scoped.filter(
@@ -688,7 +712,7 @@ export function recoverableOrders(
     if (email) paidEmails.add(email)
   }
   for (const row of legacy) {
-    if (row.commercialStatus !== 'LEGACY_PAID') continue
+    if (!isLegacySale(row)) continue
     const email = normalizeLedgerEmail(row.email)
     if (email) paidEmails.add(email)
   }
@@ -745,7 +769,7 @@ export function legacyFunnel(
     registrations: scoped.filter((row) => inWindow(row.originalCreatedAt, range.startMs, range.endMs)).length,
     paid: scoped.filter(
       (row) =>
-        (row.commercialStatus === 'LEGACY_PAID' || row.originalStatus === 'paid') &&
+        isLegacySale(row) &&
         inWindow(row.originalUpdatedAt, range.startMs, range.endMs),
     ).length,
   }

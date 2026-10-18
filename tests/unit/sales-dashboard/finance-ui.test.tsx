@@ -129,6 +129,7 @@ describe('operational navigation', () => {
     expect(linkNames()).toEqual([
       'Inicio',
       'Check-in',
+      'Acceso',
       'Mesa',
       'Ventas',
       'Conciliación',
@@ -149,7 +150,7 @@ describe('operational navigation', () => {
     expect((await screen.findByTestId('session-role')).textContent).toContain(
       'OPERATIONS_MANAGER',
     )
-    expect(linkNames()).toEqual(['Inicio', 'Check-in', 'Mesa'])
+    expect(linkNames()).toEqual(['Inicio', 'Check-in', 'Acceso', 'Mesa'])
     ops.unmount()
 
     const desk = render(
@@ -177,7 +178,7 @@ describe('operational navigation', () => {
     expect((await screen.findByTestId('session-role')).textContent).toContain(
       'CHECKIN_STAFF',
     )
-    expect(linkNames()).toEqual(['Inicio', 'Check-in'])
+    expect(linkNames()).toEqual(['Inicio', 'Check-in', 'Acceso'])
   })
 
   it('opens both reconciliation lanes for FINANCE and keeps other roles out', async () => {

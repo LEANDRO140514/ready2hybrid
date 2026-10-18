@@ -196,7 +196,9 @@ export function createDefaultAuthorizationPort(): AuthorizationPort {
         if (
           body.role === 'OWNER' ||
           body.role === 'FINANCE' ||
-          body.role === 'MARKETING'
+          body.role === 'MARKETING' ||
+          body.role === 'OPERATIONS_MANAGER' ||
+          body.role === 'CHECKIN_STAFF'
         ) {
           return body.role
         }

@@ -7,6 +7,7 @@ import { StatusBanners } from './StatusBanners'
 
 const OPS_LINKS: { path: ProtectedOpsPath; label: string }[] = [
   { path: '/ops/checkin', label: 'Check-in' },
+  { path: '/ops/access', label: 'Acceso' },
   { path: '/ops/desk', label: 'Mesa' },
   { path: '/ops/finance', label: 'Ventas' },
   { path: '/ops/finance/conciliation', label: 'Conciliación' },

@@ -127,7 +127,7 @@ function countedSales(input: {
   overrides?: LedgerOverride[]
 }): CountedSale[] {
   const orders = input.orders.filter((order) => order.state === 'PAID' || input.manualOrderIds.has(order.id))
-  const legacy = input.legacy.filter((row) => row.eventCode === input.eventCode && row.commercialStatus === 'LEGACY_PAID')
+  const legacy = input.legacy.filter((row) => row.eventCode === input.eventCode && row.commercialStatus === 'LEGACY_PAID' && !row.courtesy)
   const ledger = buildSourceLedger({
     orders: orders.map((order) => ({
       id: order.id,

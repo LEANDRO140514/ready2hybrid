@@ -18,6 +18,10 @@ describe('roles', () => {
 
   it('applies path role policy', () => {
     expect(roleAllowsPath('CHECKIN_STAFF', '/ops/checkin')).toBe(true)
+    expect(roleAllowsPath('CHECKIN_STAFF', '/ops/access')).toBe(true)
+    expect(roleAllowsPath('OPERATIONS_MANAGER', '/ops/access')).toBe(true)
+    expect(roleAllowsPath('OWNER', '/ops/access')).toBe(true)
+    expect(roleAllowsPath('FINANCE', '/ops/access')).toBe(false)
     expect(roleAllowsPath('CHECKIN_STAFF', '/ops/desk')).toBe(false)
     expect(roleAllowsPath('CHECKIN_STAFF', '/ops/finance')).toBe(false)
     expect(roleAllowsPath('SOLUTION_DESK', '/ops/desk')).toBe(true)
@@ -43,6 +47,7 @@ describe('roles', () => {
     expect(routeRequiresAssignment('/ops/finance/treasury')).toBe(false)
     expect(routeRequiresAssignment('/ops/partners')).toBe(false)
     expect(routeRequiresAssignment('/ops/checkin')).toBe(true)
+    expect(routeRequiresAssignment('/ops/access')).toBe(false)
   })
 
   it('lists prohibited data classes for CHECKIN_STAFF', () => {

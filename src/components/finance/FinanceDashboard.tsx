@@ -11,7 +11,7 @@ import {
   SalesReportPanel,
 } from './CommercialLayer'
 import { buildSalesReport } from '../../sales-dashboard/counted-sales'
-import { splitAttention } from '../../sales-dashboard/source-ledger'
+import { approvedWithoutTicket, splitAttention } from '../../sales-dashboard/source-ledger'
 import {
   ACTIVE_EVENT_CODE,
   type FunnelEvent,
@@ -115,6 +115,10 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
     () => splitAttention(view.anomalies, manualSaleOrderIds),
     [view.anomalies, manualSaleOrderIds],
   )
+  const unpaidApproved = useMemo(
+    () => approvedWithoutTicket(snapshot.orders, manualSaleOrderIds),
+    [snapshot.orders, manualSaleOrderIds],
+  )
   const expiredHoldCount = snapshot.orders.filter((order) =>
     order.state === 'PAYMENT_PENDING'
     && order.expiresAt != null
@@ -170,6 +174,31 @@ export function FinanceDashboard({ snapshot, commercial, role = 'OWNER', now, on
           Datos al {formatWhen(snapshot.generatedAt)}
         </p>
       </header>
+      {role === 'OWNER' || role === 'FINANCE' ? (
+        <section className="finance-panel approved-banner" data-testid="approved-without-ticket" aria-label="Pagos aprobados sin boleto">
+          <h2>{unpaidApproved.length} pagos aprobados sin boleto</h2>
+          <p className="muted">Este aviso no usa el rango de fechas. Una orden con resolución manual ya tiene su boleto en otro lado y no se lista.</p>
+          {unpaidApproved.length === 0 ? (
+            <p>Ninguna orden en esta situación.</p>
+          ) : (
+            <ul>
+              {unpaidApproved.map((order) => (
+                <li key={order.id}>
+                  {order.buyerName || order.buyerEmail || order.id.slice(0, 8)}
+                  {' · '}
+                  {productLabel(order)}
+                  {' · '}
+                  {formatMoney(order.totalCents)}
+                  {' · '}
+                  {order.state}
+                  {' · '}
+                  <span data-testid="approved-without-ticket-order">{order.id}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
       <p className="muted" data-testid="legacy-sync-status">
         {commercial?.sync?.lastSuccessAt
           ? `Legacy sincronizado ${formatWhen(commercial.sync.lastSuccessAt)}. Nuevos ${commercial.sync.inserted ?? 0}, cambios ${commercial.sync.updated ?? 0}, ausentes ${commercial.sync.disappeared ?? 0}, conflictos ${commercial.sync.conflicts ?? 0}.`

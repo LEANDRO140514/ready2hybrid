@@ -171,8 +171,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const legacyColumns = classified.view === 'aggregates'
-    ? 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since'
-    : 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since'
+    ? 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,original_email,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,original_payment_id,missing_since,courtesy'
+    : 'id,event_code,original_status,commercial_status,original_created_at,original_updated_at,imported_at,buyer_contact_id,original_name,original_email,original_phone,category_code_raw,category_name_raw,normalized_product_code,amount_cents,currency,team_name_raw,participants_raw,notes_raw,original_payment_id,missing_since,courtesy'
   const [legacyResult, funnelResult, syncResult, manualResult, overrideResult] = await Promise.all([
     admin.database
       .from('legacy_registrations')
@@ -221,6 +221,7 @@ export default async function handler(req: Request): Promise<Response> {
       originalPaymentId: typeof record.original_payment_id === 'string' ? record.original_payment_id : null,
       missingSince: typeof record.missing_since === 'string' ? record.missing_since : null,
       hasPaymentId: typeof record.original_payment_id === 'string' && record.original_payment_id.trim() !== '',
+      courtesy: record.courtesy === true,
     }
   })
   const funnel = (Array.isArray(funnelResult.data) ? funnelResult.data : []).map((row) => {
@@ -264,10 +265,10 @@ export default async function handler(req: Request): Promise<Response> {
     return json(200, {
       ok: true,
       eventCode,
-      legacyPaid: legacy.filter((row) => row.commercialStatus === 'LEGACY_PAID').length,
+      legacyPaid: legacy.filter((row) => row.commercialStatus === 'LEGACY_PAID' && row.courtesy !== true).length,
       legacyPending: legacy.filter((row) => row.commercialStatus === 'LEGACY_PENDING').length,
       legacyGrossCents: legacy.reduce((sum, row) => (
-        row.commercialStatus === 'LEGACY_PAID' && typeof row.amountCents === 'number'
+        row.commercialStatus === 'LEGACY_PAID' && row.courtesy !== true && typeof row.amountCents === 'number'
           ? sum + row.amountCents
           : sum
       ), 0),

@@ -9,6 +9,7 @@ import { OperationalLayout } from '../components/shell/OperationalLayout'
 import { SignupPage, VerifyEmailPage } from './account'
 import { DashboardPreviewPage } from './dashboard-preview'
 import {
+  AccessShellPage,
   CheckinShellPage,
   ConciliationShellPage,
   TreasuryShellPage,
@@ -59,6 +60,12 @@ const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/unauthorized',
   component: UnauthorizedPage,
+})
+
+const accessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ops/access',
+  component: AccessShellPage,
 })
 
 const checkinRoute = createRoute({
@@ -116,6 +123,7 @@ const routeTree = rootRoute.addChildren([
   verifyEmailRoute,
   unauthorizedRoute,
   checkinRoute,
+  accessRoute,
   deskRoute,
   financeRoute,
   conciliationRoute,

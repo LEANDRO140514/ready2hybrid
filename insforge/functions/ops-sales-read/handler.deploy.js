@@ -432,7 +432,7 @@ function roleMayReadSales(role) {
   return role === "OWNER" || role === "FINANCE";
 }
 function roleMayAskWhoami(role) {
-  return roleMayReadSales(role) || role === "MARKETING";
+  return roleMayReadSales(role) || role === "MARKETING" || role === "OPERATIONS_MANAGER" || role === "CHECKIN_STAFF";
 }
 
 // insforge/functions/_shared/http/origin-guard.ts

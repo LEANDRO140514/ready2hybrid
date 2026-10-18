@@ -750,3 +750,37 @@ select {
 .partner-link {
   overflow-wrap: anywhere;
 }
+
+.approved-banner {
+  border-color: var(--color-warning);
+}
+
+.access-sheet {
+  display: grid;
+  gap: 1rem;
+}
+
+.access-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.access-table th,
+.access-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+@media print {
+  .app-header,
+  .no-print {
+    display: none !important;
+  }
+
+  .access-sheet,
+  .access-sheet * {
+    color: #000;
+    background: #fff;
+  }
+}
