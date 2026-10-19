@@ -166,21 +166,27 @@ function sessionFor(categoryCode, categoryName) {
   return { session: null, sessionDate: null };
 }
 function norm(value) {
-  return (value ?? "").trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  return (value ?? "").trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, " ");
 }
 function lastName(name) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : name;
 }
+var DAY_SUFFIX = /\s*(?:[·—–-])\s*(?:Viernes|S[aá]bado|Domingo)\b/giu;
+function categoryLabel(raw) {
+  const text2 = (raw ?? "").replace(DAY_SUFFIX, "").replace(/\s*\((?:open|superseded schedule)\)/giu, "").replace(/\s*[—–]\s*/gu, " \xB7 ").replace(/\s+/gu, " ").trim();
+  return text2;
+}
 function peopleOf(names, email, phone, buyerName) {
   const buyer = norm(buyerName);
+  const captain = buyerName?.trim() || null;
+  const kind = names.length === 2 ? "Pareja" : "Equipo";
   return names.map((name) => {
     const contact = names.length === 1 || buyer !== "" && norm(name) === buyer;
-    return {
-      name,
-      email: contact ? email : null,
-      phone: contact ? phone : null
-    };
+    const own = contact ? email : null;
+    const ownPhone = contact ? phone : null;
+    const note = !own && !ownPhone && names.length > 1 && captain && norm(name) !== buyer ? `${kind} de: ${captain}` : null;
+    return { name, email: own, phone: ownPhone, contactNote: note };
   });
 }
 function buildAccessList(orders, legacy) {
@@ -212,7 +218,7 @@ function buildAccessList(orders, legacy) {
     for (const person of peopleOf(names, order.buyerEmail, order.buyerPhone, order.buyerName)) {
       people.push({
         ...person,
-        category: order.productName?.trim() || order.productCode || "Sin categor\xEDa",
+        category: categoryLabel(order.productName) || order.productCode || "Sin categor\xEDa",
         categoryCode: order.productCode,
         team: order.team?.trim() || null,
         session: session.session,
@@ -228,7 +234,7 @@ function buildAccessList(orders, legacy) {
     for (const person of peopleOf(names, row.email, row.phone, row.name)) {
       people.push({
         ...person,
-        category: row.categoryName?.trim() || row.categoryCode || "Sin categor\xEDa",
+        category: categoryLabel(row.categoryName) || row.categoryCode || "Sin categor\xEDa",
         categoryCode: row.categoryCode,
         team: row.teamName?.trim() || null,
         session: session.session,
@@ -239,16 +245,24 @@ function buildAccessList(orders, legacy) {
     }
   }
   const seen = /* @__PURE__ */ new Set();
+  const seenPerson = /* @__PURE__ */ new Set();
   const unique = people.filter((person) => {
     const key = `${norm(person.reference)}
 ${norm(person.name)}`;
-    if (seen.has(key)) return false;
+    const personKey = `${norm(person.name)}
+${norm(person.categoryCode ?? person.category)}`;
+    if (seen.has(key) || seenPerson.has(personKey)) return false;
     seen.add(key);
+    seenPerson.add(personKey);
     return true;
   });
   return unique.sort((a, b) => {
     const day = (a.sessionDate ?? "9999").localeCompare(b.sessionDate ?? "9999");
     if (day !== 0) return day;
+    const category = a.category.localeCompare(b.category, "es");
+    if (category !== 0) return category;
+    const team = (a.team ?? "").localeCompare(b.team ?? "", "es");
+    if (team !== 0) return team;
     return lastName(a.name).localeCompare(lastName(b.name), "es");
   });
 }
