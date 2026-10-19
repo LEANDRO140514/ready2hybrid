@@ -185,6 +185,13 @@ export async function generateTicketPdf(input: TicketPdfInput): Promise<string> 
   doc.addImage(qrDataUrl, 'PNG', (pageWidth - qrSize) / 2, y, qrSize, qrSize)
   y += qrSize + 8
   doc.text('Presenta este código QR en el acceso al evento.', pageWidth / 2, y, { align: 'center' })
+  y += 8
+  doc.setFontSize(9)
+  const kitNotice = doc.splitTextToSize(
+    'Competidores: preséntate en mesas al menos 3 horas antes de tu competencia y escríbenos al WhatsApp oficial 990 230 2378 para la entrega de tu kit.',
+    textWidth,
+  )
+  doc.text(kitNotice, pageWidth / 2, y, { align: 'center' })
 
   doc.setFontSize(8)
   doc.setTextColor(150, 150, 150)
@@ -221,6 +228,8 @@ export function buildEmailHtml(input: {
   <p><strong>Referencia:</strong> ${escapeHtml(input.ticketFolio)}</p>
 
   <p>Adjuntamos tu boleto en formato PDF. En él encontrarás un código QR que deberás presentar en el acceso al evento para validar tu entrada.</p>
+
+  <p>Competidores: preséntate en mesas al menos 3 horas antes de tu competencia y escríbenos al <a href="https://wa.me/529902302378">WhatsApp oficial 990 230 2378</a> para la entrega de tu kit.</p>
 
   <p>Te recomendamos conservar este correo y llevar el boleto contigo, impreso o en tu dispositivo, el día del evento.</p>
 

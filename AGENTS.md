@@ -10,7 +10,8 @@ Este archivo es autoridad. Debe estar commiteado, no en `.git/info/exclude`.
 Sistema de gestión del evento deportivo **Hybrid Experience**.
 
 - **Evento:** 13–15 de noviembre de 2026 (Mérida, Yucatán)
-- **Cierre de ventas:** 8 de noviembre de 2026
+- **Cierre de ventas de competidores:** viernes 13 de noviembre de 2026, 11:00 (America/Mérida). El pase de público de viernes y sábado sigue a la venta esos días.
+- **Cancelados:** `PUB-3D` (pase 3 días) y `PUB-DOM` (público domingo). No se venden. En venta de público: `PUB-VIE` y `PUB-SAB`.
 - **Stack:** Vite + React 19 + TypeScript strict, PWA offline-first
 - **Backend:** InsForge (autoridad canónica de órdenes, pagos, tickets, QR, check-in)
 - **Pasarela activa:** Mercado Pago Checkout Pro (Clip y Openpay: futuro, aparcados)
