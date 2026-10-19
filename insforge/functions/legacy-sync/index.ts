@@ -1,5 +1,6 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 
+import { buildDryRunReport, type DryRunContext, type DryRunMirrorRow } from '../../../src/legacy-sync/dry-run.ts'
 import {
   collectSourcePages,
   planLegacySync,
@@ -69,7 +70,37 @@ async function readSource(baseUrl: string, apiKey: string): Promise<SourceRegist
   return collectSourcePages(total, pages)
 }
 
-export async function runLegacySync(sql: SqlClient, source: SourceRegistration[], catalogCodes: ReadonlySet<string>): Promise<unknown> {
+async function dryRunContext(sql: SqlClient): Promise<DryRunContext> {
+  const [mirrorRows, reconciled, tickets, orders] = await Promise.all([
+    sql.query(`SELECT id, original_record_id, commercial_status, original_payment_id, amount_cents, normalized_product_code, lower(original_email) AS email, missing_since FROM public.legacy_registrations WHERE source_system = 'LEGACY_HYBRID_REGISTRO'`),
+    sql.query(`SELECT legacy_registration_id FROM public.legacy_reconciliations`),
+    sql.query(`SELECT DISTINCT lower(bc.email) AS email FROM public.buyer_contacts bc JOIN public.orders o ON o.buyer_contact_id = bc.id JOIN public.registrations r ON r.order_id = o.id JOIN public.tickets t ON t.registration_id = r.id WHERE t.state IN ('ISSUED','REISSUED','USED')`),
+    sql.query(`SELECT DISTINCT lower(bc.email) AS email FROM public.buyer_contacts bc JOIN public.orders o ON o.buyer_contact_id = bc.id WHERE o.state = 'PAID'`),
+  ])
+  const mirror: DryRunMirrorRow[] = mirrorRows.map((row) => ({
+    id: String(row.id),
+    recordId: String(row.original_record_id),
+    commercialStatus: row.commercial_status == null ? null : row.commercial_status as DryRunMirrorRow['commercialStatus'],
+    paymentId: row.original_payment_id == null || row.original_payment_id === '' ? null : String(row.original_payment_id),
+    amountCents: row.amount_cents == null ? null : Number(row.amount_cents),
+    productCode: row.normalized_product_code == null ? null : String(row.normalized_product_code),
+    email: row.email == null ? null : String(row.email),
+    missing: row.missing_since != null,
+  }))
+  return {
+    mirror,
+    reconciledIds: new Set(reconciled.map((row) => String(row.legacy_registration_id))),
+    ticketEmails: new Set(tickets.map((row) => String(row.email))),
+    paidOrderEmails: new Set(orders.map((row) => String(row.email))),
+  }
+}
+
+export async function runLegacySync(
+  sql: SqlClient,
+  source: SourceRegistration[],
+  catalogCodes: ReadonlySet<string>,
+  options: { dryRun?: boolean } = {},
+): Promise<unknown> {
   const [mirrorRows, overrideRows] = await Promise.all([
     sql.query(`SELECT original_record_id, source_hash, missing_since, commercial_status, import_disposition, review_reason FROM public.legacy_registrations WHERE source_system = 'LEGACY_HYBRID_REGISTRO'`),
     sql.query(`SELECT registration.original_record_id, override.field_name, override.source_value_at_override FROM public.legacy_field_overrides AS override JOIN public.legacy_registrations AS registration ON registration.id = override.legacy_registration_id`),
@@ -92,6 +123,7 @@ export async function runLegacySync(sql: SqlClient, source: SourceRegistration[]
     })),
     catalogCodes,
   })
+  if (options.dryRun) return buildDryRunReport(plan, source.length, await dryRunContext(sql))
   const payload = JSON.stringify({ sourceCount: source.length, actions: plan.actions }).replaceAll("'", "''")
   const applied = await sql.query(`SELECT public.legacy_sync_apply('${payload}'::jsonb) AS result`)
   return applied[0]?.result ?? null
@@ -110,6 +142,10 @@ export default async function handler(req: Request): Promise<Response> {
   const header = req.headers.get('authorization') ?? ''
   const match = /^Bearer\s+(\S+)/i.exec(header)
   if (!match?.[1] || !secretsEqual(secret, match[1])) return json(401, { ok: false, error: 'UNAUTHORIZED' })
+
+  // Only an explicit boolean true turns on dry run, and dry run never writes.
+  const body = await req.json().catch(() => null) as { dryRun?: unknown } | null
+  const dryRun = body?.dryRun === true
 
   const admin = createAdminClient({ baseUrl, apiKey })
   const sql: SqlClient = {
@@ -133,11 +169,12 @@ export default async function handler(req: Request): Promise<Response> {
         .filter((code): code is string => typeof code === 'string'),
     )
     const source = await readSource(enformaUrl.replace(/\/$/, ''), enformaKey)
-    const result = await runLegacySync(sql, source, catalogCodes)
+    const result = await runLegacySync(sql, source, catalogCodes, { dryRun })
     return json(200, { ok: true, result })
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : 'SYNC_FAILED'
     const safe = message.replaceAll("'", "''").slice(0, 300)
+    if (dryRun) return json(503, { ok: false, error: 'SYNC_FAILED', dryRun: true, detail: safe })
     await sql.query(`SELECT public.legacy_sync_apply('{"error":"${safe}"}'::jsonb)`).catch(() => undefined)
     return json(503, { ok: false, error: 'SYNC_FAILED' })
   }
