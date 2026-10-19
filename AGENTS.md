@@ -37,6 +37,53 @@ Todo lo que no acerque la venta va a backlog, no al carril de entrega.
 
 ---
 
+## Reglas del proyecto Hybrid Experience (HEX-2026)
+
+Evento: 13–15 nov 2026, Club Cumbres, Mérida. Producción backend: InsForge `4bg9ufz2`.
+Origen legacy: proyecto InsForge `enforma` (hybrid-registro), solo lectura desde aquí.
+
+### Qué copia sirve para qué (máquina "algorithmus", C:\Users\algor\dev\)
+
+- Funciones de pago (`mp-*`, `openpay-*`, `send-ticket-email`) y migraciones: SOLO desde `ready2hybrid-prorroga` (main).
+- Panel ops (PWA ops.enforma.mx y funciones `ops-*`, `legacy-sync`): SOLO desde `ready2hybrid-ops-sources`.
+- Landing pública: SOLO desde `hybrid-event-landing`.
+- Nunca desplegar funciones de pago desde `ready2hybrid-ops-sources` (va atrás de main y revierte precios).
+- Las demás copias son históricas o experimentales; no despliegues desde ellas.
+
+### Capa de pagos (máxima precaución)
+
+- `webhook_apply_payment_tx` vive en la definición de 0038. No se reemplaza sin plan, diff contra la definición viva, rollback y pase explícito.
+- 0046 (Openpay dual-provider) vive en `docs/openpay/`, nunca en una carpeta de migraciones hasta su ventana aprobada.
+- Openpay está apagado para clientes (`OPENPAY_ENABLED` falso) hasta certificación.
+- Cada redeploy de checkout exige prueba de humo: crear preferencia real sin pagar y confirmar `init_point`, precio vigente y `expiration_date_to`.
+- Reenviar un boleto rota el QR y revoca el anterior: nunca reenviar boletos reales para "probar".
+- Un número de operación aprobado = una inscripción. Deduplicar siempre por id de pago entre checkout y legacy.
+
+### Reglas de negocio vigentes
+
+- Preventa hasta 19 oct 23:59; regular desde 20 oct 00:00 (America/Merida).
+- Venta en línea de competidores cierra el 13 nov 2026 a las 11:00 America/Merida.
+- Desde el 13 nov 00:00: solo pago con tarjeta para todos los productos.
+- Pases PUB-3D y PUB-DOM: cancelados (apagados en checkout). WOD y FOT no se venden.
+- Competidores: presentarse en mesas al menos 3 h antes de su competencia y escribir al WhatsApp oficial 990 230 2378 (https://wa.me/529902302378) para su kit.
+- Toda venta nueva entra por la landing. hybrid-registro solo para cortesías (staff, jueces, invitados) con monto $0.
+- Legacy pagado con monto 0 = cortesía: cuenta como inscripción, no como venta.
+- No hay reembolsos parciales. Devolución = total desde Mercado Pago + revocar boleto + egreso en Tesorería.
+
+### Antes de publicar
+
+- Build exactamente como el host (respetar `.vercelignore`; `insforge/` no se sube a Vercel; nada en `src/` importa de `insforge/`).
+- Tests + typecheck + build. Fallos preexistentes conocidos: dos tests de "0004" y `ticket-pdf-image` (jspdf).
+- Anotar el deployment actual para rollback y reportarlo.
+- Sincronización legacy: siempre DRY-RUN con diff y conteos antes de aplicar.
+
+### Seguridad
+
+- Nunca leer, imprimir ni manejar secretos/llaves en scripts locales o logs. Si se necesitan, detenerse y pedirlos al humano.
+- Tesorería: nada se borra; un movimiento pagado solo se cancela con motivo.
+
+---
+
 ## 2. Git — leer completo antes de tocar el repo
 
 Esta sección corrige el fallo histórico más costoso del proyecto.
@@ -312,8 +359,8 @@ Key patterns:
 
 ## Commercial calendar and deploys (updated 2026-10-16)
 
-- **Stage calendar (America/Merida, UTC-6): LAUNCH through 24 sep; PRESALE 25 sep - 19 oct inclusive (extended from 16 oct, CEO request); REGULAR 20 oct - 12 nov inclusive; sales close 13 nov 00:00.** Regular starts at `2026-10-20T06:00:00Z`.
+- **Stage calendar (America/Merida, UTC-6): LAUNCH through 24 sep; PRESALE 25 sep - 19 oct inclusive (extended from 16 oct, CEO request); REGULAR 20 oct - 13 nov 11:00; competitor sales close 13 nov 11:00; from 13 nov 00:00 card-only.** Regular starts at `2026-10-20T06:00:00Z`. (Corrected 2026-10-19: the committed code still closes at 13 nov 00:00 until the 21 Oct package is deployed; the business rule above is the authority.)
 - Authority: `insforge/functions/_shared/checkout/staged-pricing.ts` (`STAGE_WINDOWS`). Only `mp-create-checkout` embeds it, bundled in `insforge/functions/mp-create-checkout/handler.deploy.js` (`npm run bundle:checkout`). Other functions read the amount from the order.
-- Production (`ready2hybrid`, appkey `4bg9ufz2`) runs the `origin/main` bundle (`25af44b`), verified identical on 2026-10-16. Deploy: `insforge functions deploy mp-create-checkout --file insforge/functions/mp-create-checkout/handler.deploy.js`.
+- Production (`ready2hybrid`, appkey `4bg9ufz2`) runs the `origin/main` bundle last changed in `d3b913d` (main HEAD `c15d847`). Re-verify live == committed before any redeploy. Deploy: `insforge functions deploy mp-create-checkout --file insforge/functions/mp-create-checkout/handler.deploy.js`.
 - **Never deploy `mp-create-checkout` from a branch or worktree that still has `2026, 10, 17` in `STAGE_WINDOWS`** (several feature branches do). When integrating `origin/main` into a long-lived branch, keep the `20 oct` dates.
 - The landing mirrors the calendar in `hybrid-event-landing/src/lib/pricingStage.ts`; change both together. SPEC-030 (lines ~253-254) still shows the old 16/17 oct dates and is pending the commercial owner.
