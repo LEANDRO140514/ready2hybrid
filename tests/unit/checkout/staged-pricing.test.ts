@@ -126,23 +126,25 @@ describe('staged pricing — prices and MSI', () => {
     expect(getProductStagePriceRow('HALF-DOB-MH')?.msi_eligible).toBe(true)
   })
 
-  it('PUB-3D stays checkout-eligible; FOT-3D is not for sale this edition', () => {
+  it('PUB-3D and PUB-DOM are cancelled; FOT-3D stays off this edition', () => {
+    expect(getProductStagePriceRow('PUB-3D')?.checkout_enabled).toBe(false)
+    expect(getProductStagePriceRow('PUB-DOM')?.checkout_enabled).toBe(false)
+    expect(getProductStagePriceRow('PUB-3D')?.launch_cents).toBe(60000)
+    expect(getProductStagePriceRow('PUB-3D')?.presale_cents).toBe(60000)
+    expect(getProductStagePriceRow('PUB-3D')?.regular_cents).toBe(60000)
+    expect(getProductStagePriceRow('PUB-DOM')?.regular_cents).toBe(25000)
     expect(getProductStagePriceRow('PUB-3D')?.multiday_fail_closed).toBe(false)
     expect(getProductStagePriceRow('FOT-3D')?.multiday_fail_closed).toBe(false)
-    const pub = resolveCommercialOffer({
-      productCode: 'PUB-3D',
-      totalCupo: 300,
-      consumedUnits: 0,
-      now: dateFromMeridaWall(2026, 8, 15),
-    })
-    const fot = resolveCommercialOffer({
-      productCode: 'FOT-3D',
-      totalCupo: 300,
-      consumedUnits: 0,
-      now: dateFromMeridaWall(2026, 8, 15),
-    })
-    expect('error' in pub).toBe(false)
-    expect(fot).toEqual({ error: 'PRODUCT_DISABLED' })
+    for (const productCode of ['PUB-3D', 'PUB-DOM', 'FOT-3D'] as const) {
+      expect(
+        resolveCommercialOffer({
+          productCode,
+          totalCupo: 300,
+          consumedUnits: 0,
+          now: dateFromMeridaWall(2026, 8, 15),
+        }),
+      ).toEqual({ error: 'PRODUCT_DISABLED' })
+    }
   })
 
   it('rejects client expected price mismatch', () => {
@@ -196,11 +198,11 @@ describe('staged pricing — prices and MSI', () => {
 })
 
 describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () => {
-  const PRODUCTS = ['IND-H', 'DOB-SAB-MH', 'REL-2H2M', 'HALF-IND-M', 'HALF-DOB-MH', 'PUB-VIE', 'PUB-3D'] as const
+  const PRODUCTS = ['IND-H', 'DOB-SAB-MH', 'REL-2H2M', 'HALF-IND-M', 'HALF-DOB-MH', 'PUB-VIE'] as const
   const PRICES: Record<'LAUNCH' | 'PRESALE' | 'REGULAR', Record<(typeof PRODUCTS)[number], number>> = {
-    LAUNCH: { 'IND-H': 150000, 'DOB-SAB-MH': 250000, 'REL-2H2M': 320000, 'HALF-IND-M': 80000, 'HALF-DOB-MH': 160000, 'PUB-VIE': 25000, 'PUB-3D': 60000 },
-    PRESALE: { 'IND-H': 165000, 'DOB-SAB-MH': 275000, 'REL-2H2M': 350000, 'HALF-IND-M': 90000, 'HALF-DOB-MH': 180000, 'PUB-VIE': 25000, 'PUB-3D': 60000 },
-    REGULAR: { 'IND-H': 180000, 'DOB-SAB-MH': 300000, 'REL-2H2M': 380000, 'HALF-IND-M': 100000, 'HALF-DOB-MH': 200000, 'PUB-VIE': 25000, 'PUB-3D': 60000 },
+    LAUNCH: { 'IND-H': 150000, 'DOB-SAB-MH': 250000, 'REL-2H2M': 320000, 'HALF-IND-M': 80000, 'HALF-DOB-MH': 160000, 'PUB-VIE': 25000 },
+    PRESALE: { 'IND-H': 165000, 'DOB-SAB-MH': 275000, 'REL-2H2M': 350000, 'HALF-IND-M': 90000, 'HALF-DOB-MH': 180000, 'PUB-VIE': 25000 },
+    REGULAR: { 'IND-H': 180000, 'DOB-SAB-MH': 300000, 'REL-2H2M': 380000, 'HALF-IND-M': 100000, 'HALF-DOB-MH': 200000, 'PUB-VIE': 25000 },
   }
   const CASES: [string, Date, 'LAUNCH' | 'PRESALE' | 'REGULAR' | 'SALES_CLOSED'][] = [
     ['24 sep 23:59', dateFromMeridaWall(2026, 9, 24, 23, 59, 0), 'LAUNCH'],
@@ -258,25 +260,32 @@ describe('staged pricing — spectator sales during the event (ENFORMA 2026-09-2
     for (const code of ['IND-H', 'DOB-SAB-MH', 'REL-2H2M', 'HALF-IND-M', 'HALF-DOB-MH']) {
       expect(offer(code, now)).toEqual({ error: 'SALES_CLOSED' })
     }
-    for (const [code, cents] of [['PUB-VIE', 25000], ['PUB-SAB', 25000], ['PUB-DOM', 25000], ['PUB-3D', 60000]] as const) {
+    for (const [code, cents] of [['PUB-VIE', 25000], ['PUB-SAB', 25000]] as const) {
       const o = offer(code, now)
       expect(!('error' in o) && o.unit_price_cents).toBe(cents)
     }
+    expect(offer('PUB-DOM', now)).toEqual({ error: 'PRODUCT_DISABLED' })
+    expect(offer('PUB-3D', now)).toEqual({ error: 'PRODUCT_DISABLED' })
   })
 
   it.each([
     ['PUB-VIE', dateFromMeridaWall(2026, 11, 13, 23, 59, 0), dateFromMeridaWall(2026, 11, 14, 0, 1, 0)],
-    ['PUB-3D', dateFromMeridaWall(2026, 11, 13, 23, 59, 0), dateFromMeridaWall(2026, 11, 14, 0, 1, 0)],
     ['PUB-SAB', dateFromMeridaWall(2026, 11, 14, 23, 59, 0), dateFromMeridaWall(2026, 11, 15, 0, 1, 0)],
-    ['PUB-DOM', dateFromMeridaWall(2026, 11, 15, 23, 59, 0), dateFromMeridaWall(2026, 11, 16, 0, 1, 0)],
   ])('%s sells until the end of its first day', (code, lastMinute, after) => {
     expect('error' in offer(code, lastMinute)).toBe(false)
     expect(offer(code, after)).toEqual({ error: 'SALES_CLOSED' })
   })
 
+  it('cancelled public passes stay closed before and during the event', () => {
+    for (const now of [dateFromMeridaWall(2026, 11, 12, 12, 0, 0), dateFromMeridaWall(2026, 11, 13, 23, 59, 0)]) {
+      expect(offer('PUB-3D', now)).toEqual({ error: 'PRODUCT_DISABLED' })
+      expect(offer('PUB-DOM', now)).toEqual({ error: 'PRODUCT_DISABLED' })
+    }
+  })
+
   it('spectator price before close is unchanged', () => {
-    const o = offer('PUB-3D', dateFromMeridaWall(2026, 11, 12, 12, 0, 0))
+    const o = offer('PUB-VIE', dateFromMeridaWall(2026, 11, 12, 12, 0, 0))
     expect(!('error' in o) && o.commercial_stage).toBe('REGULAR')
-    expect(!('error' in o) && o.unit_price_cents).toBe(60000)
+    expect(!('error' in o) && o.unit_price_cents).toBe(25000)
   })
 })

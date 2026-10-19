@@ -229,11 +229,11 @@ describe('orchestrate multiday sellable under open sales (SPEC-030 v0.4)', () =>
     return { result, repo, createPreference }
   }
 
-  it('PUB-3D is vendible when sales are open (not PRODUCT_NOT_AVAILABLE)', async () => {
+  it('PUB-3D is cancelled for this edition (PRODUCT_NOT_AVAILABLE, no charge)', async () => {
     const { result, repo, createPreference } = await runOpen('PUB-3D', 1)
-    expect(result.status).toBe(200)
-    expect(repo.calls).toContain('startCheckoutTx')
-    expect(createPreference).toHaveBeenCalledOnce()
+    expect(result.body).toMatchObject({ error: { code: 'PRODUCT_NOT_AVAILABLE' } })
+    expect(repo.calls).toEqual([])
+    expect(createPreference).not.toHaveBeenCalled()
   })
 
   it('FOT-3D is not for sale this edition (PRODUCT_NOT_AVAILABLE)', async () => {

@@ -23,7 +23,7 @@ const ELIGIBLE = [
 ] as const
 
 const EXCLUDED = ['PUB-VIE'] as const
-const NOT_FOR_SALE = ['WOD-M', 'FOT-SAB', 'FOT-3D'] as const
+const NOT_FOR_SALE = ['WOD-M', 'FOT-SAB', 'FOT-3D', 'PUB-DOM', 'PUB-3D'] as const
 
 describe('toCheckoutPaymentPolicy (domain)', () => {
   it('true → maximumInstallments 3 + ticket exclusion required', () => {
@@ -108,17 +108,16 @@ describe('commercial matrix → payment policy (families)', () => {
     }
   })
 
-  it('PUB-3D stays allowed; FOT-3D is not for sale and is not MULTIDAY_FAIL_CLOSED', () => {
-    const pub = resolveCommercialOffer({
-      productCode: 'PUB-3D',
-      totalCupo: 10,
-      consumedUnits: 0,
-      now: launchNow(),
-    })
-    expect('error' in pub).toBe(false)
-    if (!('error' in pub)) {
-      expect(pub.msi_eligible).toBe(false)
-      expect(toCheckoutPaymentPolicy(pub.msi_eligible).maximumInstallments).toBe(1)
+  it('PUB-3D and PUB-DOM are cancelled; FOT-3D is not a multiday hole', () => {
+    for (const productCode of ['PUB-3D', 'PUB-DOM'] as const) {
+      expect(
+        resolveCommercialOffer({
+          productCode,
+          totalCupo: 10,
+          consumedUnits: 0,
+          now: launchNow(),
+        }),
+      ).toEqual({ error: 'PRODUCT_DISABLED' })
     }
     expect(getProductStagePriceRow('FOT-3D')?.multiday_fail_closed).toBe(false)
     expect(

@@ -47,14 +47,10 @@ describe('MSI Checkout Pro preference spike (structural, no network)', () => {
     }
   })
 
-  it('PUB-3D is sellable MSI-excluded; FOT-3D and unknown codes stay closed', () => {
+  it('PUB-3D is cancelled; FOT-3D and unknown codes stay closed', () => {
     expect(buildMsiPreferencePaymentMethods('PUB-3D')).toMatchObject({
-      ok: true,
-      commercial_msi_eligible: false,
-      payment_methods: {
-        installments: 1,
-        excluded_payment_types: [{ id: 'ticket' }],
-      },
+      ok: false,
+      error: 'PRODUCT_DISABLED',
     })
     expect(buildMsiPreferencePaymentMethods('FOT-3D')).toMatchObject({
       ok: false,
