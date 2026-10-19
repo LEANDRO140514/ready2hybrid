@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   accessListToCsv,
   filterAccessPeople,
+  groupAccessPeople,
   type AccessPerson,
 } from '../../access/list'
 import { getInsforgeClient } from '../../lib/insforge/client'
@@ -11,6 +12,8 @@ import { postProjectFunction } from '../../lib/insforge/project-function'
 export function AccessListPage({ people }: { people: AccessPerson[] }) {
   const [query, setQuery] = useState('')
   const visible = useMemo(() => filterAccessPeople(people, query), [people, query])
+  const groups = useMemo(() => groupAccessPeople(visible), [visible])
+  const searching = query.trim() !== ''
 
   function exportCsv() {
     const blob = new Blob([accessListToCsv(visible)], { type: 'text/csv;charset=utf-8' })
@@ -37,10 +40,14 @@ export function AccessListPage({ people }: { people: AccessPerson[] }) {
         <div className="chip-row">
           <button type="button" onClick={exportCsv} data-testid="access-csv">Exportar CSV</button>
           <button type="button" onClick={() => window.print()} data-testid="access-print">Imprimir</button>
-          <span className="muted" data-testid="access-count">{visible.length} personas con acceso</span>
+          <span className="muted" data-testid="access-count">
+            {searching
+              ? `${visible.length} de ${people.length} personas`
+              : `${visible.length} personas con acceso`}
+          </span>
         </div>
       </div>
-      <table className="access-table" data-testid="access-table">
+      <table className="access-table screen-only" data-testid="access-table">
         <thead>
           <tr>
             <th>Día</th>
@@ -58,7 +65,7 @@ export function AccessListPage({ people }: { people: AccessPerson[] }) {
             <tr key={`${person.reference}:${person.name}`} data-testid="access-row">
               <td>{person.session ?? '—'}</td>
               <td>{person.name}</td>
-              <td>{person.email ?? '—'}</td>
+              <td>{contactCell(person.email, person.contactNote)}</td>
               <td>{person.phone ?? '—'}</td>
               <td>{person.category}</td>
               <td>{person.team ?? '—'}</td>
@@ -68,9 +75,43 @@ export function AccessListPage({ people }: { people: AccessPerson[] }) {
           ))}
         </tbody>
       </table>
+      <div className="print-only" data-testid="access-print-sheet">
+        {groups.map((group) => (
+          <section key={group.day} className="print-day">
+            <h2>{group.day}</h2>
+            {group.categories.map((category) => (
+              <div key={category.category} className="print-category">
+                <h3>{category.category}</h3>
+                {category.teams.map((team) => (
+                  <div key={team.team ?? ''} className="print-team">
+                    {team.team ? <h4>{team.team}</h4> : null}
+                    <ul>
+                      {team.people.map((person) => (
+                        <li key={`${person.reference}:${person.name}`}>
+                          {person.name}
+                          {' — '}
+                          {[contactText(person.email, person.contactNote), person.phone].filter(Boolean).join(' · ') || '—'}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
       {visible.length === 0 ? <p>Nadie coincide con la búsqueda.</p> : null}
     </div>
   )
+}
+
+function contactText(email: string | null, note: string | null): string | null {
+  return email ?? note
+}
+
+function contactCell(email: string | null, note: string | null): string {
+  return contactText(email, note) ?? '—'
 }
 
 export function AccessLive() {

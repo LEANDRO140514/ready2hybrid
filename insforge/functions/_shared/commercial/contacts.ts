@@ -76,6 +76,27 @@ export function normalizeContactEmail(value: unknown): string | null {
   return email
 }
 
+const INTERNAL_EMAIL = /^enforma\.sports\.society\+/
+const TEST_EMAILS = new Set(['leandro.m.espinosa@gmail.com', 'valentina.et2011@gmail.com'])
+
+/** Staff courtesies (enforma.sports.society+…) and the owner's test registrations never reach marketing. */
+export function isExcludedMarketingEmail(email: string | null): boolean {
+  return email != null && (INTERNAL_EMAIL.test(email) || TEST_EMAILS.has(email))
+}
+
+/** The 10 national digits of a valid Mexican number, or null. Used to tell that two rows are the same phone. */
+export function mexicanPhoneKey(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  let digits = value.replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.slice(3)
+  else if (digits.length === 12 && digits.startsWith('52')) digits = digits.slice(2)
+  return /^[2-9]\d{9}$/.test(digits) ? digits : null
+}
+
+/** A refunded or charged-back order is not a sale and not a contact to retarget. */
+const REVERSED_STATES = new Set(['REFUNDED', 'CHARGED_BACK'])
+
 function orderStatus(state: unknown): MarketingContactStatus {
   if (state === 'PAID') return 'PAID'
   if (typeof state === 'string' && PENDING_STATES.has(state)) return 'PENDING'
@@ -116,6 +137,7 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     const buyer = contactId ? buyers.get(contactId) : undefined
     if (!buyer) continue
     ordered.add(contactId!)
+    if (typeof order.state === 'string' && REVERSED_STATES.has(order.state)) continue
     const status = orderStatus(order.state)
     const total = typeof order.total_cents === 'number' ? order.total_cents : 0
     const orderId = text(order.id)
@@ -179,12 +201,40 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     })
   }
 
+  // One contact per person: rows that share an email or a phone are merged,
+  // whether they came from checkout or from the legacy mirror.
+  const kept = atoms.filter((atom) => !isExcludedMarketingEmail(atom.email))
+  const parent = kept.map((_, index) => index)
+  const find = (index: number): number => {
+    let root = index
+    while (parent[root] !== root) root = parent[root]!
+    let step = index
+    while (parent[step] !== root) {
+      const next = parent[step]!
+      parent[step] = root
+      step = next
+    }
+    return root
+  }
+  const owner = new Map<string, number>()
+  kept.forEach((atom, index) => {
+    const keys = [atom.email ? `email:${atom.email}` : null, mexicanPhoneKey(atom.phone) ? `phone:${mexicanPhoneKey(atom.phone)}` : null]
+    for (const key of keys) {
+      if (!key) continue
+      const seen = owner.get(key)
+      if (seen === undefined) owner.set(key, index)
+      else parent[find(index)] = find(seen)
+    }
+  })
+  const byRoot = new Map<number, Atom[]>()
+  kept.forEach((atom, index) => {
+    const root = find(index)
+    byRoot.set(root, [...(byRoot.get(root) ?? []), atom])
+  })
   const groups = new Map<string, Atom[]>()
-  for (const atom of atoms) {
-    const key = atom.email ? `email:${atom.email}` : atom.keyHint
-    const list = groups.get(key) ?? []
-    list.push(atom)
-    groups.set(key, list)
+  for (const list of byRoot.values()) {
+    const withEmail = list.find((atom) => atom.email)
+    groups.set(withEmail ? `email:${withEmail.email}` : list[0]!.keyHint, list)
   }
 
   return [...groups.entries()].map(([key, list]) => {

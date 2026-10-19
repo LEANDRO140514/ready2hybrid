@@ -17,6 +17,8 @@ export type AccessPerson = {
   sessionDate: string | null
   origin: AccessOrigin
   reference: string
+  /** "Pareja de: X" / "Equipo de: X" for a member who has no contact of their own. */
+  contactNote: string | null
 }
 
 export type AccessOrderInput = {
@@ -92,7 +94,7 @@ export function sessionFor(categoryCode: string | null, categoryName: string | n
 }
 
 function norm(value: string | null | undefined): string {
-  return (value ?? '').trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
+  return (value ?? '').trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/\s+/g, ' ')
 }
 
 function lastName(name: string): string {
@@ -111,20 +113,78 @@ function csvCell(value: string): string {
   return `"${safe.replaceAll('"', '""')}"`
 }
 
+const DAY_SUFFIX = /\s*(?:[·—–-])\s*(?:Viernes|S[aá]bado|Domingo)\b/giu
+
+/**
+ * One label for the same category whether it came from checkout or from the
+ * legacy mirror: no day (it has its own column), no "(Open)" nor
+ * "(superseded schedule)", and one separator style.
+ */
+export function categoryLabel(raw: string | null | undefined): string {
+  const text = (raw ?? '')
+    .replace(DAY_SUFFIX, '')
+    .replace(/\s*\((?:open|superseded schedule)\)/giu, '')
+    .replace(/\s*[—–]\s*/gu, ' · ')
+    .replace(/\s+/gu, ' ')
+    .trim()
+  return text
+}
+
 function peopleOf(names: string[], email: string | null, phone: string | null, buyerName: string | null): {
   name: string
   email: string | null
   phone: string | null
+  contactNote: string | null
 }[] {
   const buyer = norm(buyerName)
+  const captain = buyerName?.trim() || null
+  const kind = names.length === 2 ? 'Pareja' : 'Equipo'
   return names.map((name) => {
     const contact = names.length === 1 || (buyer !== '' && norm(name) === buyer)
-    return {
-      name,
-      email: contact ? email : null,
-      phone: contact ? phone : null,
-    }
+    const own = contact ? email : null
+    const ownPhone = contact ? phone : null
+    const note = !own && !ownPhone && names.length > 1 && captain && norm(name) !== buyer
+      ? `${kind} de: ${captain}`
+      : null
+    return { name, email: own, phone: ownPhone, contactNote: note }
   })
+}
+
+export type AccessGroup = {
+  day: string
+  categories: { category: string; teams: { team: string | null; people: AccessPerson[] }[] }[]
+}
+
+/** Day, then category, then team: the order used for the printed door sheet. */
+export function groupAccessPeople(people: readonly AccessPerson[]): AccessGroup[] {
+  const days = new Map<string, Map<string, Map<string, AccessPerson[]>>>()
+  for (const person of people) {
+    const day = person.session ?? 'Sin día'
+    const categories = days.get(day) ?? new Map<string, Map<string, AccessPerson[]>>()
+    const teams = categories.get(person.category) ?? new Map<string, AccessPerson[]>()
+    const key = person.team ?? ''
+    teams.set(key, [...(teams.get(key) ?? []), person])
+    categories.set(person.category, teams)
+    days.set(day, categories)
+  }
+  const dayRank = (day: string) => {
+    const index = SESSION_DATES.findIndex((item) => item.session === day)
+    return index < 0 ? SESSION_DATES.length : index
+  }
+  const byText = (a: string, b: string) => a.localeCompare(b, 'es')
+  return [...days.entries()]
+    .sort(([a], [b]) => dayRank(a) - dayRank(b))
+    .map(([day, categories]) => ({
+      day,
+      categories: [...categories.entries()]
+        .sort(([a], [b]) => byText(a, b))
+        .map(([category, teams]) => ({
+          category,
+          teams: [...teams.entries()]
+            .sort(([a], [b]) => byText(a, b))
+            .map(([team, members]) => ({ team: team || null, people: members })),
+        })),
+    }))
 }
 
 export function buildAccessList(
@@ -162,7 +222,7 @@ export function buildAccessList(
     for (const person of peopleOf(names, order.buyerEmail, order.buyerPhone, order.buyerName)) {
       people.push({
         ...person,
-        category: order.productName?.trim() || order.productCode || 'Sin categoría',
+        category: categoryLabel(order.productName) || order.productCode || 'Sin categoría',
         categoryCode: order.productCode,
         team: order.team?.trim() || null,
         session: session.session,
@@ -179,7 +239,7 @@ export function buildAccessList(
     for (const person of peopleOf(names, row.email, row.phone, row.name)) {
       people.push({
         ...person,
-        category: row.categoryName?.trim() || row.categoryCode || 'Sin categoría',
+        category: categoryLabel(row.categoryName) || row.categoryCode || 'Sin categoría',
         categoryCode: row.categoryCode,
         team: row.teamName?.trim() || null,
         session: session.session,
@@ -190,16 +250,26 @@ export function buildAccessList(
     }
   }
 
+  // Nobody twice: the same grant (reference + name), and the same person in the
+  // same category even when checkout and legacy both carry them. Checkout rows
+  // come first, so they win over a legacy copy.
   const seen = new Set<string>()
+  const seenPerson = new Set<string>()
   const unique = people.filter((person) => {
     const key = `${norm(person.reference)}\n${norm(person.name)}`
-    if (seen.has(key)) return false
+    const personKey = `${norm(person.name)}\n${norm(person.categoryCode ?? person.category)}`
+    if (seen.has(key) || seenPerson.has(personKey)) return false
     seen.add(key)
+    seenPerson.add(personKey)
     return true
   })
   return unique.sort((a, b) => {
     const day = (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999')
     if (day !== 0) return day
+    const category = a.category.localeCompare(b.category, 'es')
+    if (category !== 0) return category
+    const team = (a.team ?? '').localeCompare(b.team ?? '', 'es')
+    if (team !== 0) return team
     return lastName(a.name).localeCompare(lastName(b.name), 'es')
   })
 }

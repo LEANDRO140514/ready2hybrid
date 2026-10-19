@@ -25,9 +25,12 @@ import {
   filterMarketingContacts,
   marketingContactsToCsv,
   marketingContactsToMetaCsv,
+  marketingExportStats,
   META_CUSTOMER_COLUMNS,
   META_FORMAT_STATUS,
+  normalizeMxPhone,
   parseMarketingPayload,
+  prepareMarketingContacts,
   type MarketingContact,
 } from '../../../src/sales-dashboard/marketing'
 import type { SalesPort } from '../../../src/sales-dashboard/port'
@@ -303,7 +306,7 @@ describe('marketing CSV and filters', () => {
         consent: 'not-recorded',
       },
     ])
-    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,,luis,peña,')
+    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,+529992222222,luis,peña,MX')
     expect(marketingContactsToCsv([
       {
         key: 'luis',
@@ -323,6 +326,82 @@ describe('marketing CSV and filters', () => {
         consent: 'not-recorded',
       },
     ])).toContain('9992222222')
+  })
+
+  it('server assembly leaves out refunded orders, internal and test emails, and merges a shared phone', () => {
+    const contacts = assembleMarketingContacts({
+      buyers: [
+        { id: 'b1', name: 'Ana', email: 'ana@example.com', phone: '999 111 1111', created_at: '2026-09-01T00:00:00Z' },
+        { id: 'b2', name: 'Reembolsado', email: 'refund@example.com', phone: null, created_at: '2026-09-01T00:00:00Z' },
+        { id: 'b3', name: 'Cortesía', email: 'enforma.sports.society+c1@gmail.com', phone: null, created_at: '2026-09-01T00:00:00Z' },
+        { id: 'b4', name: 'Prueba', email: 'leandro.m.espinosa@gmail.com', phone: null, created_at: '2026-09-01T00:00:00Z' },
+      ],
+      orders: [
+        { id: 'o1', buyer_contact_id: 'b1', state: 'PAID', total_cents: 100000, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+        { id: 'o2', buyer_contact_id: 'b2', state: 'REFUNDED', total_cents: 25000, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+        { id: 'o3', buyer_contact_id: 'b3', state: 'PAID', total_cents: 0, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+        { id: 'o4', buyer_contact_id: 'b4', state: 'PAID', total_cents: 25000, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+      ],
+      items: [],
+      products: [],
+      legacy: [
+        { id: 'l1', original_status: 'pending', commercial_status: 'LEGACY_PENDING', original_name: 'Ana López', original_email: null, original_phone: '+52 (999) 111-1111', category_name_raw: 'Dobles' },
+        { id: 'l2', original_status: 'cancelled', commercial_status: 'LEGACY_CANCELLED', original_name: 'Cancelada', original_email: 'cancelled@example.com', original_phone: '9993334444' },
+        { id: 'l3', original_status: 'paid', commercial_status: 'LEGACY_PAID', original_name: 'Valentina', original_email: 'valentina.et2011@gmail.com', original_phone: null },
+      ],
+    })
+    expect(contacts.map((contact) => contact.email)).toEqual(['ana@example.com'])
+    expect(contacts[0]?.status).toBe('PAID')
+    expect(contacts[0]?.origin).toBe('current+legacy')
+  })
+
+  it('normalizes Mexican phones to +52 and leaves invalid ones empty', () => {
+    expect(normalizeMxPhone('999 111 1111')).toBe('+529991111111')
+    expect(normalizeMxPhone('(999) 111-1111')).toBe('+529991111111')
+    expect(normalizeMxPhone('+52 999 111 1111')).toBe('+529991111111')
+    expect(normalizeMxPhone('52 1 999 111 1111')).toBe('+529991111111')
+    expect(normalizeMxPhone('0052-999-111-1111')).toBe('+529991111111')
+    expect(normalizeMxPhone('99911111')).toBeNull()
+    expect(normalizeMxPhone('0999111111')).toBeNull()
+    expect(normalizeMxPhone('abc')).toBeNull()
+    expect(normalizeMxPhone(null)).toBeNull()
+  })
+
+  it('drops internal and test contacts and merges the same person across checkout and legacy', () => {
+    const base = {
+      name: null, email: null, phone: null, status: 'PAID' as const, origin: 'current' as const, categories: [] as string[],
+      paidCents: 0, firstAt: null, lastAt: null, saleAt: null, registeredAt: null, importedAt: null,
+      paymentCountedOnCurrent: false, purchaseCount: 0, purchasedProducts: [] as string[], consent: 'not-recorded' as const,
+    }
+    const prepared = prepareMarketingContacts([
+      { ...base, key: 'internal', email: 'enforma.sports.society+cortesia1@gmail.com' },
+      { ...base, key: 'leandro', email: 'Leandro.M.Espinosa@gmail.com' },
+      { ...base, key: 'valentina', email: 'valentina.et2011@gmail.com' },
+      { ...base, key: 'a', name: 'Ana', email: 'ana@example.com', phone: '999 111 1111', categories: ['Individual'], origin: 'current' },
+      { ...base, key: 'a-legacy', name: 'Ana López', email: null, phone: '+52 (999) 111-1111', status: 'PENDING', categories: ['Dobles'], origin: 'legacy' },
+      { ...base, key: 'b', email: 'bea@example.com', phone: null, status: 'LEAD' },
+    ])
+    expect(prepared.map((contact) => contact.email).sort()).toEqual(['ana@example.com', 'bea@example.com'])
+    const ana = prepared.find((contact) => contact.email === 'ana@example.com')!
+    expect(ana.status).toBe('PAID')
+    expect(ana.origin).toBe('current+legacy')
+    expect(ana.categories).toEqual(['Individual', 'Dobles'])
+  })
+
+  it('counts what each export carries', () => {
+    const base = {
+      name: 'Ana López', status: 'PAID' as const, origin: 'current' as const, categories: [] as string[],
+      paidCents: 0, firstAt: null, lastAt: null, saleAt: null, registeredAt: null, importedAt: null,
+      paymentCountedOnCurrent: false, purchaseCount: 0, purchasedProducts: [] as string[], consent: 'not-recorded' as const,
+    }
+    const stats = marketingExportStats([
+      { ...base, key: '1', email: 'a@example.com', phone: '9991111111' },
+      { ...base, key: '2', email: 'b@example.com', phone: '12345' },
+      { ...base, key: '3', email: null, phone: '9992222222' },
+      { ...base, key: '4', email: null, phone: null },
+    ])
+    expect(stats.general).toEqual({ rows: 4, withEmail: 2, withPhone: 3 })
+    expect(stats.meta).toEqual({ rows: 3, withEmail: 2, withPhone: 2 })
   })
 
   it('keeps an existing calling code and does not invent Mexico', () => {
@@ -346,19 +425,22 @@ describe('marketing CSV and filters', () => {
       consent: 'recorded' as const,
     }
     expect(META_FORMAT_STATUS).toBe('pending-official-check')
-    expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,529991111111,ana,lópez,MX')
+    expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,+529991111111,ana,lópez,MX')
     expect(marketingContactsToCsv([{ ...row, phone: '9991111111' }])).toContain('9991111111')
     expect(marketingContactsToMetaCsv([{ ...row, phone: '9991111111' }]).split('\n')[1]).toBe(
-      'ana@example.com,,ana,lópez,',
+      'ana@example.com,+529991111111,ana,lópez,MX',
     )
-    expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '9991111111' }]).trim()).toBe(
+    expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '9991111111' }]).split('\n')[1]).toBe(
+      ',+529991111111,ana,lópez,MX',
+    )
+    expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '123' }]).trim()).toBe(
       'email,phone,fn,ln,country',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 415 555 0142' }]).split('\n')[1]).toBe(
       'ana@example.com,14155550142,ana,lópez,',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '529991111111' }]).split('\n')[1]).toBe(
-      'ana@example.com,529991111111,ana,lópez,MX',
+      'ana@example.com,+529991111111,ana,lópez,MX',
     )
     const header = marketingContactsToMetaCsv([row]).split('\n')[0]!.split(',')
     expect(header).toEqual([...META_CUSTOMER_COLUMNS])
@@ -496,8 +578,8 @@ describe('marketing page', () => {
     expect(meta?.split('\n')[0]).toBe('email,phone,fn,ln,country')
     expect(general).toContain('9991111111')
     expect(general).toContain('Individual Hombre,2,Individual Hombre,2500.00')
-    expect(meta).toContain('ana@example.com,,ana,lópez,')
-    expect(meta).not.toContain('9991111111')
+    expect(meta).toContain('ana@example.com,+529991111111,ana,lópez,MX')
+    expect(meta).not.toMatch(/(?<!\+52)9991111111/)
     expect(screen.getByTestId('marketing-contacts').textContent).toContain(
       'pendiente de una comprobación oficial o de una importación',
     )

@@ -94,6 +94,106 @@ function parseContact(value: unknown): MarketingContact[] {
   }]
 }
 
+const INTERNAL_EMAIL = /^enforma\.sports\.society\+/
+const TEST_EMAILS = new Set(['leandro.m.espinosa@gmail.com', 'valentina.et2011@gmail.com'])
+
+export function isExcludedMarketingContact(contact: Pick<MarketingContact, 'email'>): boolean {
+  const email = contact.email?.trim().toLowerCase() ?? ''
+  return email !== '' && (INTERNAL_EMAIL.test(email) || TEST_EMAILS.has(email))
+}
+
+const STATUS_RANK: Record<MarketingStatus, number> = { PAID: 3, PENDING: 2, LEAD: 1 }
+
+function minIso(values: (string | null)[]): string | null {
+  const dated = values.filter((value): value is string => value != null).sort()
+  return dated[0] ?? null
+}
+
+function maxIso(values: (string | null)[]): string | null {
+  const dated = values.filter((value): value is string => value != null).sort()
+  return dated[dated.length - 1] ?? null
+}
+
+function mergeContacts(list: MarketingContact[]): MarketingContact {
+  const best = [...list].sort((a, b) => STATUS_RANK[b.status] - STATUS_RANK[a.status])[0]!
+  if (list.length === 1) return best
+  const origins = new Set(list.map((item) => item.origin))
+  return {
+    ...best,
+    name: list.find((item) => item.name)?.name ?? null,
+    email: list.find((item) => item.email)?.email ?? null,
+    phone: list.find((item) => item.phone)?.phone ?? null,
+    origin: origins.size > 1 || origins.has('current+legacy') ? 'current+legacy' : best.origin,
+    categories: [...new Set(list.flatMap((item) => item.categories))],
+    paidCents: list.reduce((sum, item) => sum + item.paidCents, 0),
+    purchaseCount: list.reduce((sum, item) => sum + item.purchaseCount, 0),
+    purchasedProducts: [...new Set(list.flatMap((item) => item.purchasedProducts))],
+    firstAt: minIso(list.map((item) => item.firstAt)),
+    lastAt: maxIso(list.map((item) => item.lastAt)),
+    saleAt: maxIso(list.map((item) => item.saleAt)),
+    registeredAt: minIso(list.map((item) => item.registeredAt)),
+    importedAt: maxIso(list.map((item) => item.importedAt)),
+    paymentCountedOnCurrent: list.some((item) => item.paymentCountedOnCurrent),
+    consent: list.some((item) => item.consent === 'recorded') ? 'recorded' : 'not-recorded',
+  }
+}
+
+/**
+ * Last line of defence before an export: internal and test contacts out, and
+ * rows that share an email or a Mexican phone collapse into one person. The
+ * server already does this; running it again is idempotent.
+ */
+export function prepareMarketingContacts(contacts: MarketingContact[]): MarketingContact[] {
+  const kept = contacts.filter((contact) => !isExcludedMarketingContact(contact))
+  const parent = kept.map((_, index) => index)
+  const find = (index: number): number => {
+    let root = index
+    while (parent[root] !== root) root = parent[root]!
+    return root
+  }
+  const owner = new Map<string, number>()
+  kept.forEach((contact, index) => {
+    const email = contact.email?.trim().toLowerCase() ?? ''
+    const phone = normalizeMxPhone(contact.phone)
+    for (const key of [email ? `e:${email}` : null, phone ? `p:${phone}` : null]) {
+      if (!key) continue
+      const seen = owner.get(key)
+      if (seen === undefined) owner.set(key, index)
+      else parent[find(index)] = find(seen)
+    }
+  })
+  const groups = new Map<number, MarketingContact[]>()
+  kept.forEach((contact, index) => {
+    const root = find(index)
+    groups.set(root, [...(groups.get(root) ?? []), contact])
+  })
+  return [...groups.values()].map(mergeContacts)
+}
+
+export type MarketingExportStats = {
+  rows: number
+  withEmail: number
+  withPhone: number
+}
+
+/** What each download would contain, counted from the rows themselves. */
+export function marketingExportStats(contacts: MarketingContact[]): { general: MarketingExportStats; meta: MarketingExportStats } {
+  const general = {
+    rows: contacts.length,
+    withEmail: contacts.filter((contact) => contact.email).length,
+    withPhone: contacts.filter((contact) => contact.phone).length,
+  }
+  const metaLines = marketingContactsToMetaCsv(contacts).split('\n').slice(1).map((line) => line.split(','))
+  return {
+    general,
+    meta: {
+      rows: metaLines.length,
+      withEmail: metaLines.filter((cells) => cells[0]).length,
+      withPhone: metaLines.filter((cells) => cells[1]).length,
+    },
+  }
+}
+
 export function parseMarketingPayload(value: unknown): MarketingPayload {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('La lista de contactos no tiene el formato esperado.')
@@ -104,7 +204,7 @@ export function parseMarketingPayload(value: unknown): MarketingPayload {
   }
   return {
     eventCode: typeof row.eventCode === 'string' ? row.eventCode : 'HEX-2026',
-    contacts: row.contacts.flatMap(parseContact),
+    contacts: prepareMarketingContacts(row.contacts.flatMap(parseContact)),
     visitors: typeof row.visitors === 'number' ? row.visitors : 0,
     identifiedVisitors: typeof row.identifiedVisitors === 'number' ? row.identifiedVisitors : 0,
   }
@@ -177,18 +277,30 @@ function metaEmail(value: string | null): string {
   return /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(email) ? email : ''
 }
 
+/**
+ * Mexican mobile/landline for Meta: 10 national digits (also written with
+ * +52, 52, 521 or 0052 in front, with spaces, dashes or parentheses) become
+ * +52XXXXXXXXXX. Anything else is not valid and returns null.
+ */
+export function normalizeMxPhone(value: string | null | undefined): string | null {
+  let digits = (value ?? '').replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.slice(3)
+  else if (digits.length === 12 && digits.startsWith('52')) digits = digits.slice(2)
+  return /^[2-9]\d{9}$/.test(digits) ? `+52${digits}` : null
+}
+
 function metaPhone(value: string | null): { phone: string; country: string } {
   const raw = value?.trim() ?? ''
   if (!raw) return { phone: '', country: '' }
+  const mexican = normalizeMxPhone(raw)
+  if (mexican) return { phone: mexican, country: 'MX' }
   const compact = raw.replace(/[\s().-]/g, '')
   const explicit = compact.startsWith('+') || compact.startsWith('00')
   let digits = raw.replace(/\D/g, '')
   if (digits.startsWith('00')) digits = digits.slice(2)
   if (!digits) return { phone: '', country: '' }
-  if (digits.startsWith('52') && digits.length === 12) return { phone: digits, country: 'MX' }
-  if (explicit && digits.startsWith('521') && digits.length === 13) {
-    return { phone: `52${digits.slice(3)}`, country: 'MX' }
-  }
+  if (digits.startsWith('52')) return { phone: '', country: '' }
   if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: digits, country: 'GB' }
   if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: digits, country: 'ES' }
   if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: digits, country: 'FR' }

@@ -772,10 +772,32 @@ select {
   text-align: left;
 }
 
+.print-only {
+  display: none;
+}
+
 @media print {
   .app-header,
-  .no-print {
+  .no-print,
+  .screen-only {
     display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-day {
+    break-before: page;
+  }
+
+  .print-day:first-child {
+    break-before: auto;
+  }
+
+  .print-team ul {
+    margin: 0 0 0.5rem;
+    padding-left: 1.1rem;
   }
 
   .access-sheet,

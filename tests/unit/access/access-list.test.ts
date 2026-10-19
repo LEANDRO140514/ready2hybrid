@@ -7,7 +7,9 @@ import { roleMayReadAccess } from '../../../src/access/gate'
 import {
   accessListToCsv,
   buildAccessList,
+  categoryLabel,
   filterAccessPeople,
+  groupAccessPeople,
   type AccessLegacyInput,
   type AccessOrderInput,
 } from '../../../src/access/list'
@@ -122,6 +124,74 @@ describe('access list', () => {
     expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(csv).toContain('14/11/2026')
     expect(csv).not.toMatch(/\$|amount|cents/)
+  })
+
+  it('says whose partner a member without contact is', () => {
+    const pair = buildAccessList([], [{ ...julianLegacy, name: 'Julián Alberto Alcocer Vázquez' }])
+    const luis = pair.find((person) => person.name.startsWith('Luis'))
+    const julian = pair.find((person) => person.name.startsWith('Julián'))
+    expect(luis?.contactNote).toBe('Pareja de: Julián Alberto Alcocer Vázquez')
+    expect(julian?.contactNote).toBeNull()
+
+    const relay = buildAccessList([], [{
+      ...julianLegacy,
+      recordId: 'relay',
+      paymentId: null,
+      categoryCode: 'REL-4H',
+      categoryName: 'Relay 4 Hombres',
+      name: 'Capitán Uno',
+      participants: 'Capitán Uno, Dos, Tres, Cuatro',
+    }])
+    expect(relay.find((person) => person.name === 'Dos')?.contactNote).toBe('Equipo de: Capitán Uno')
+    expect(relay.find((person) => person.name === 'Capitán Uno')?.email).toBe(julianLegacy.email)
+  })
+
+  it('uses one category label for checkout and legacy, without the day', () => {
+    expect(categoryLabel('Dobles Hombres · Sábado')).toBe('Dobles Hombres')
+    expect(categoryLabel('Fotógrafo — Sábado')).toBe('Fotógrafo')
+    expect(categoryLabel('Individual Hombre (Open)')).toBe('Individual Hombre')
+    expect(categoryLabel('Dobles Mujeres · Viernes (superseded schedule)')).toBe('Dobles Mujeres')
+    expect(categoryLabel('Público — Pase 3 Días')).toBe(categoryLabel('Público · Pase 3 Días'))
+    const people = buildAccessList(
+      [{ ...julianOrder, state: 'PAID', manual: false, reference: 'tkt', people: ['Otra Persona'] }],
+      [{ ...julianLegacy, recordId: 'leg', paymentId: null, participants: 'Alguien Más', name: 'Alguien Más' }],
+    )
+    expect(new Set(people.map((person) => person.category))).toEqual(new Set(['Dobles Hombres']))
+    expect(people.every((person) => person.session === 'Sábado')).toBe(true)
+  })
+
+  it('lists nobody twice when checkout and legacy both carry them', () => {
+    const people = buildAccessList(
+      [{ ...julianOrder, state: 'PAID', manual: false, reference: 'tkt', approvedPaymentIds: ['111'], people: ['Ana Sosa'], buyerName: 'Ana Sosa' }],
+      [{ ...julianLegacy, recordId: 'dup', paymentId: '222', name: 'ANA SOSA', participants: 'Ana  Sosa' }],
+    )
+    expect(people.filter((person) => person.name.toLowerCase().includes('sosa'))).toHaveLength(1)
+    expect(people[0]?.origin).toBe('Checkout')
+  })
+
+  it('orders by day, then category, then team, and groups the same way for print', () => {
+    const make = (name: string, category: string, team: string | null, code: string) => ({
+      ...julianLegacy,
+      recordId: name,
+      paymentId: null,
+      name,
+      participants: name,
+      categoryCode: code,
+      categoryName: category,
+      teamName: team,
+    })
+    const people = buildAccessList([], [
+      make('Zoe Uno', 'Individual Mujer', null, 'IND-M'),
+      make('Beto Dos', 'Dobles Hombres', 'Zorros', 'DOB-VIE-HH'),
+      make('Ana Tres', 'Dobles Hombres', 'Águilas', 'DOB-SAB-HH'),
+      make('Cai Cuatro', 'Dobles Hombres', 'Águilas', 'DOB-SAB-HH'),
+    ])
+    const groups = groupAccessPeople(people)
+    expect(groups.map((group) => group.day)).toEqual(['Viernes', 'Sábado', 'Sin día'])
+    const saturday = groups.find((group) => group.day === 'Sábado')!
+    expect(saturday.categories[0]?.category).toBe('Dobles Hombres')
+    expect(saturday.categories[0]?.teams[0]).toMatchObject({ team: 'Águilas' })
+    expect(saturday.categories[0]?.teams[0]?.people.map((person) => person.name)).toEqual(['Cai Cuatro', 'Ana Tres'])
   })
 
   it('hides a hand-resolved order from the unpaid-approved banner', () => {
