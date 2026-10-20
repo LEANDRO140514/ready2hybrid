@@ -411,6 +411,29 @@ describe('webhook orchestrate', () => {
     expect(revoked).toEqual(['ticket-1', 'ticket-1'])
   })
 
+  it.each(['refunded', 'charged_back'] as const)(
+    'acknowledges %s for an order with no ticket',
+    async (status) => {
+      const { repo, revoked } = memoryRepo(async () => ({
+        ok: true,
+        outcome: status === 'refunded' ? 'REFUNDED' : 'CHARGED_BACK',
+        order_id: ORDER_ID,
+      }))
+      repo.listTicketsForOrder = async () => []
+      repo.revokeTicket = async () => {
+        throw new Error('must not revoke when there is no ticket')
+      }
+      const result = await orchestrateWebhook(buildRequest({ requestId: `req-${status}-empty` }), {
+        env: envMap(baseEnv),
+        payments: createMockPaymentClient(async () => paymentFixture({ status })),
+        repo,
+      })
+      expect(result.status).toBe(200)
+      expect(result.body.ok).toBe(true)
+      expect(revoked).toEqual([])
+    },
+  )
+
   it('revokes the ticket on charged_back', async () => {
     const { repo, revoked } = memoryRepo(async () => ({
       ok: true,
