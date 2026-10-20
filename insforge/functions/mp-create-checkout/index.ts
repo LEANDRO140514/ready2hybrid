@@ -1,6 +1,6 @@
 import { createAdminClient } from 'npm:@insforge/sdk@1.5.0'
 import { attachMarketingAfterOrder } from '../../../src/marketing/persist.ts'
-import { CheckoutError } from '../_shared/checkout/errors'
+import { CheckoutError, logHiddenCheckoutDetail } from '../_shared/checkout/errors'
 import { createHttpMercadoPagoClient } from '../_shared/checkout/mp-client'
 import {
   orchestrateCheckoutStart,
@@ -382,6 +382,7 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse(result.status, result.body, gate.headers)
   } catch (error) {
     if (error instanceof CheckoutError) {
+      logHiddenCheckoutDetail(error)
       return jsonResponse(error.status, error.toPublicBody(), gate.headers)
     }
     return jsonResponse(500, new CheckoutError('INTERNAL_ERROR').toPublicBody(), gate.headers)

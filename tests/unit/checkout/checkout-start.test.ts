@@ -1311,6 +1311,31 @@ describe('physical waiver at kit pickup', () => {
     })
   })
 
+  it('rejects an expired spectator pass with the access message and keeps the competitor text untouched', async () => {
+    const result = await orchestrateCheckoutStart(validBody({ product_code: 'PUB-VIE' }), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return {
+            product: { ...baseProduct, code: 'PUB-VIE', name: 'Público Viernes', block: 'ASISTE', kind: 'spectator', team_size: 1, price_cents: 25000 },
+            event: openEvent,
+          }
+        },
+      },
+      repo: memoryRepo(),
+      mp: createMockMercadoPagoClient(),
+      now: () => dateFromMeridaWall(2026, 11, 14, 0, 0, 0),
+    })
+    expect(result.status).toBe(409)
+    expect(result.body).toEqual({
+      error: {
+        code: 'SALES_CLOSED',
+        message: 'La venta en línea de este acceso ya cerró.',
+        retry: 'NO',
+      },
+    })
+  })
+
   it('attributes a stored partner code on Dobles without the launch price', async () => {
     const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, {
       affiliate_code: 'PRUEBA',

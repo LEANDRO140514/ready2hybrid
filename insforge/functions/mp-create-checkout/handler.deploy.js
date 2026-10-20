@@ -183,27 +183,37 @@ var MESSAGES = {
     status: 409
   }
 };
+var INVALID_PHONE_MESSAGE = "El tel\xE9fono no es v\xE1lido. Usa 10 d\xEDgitos de M\xE9xico o un n\xFAmero internacional con + y de 8 a 15 d\xEDgitos.";
 var CheckoutError = class extends Error {
   code;
   status;
   retry;
+  /** What the client receives. `message` keeps the full detail for logs. */
+  publicMessage;
   constructor(code, detail) {
     const meta = MESSAGES[code];
     super(detail ?? meta.message);
     this.code = code;
     this.status = meta.status;
     this.retry = meta.retry;
+    const clientSafeDetail = code === "SALES_CLOSED" || code === "INVALID_REQUEST" && detail === INVALID_PHONE_MESSAGE;
+    this.publicMessage = clientSafeDetail && detail ? detail : meta.message;
   }
   toPublicBody() {
     return {
       error: {
         code: this.code,
-        message: this.message,
+        message: this.publicMessage,
         retry: this.retry
       }
     };
   }
 };
+function logHiddenCheckoutDetail(error40) {
+  if (error40.message !== error40.publicMessage) {
+    console.error(`checkout ${error40.code}: ${error40.message}`);
+  }
+}
 function isCheckoutError(error40) {
   return error40 instanceof CheckoutError;
 }
@@ -231,6 +241,7 @@ var STAGE_WINDOWS = {
 var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
 var CARDS_ONLY_FROM = meridaWallToUtcMs(2026, 11, 13, 0, 0, 0);
 var COMPETITOR_SALES_CLOSED_MESSAGE = "La venta en l\xEDnea de competidores cerr\xF3 el 13 de noviembre a las 11:00. Escr\xEDbenos al WhatsApp 990 230 2378.";
+var PUBLIC_PASS_SALES_CLOSED_MESSAGE = "La venta en l\xEDnea de este acceso ya cerr\xF3.";
 var EVENT_DAY_SALES_CLOSE_MS = Object.freeze({
   "PUB-VIE": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
   "PUB-3D": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
@@ -241,6 +252,9 @@ function isEventDaySaleOpen(productCode, now) {
   const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode];
   const t = now.getTime();
   return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs;
+}
+function salesClosedMessage(productCode) {
+  return productCode in EVENT_DAY_SALES_CLOSE_MS ? PUBLIC_PASS_SALES_CLOSED_MESSAGE : COMPETITOR_SALES_CLOSED_MESSAGE;
 }
 function resolveCalendarStage(now) {
   const t = now.getTime();
@@ -12045,12 +12059,13 @@ function assertBuyerContactRequired(raw) {
     throw new CheckoutError("CONTACT_REQUIRED");
   }
 }
-var INVALID_PHONE_MESSAGE = "El tel\xE9fono no es v\xE1lido. Usa 10 d\xEDgitos de M\xE9xico o un n\xFAmero internacional con + y de 8 a 15 d\xEDgitos.";
 function normalizeMexicanPhone(raw) {
   if (raw == null) return null;
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
   const compact = trimmed.replace(/[\s()-]/g, "");
+  const legacyMobile = /^\+?521(\d{10})$/.exec(compact);
+  if (legacyMobile) return `+52${legacyMobile[1]}`;
   if (/^\+52\d{10}$/.test(compact)) return compact;
   if (/^52\d{10}$/.test(compact)) return `+${compact}`;
   if (/^\d{10}$/.test(compact)) return `+52${compact}`;
@@ -12163,7 +12178,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
         throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
       }
       if (commercial.error === "SALES_CLOSED") {
-        throw new CheckoutError("SALES_CLOSED", COMPETITOR_SALES_CLOSED_MESSAGE);
+        throw new CheckoutError("SALES_CLOSED", salesClosedMessage(found.product.code));
       }
       throw new CheckoutError(commercial.error);
     }
@@ -12320,6 +12335,7 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     }
   } catch (error40) {
     if (isCheckoutError(error40)) {
+      logHiddenCheckoutDetail(error40);
       return { status: error40.status, body: error40.toPublicBody() };
     }
     return {
@@ -12724,6 +12740,7 @@ async function handler(req) {
     return jsonResponse(result.status, result.body, gate.headers);
   } catch (error40) {
     if (error40 instanceof CheckoutError) {
+      logHiddenCheckoutDetail(error40);
       return jsonResponse(error40.status, error40.toPublicBody(), gate.headers);
     }
     return jsonResponse(500, new CheckoutError("INTERNAL_ERROR").toPublicBody(), gate.headers);

@@ -1,4 +1,4 @@
-import { CheckoutError, isCheckoutError } from './errors'
+import { CheckoutError, isCheckoutError, logHiddenCheckoutDetail } from './errors'
 import { loadCheckoutRuntimeConfig, type CheckoutRuntimeConfig } from './config'
 import { fingerprintRequest, hashIdempotencyKey } from './idempotency'
 import { reservationStillOpen } from './mp-client'
@@ -20,8 +20,8 @@ import {
 } from './sales'
 import {
   buildOrderCommercialSnapshot,
-  COMPETITOR_SALES_CLOSED_MESSAGE,
   resolveCommercialOffer,
+  salesClosedMessage,
 } from './staged-pricing'
 import {
   assertSelectedProvider,
@@ -232,7 +232,7 @@ export async function orchestrateCheckoutStart(
         throw new CheckoutError('PRODUCT_NOT_AVAILABLE')
       }
       if (commercial.error === 'SALES_CLOSED') {
-        throw new CheckoutError('SALES_CLOSED', COMPETITOR_SALES_CLOSED_MESSAGE)
+        throw new CheckoutError('SALES_CLOSED', salesClosedMessage(found.product.code))
       }
       throw new CheckoutError(commercial.error)
     }
@@ -409,6 +409,7 @@ export async function orchestrateCheckoutStart(
     }
   } catch (error) {
     if (isCheckoutError(error)) {
+      logHiddenCheckoutDetail(error)
       return { status: error.status, body: error.toPublicBody() }
     }
     return {
