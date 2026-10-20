@@ -209,6 +209,37 @@ function extractDataId(url, body) {
   return null;
 }
 
+// insforge/functions/_shared/webhook/revoke-on-reversal.ts
+function isReversalState(state) {
+  return state === "REFUNDED" || state === "CHARGED_BACK";
+}
+async function revokeTicketsAfterReversal(input) {
+  if (!input.orderId || !isReversalState(input.normalizedState)) {
+    return { revoked: 0, replayed: 0, skipped: 0 };
+  }
+  const rows = await input.tickets.listTicketsForOrder(input.orderId);
+  let revoked = 0;
+  let replayed = 0;
+  let skipped = 0;
+  for (const row of rows) {
+    if (row.state !== "ISSUED" && row.state !== "REISSUED" && row.state !== "REVOKED") {
+      skipped += 1;
+      continue;
+    }
+    const result = await input.tickets.revokeTicket(row.id);
+    if (!result.ok && result.error_code === "TICKET_NOT_REVOCABLE") {
+      skipped += 1;
+      continue;
+    }
+    if (!result.ok) {
+      throw new Error(result.error_code ?? "REVOKE_FAILED");
+    }
+    if (result.replay) replayed += 1;
+    else revoked += 1;
+  }
+  return { revoked, replayed, skipped };
+}
+
 // insforge/functions/_shared/webhook/orchestrate.ts
 async function sha256Hex(value) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -342,6 +373,16 @@ async function orchestrateWebhook(req, deps) {
   }
   const outcome = apply.outcome || "APPLIED";
   const applied = !apply.replay && outcome !== "DUPLICATE" && outcome !== "VERIFICATION_REJECTED" && outcome !== "REJECTED_VERIFICATION";
+  if (isReversalState(normalizedState) && apply.order_id && deps.repo.listTicketsForOrder && deps.repo.revokeTicket) {
+    await revokeTicketsAfterReversal({
+      orderId: apply.order_id,
+      normalizedState,
+      tickets: {
+        listTicketsForOrder: deps.repo.listTicketsForOrder,
+        revokeTicket: deps.repo.revokeTicket
+      }
+    });
+  }
   return {
     status: 200,
     body: {
@@ -411,12 +452,38 @@ function createLazyRepo() {
           error_code: row?.error_code,
           order_id: row?.order_id
         };
+      },
+      async listTicketsForOrder(orderId) {
+        const { data: regs, error: regError } = await admin.database.from("registrations").select("id").eq("order_id", orderId);
+        if (regError) throw new WebhookError("INTERNAL_ERROR");
+        const registrationIds = (Array.isArray(regs) ? regs : []).map((row) => String(row.id));
+        if (registrationIds.length === 0) return [];
+        const { data, error } = await admin.database.from("tickets").select("id,state").in("registration_id", registrationIds);
+        if (error) throw new WebhookError("INTERNAL_ERROR");
+        return (Array.isArray(data) ? data : []).map((row) => ({
+          id: String(row.id),
+          state: String(row.state)
+        }));
+      },
+      async revokeTicket(ticketId) {
+        const { data, error } = await admin.database.rpc("ticket_revoke_tx", {
+          p: { ticket_id: ticketId }
+        });
+        if (error) throw new WebhookError("INTERNAL_ERROR");
+        const row = data;
+        return {
+          ok: Boolean(row?.ok),
+          replay: Boolean(row?.replay),
+          error_code: row?.error_code
+        };
       }
     };
     return inner;
   }
   return {
-    applyPaymentTx: (input) => getInner().applyPaymentTx(input)
+    applyPaymentTx: (input) => getInner().applyPaymentTx(input),
+    listTicketsForOrder: (orderId) => getInner().listTicketsForOrder(orderId),
+    revokeTicket: (ticketId) => getInner().revokeTicket(ticketId)
   };
 }
 function fireAndForgetTicketEmail(orderId) {

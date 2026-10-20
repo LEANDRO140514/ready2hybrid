@@ -44,21 +44,34 @@ function paymentFixture(overrides: Partial<MercadoPagoPayment> = {}): MercadoPag
   }
 }
 
-function memoryRepo(handler?: (input: WebhookApplyInput) => Promise<{ ok: boolean; replay?: boolean; outcome?: string }>): {
+function memoryRepo(
+  handler?: (input: WebhookApplyInput) => Promise<{ ok: boolean; replay?: boolean; outcome?: string; order_id?: string }>,
+  withTickets = false,
+): {
   repo: WebhookRepository
   calls: WebhookApplyInput[]
+  revoked: string[]
 } {
   const calls: WebhookApplyInput[] = []
-  return {
-    calls,
-    repo: {
-      async applyPaymentTx(input) {
-        calls.push(input)
-        if (handler) return handler(input)
-        return { ok: true, outcome: 'PAID' }
-      },
+  const revoked: string[] = []
+  const repo: WebhookRepository = {
+    async applyPaymentTx(input) {
+      calls.push(input)
+      if (handler) return handler(input)
+      return { ok: true, outcome: 'PAID', order_id: ORDER_ID }
     },
   }
+  if (withTickets) {
+    repo.listTicketsForOrder = async () => [
+      { id: 'ticket-1', state: revoked.includes('ticket-1') ? 'REVOKED' : 'ISSUED' },
+    ]
+    repo.revokeTicket = async (ticketId) => {
+      const replay = revoked.includes(ticketId)
+      revoked.push(ticketId)
+      return { ok: true, replay }
+    }
+  }
+  return { calls, revoked, repo }
 }
 
 function buildRequest(opts: {
@@ -368,6 +381,48 @@ describe('webhook orchestrate', () => {
       repo,
     })
     expect(states).toEqual(['PENDING', 'APPROVED'])
+  })
+
+  it('revokes the ticket when an approved payment is later refunded, and a repeat is a no-op', async () => {
+    const { repo, revoked } = memoryRepo(async (input) => ({
+      ok: true,
+      outcome: input.normalizedState,
+      order_id: ORDER_ID,
+    }), true)
+    await orchestrateWebhook(buildRequest({ requestId: 'req-paid' }), {
+      env: envMap(baseEnv),
+      payments: createMockPaymentClient(async () => paymentFixture({ status: 'approved' })),
+      repo,
+    })
+    expect(revoked).toEqual([])
+
+    await orchestrateWebhook(buildRequest({ requestId: 'req-refund' }), {
+      env: envMap(baseEnv),
+      payments: createMockPaymentClient(async () => paymentFixture({ status: 'refunded' })),
+      repo,
+    })
+    expect(revoked).toEqual(['ticket-1'])
+
+    await orchestrateWebhook(buildRequest({ requestId: 'req-refund-2' }), {
+      env: envMap(baseEnv),
+      payments: createMockPaymentClient(async () => paymentFixture({ status: 'refunded' })),
+      repo,
+    })
+    expect(revoked).toEqual(['ticket-1', 'ticket-1'])
+  })
+
+  it('revokes the ticket on charged_back', async () => {
+    const { repo, revoked } = memoryRepo(async () => ({
+      ok: true,
+      outcome: 'CHARGED_BACK',
+      order_id: ORDER_ID,
+    }), true)
+    await orchestrateWebhook(buildRequest({ requestId: 'req-cb' }), {
+      env: envMap(baseEnv),
+      payments: createMockPaymentClient(async () => paymentFixture({ status: 'charged_back' })),
+      repo,
+    })
+    expect(revoked).toEqual(['ticket-1'])
   })
 
   it.each([

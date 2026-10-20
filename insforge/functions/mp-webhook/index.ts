@@ -68,12 +68,44 @@ function createLazyRepo(): WebhookRepository {
           order_id: row?.order_id,
         }
       },
+      async listTicketsForOrder(orderId) {
+        const { data: regs, error: regError } = await admin.database
+          .from('registrations')
+          .select('id')
+          .eq('order_id', orderId)
+        if (regError) throw new WebhookError('INTERNAL_ERROR')
+        const registrationIds = (Array.isArray(regs) ? regs : []).map((row) => String((row as { id: string }).id))
+        if (registrationIds.length === 0) return []
+        const { data, error } = await admin.database
+          .from('tickets')
+          .select('id,state')
+          .in('registration_id', registrationIds)
+        if (error) throw new WebhookError('INTERNAL_ERROR')
+        return (Array.isArray(data) ? data : []).map((row) => ({
+          id: String((row as { id: string }).id),
+          state: String((row as { state: string }).state),
+        }))
+      },
+      async revokeTicket(ticketId) {
+        const { data, error } = await admin.database.rpc('ticket_revoke_tx', {
+          p: { ticket_id: ticketId },
+        })
+        if (error) throw new WebhookError('INTERNAL_ERROR')
+        const row = data as { ok?: boolean; replay?: boolean; error_code?: string }
+        return {
+          ok: Boolean(row?.ok),
+          replay: Boolean(row?.replay),
+          error_code: row?.error_code,
+        }
+      },
     }
     return inner
   }
 
   return {
     applyPaymentTx: (input) => getInner().applyPaymentTx(input),
+    listTicketsForOrder: (orderId) => getInner().listTicketsForOrder!(orderId),
+    revokeTicket: (ticketId) => getInner().revokeTicket!(ticketId),
   }
 }
 
