@@ -39,7 +39,7 @@ const buyerContactSchema = z
     public_ref: z.string().min(1).max(128).optional(),
     email: z.string().min(1).max(320),
     name: z.string().min(1).max(200),
-    phone: z.string().min(1).max(40).optional(),
+    phone: z.string().min(1).max(40).optional(), // normalized in parseCheckoutRequest
     /** Opt-in marketing/contact consent. False/omitted → no consent timestamp. */
     contact_consent: z.boolean().optional(),
   })
@@ -184,6 +184,27 @@ export function assertBuyerContactRequired(raw: unknown): void {
   }
 }
 
+const INVALID_PHONE_MESSAGE =
+  'El teléfono no es válido. Usa 10 dígitos de México, con o sin +52.'
+
+/**
+ * Persist Mexican mobiles as +52XXXXXXXXXX.
+ * Optional: missing/blank stays null. Anything else that is not 10 local digits
+ * (already with +52 / 52, or after stripping spaces, dashes and parentheses)
+ * is a validation error.
+ */
+export function normalizeMexicanPhone(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return null
+  const compact = trimmed.replace(/[\s()-]/g, '')
+  if (/^\+52\d{10}$/.test(compact)) return compact
+  if (/^52\d{10}$/.test(compact)) return `+${compact}`
+  const digits = compact.replace(/\D/g, '')
+  if (digits.length === 10) return `+52${digits}`
+  throw new CheckoutError('INVALID_REQUEST', INVALID_PHONE_MESSAGE)
+}
+
 export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity: number } {
   assertNoClientMoneyAuthority(raw)
   assertBuyerContactRequired(raw)
@@ -197,7 +218,12 @@ export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity
   if (!journeyForProductCode(parsed.data.product_code)) {
     throw new CheckoutError('PRODUCT_NOT_FOUND')
   }
-  return { ...parsed.data, quantity }
+  const phone = normalizeMexicanPhone(parsed.data.buyer.phone)
+  return {
+    ...parsed.data,
+    quantity,
+    buyer: { ...parsed.data.buyer, ...(phone == null ? { phone: undefined } : { phone }) },
+  }
 }
 
 /** Default go-live enablement: Mercado Pago only. No silent customer fallback. */

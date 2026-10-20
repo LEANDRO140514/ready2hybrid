@@ -1286,6 +1286,31 @@ describe('physical waiver at kit pickup', () => {
     )
   })
 
+  it('rejects competitor checkout after 13 nov 11:00 Merida with the WhatsApp message', async () => {
+    const result = await orchestrateCheckoutStart(validBody({ product_code: 'HALF-IND-M' }), {
+      env: envMap(requiredEnv),
+      catalog: {
+        async getProductWithEvent() {
+          return {
+            product: { ...baseProduct, code: 'HALF-IND-M', name: '½ Hybrid Individual Mujer', block: 'EXPERIENCE', kind: 'competitor', team_size: 1, price_cents: 100000 },
+            event: openEvent,
+          }
+        },
+      },
+      repo: memoryRepo(),
+      mp: createMockMercadoPagoClient(),
+      now: () => dateFromMeridaWall(2026, 11, 13, 11, 0, 0),
+    })
+    expect(result.status).toBe(409)
+    expect(result.body).toEqual({
+      error: {
+        code: 'SALES_CLOSED',
+        message: 'La venta en línea de competidores cerró el 13 de noviembre a las 11:00. Escríbenos al WhatsApp 990 230 2378.',
+        retry: 'NO',
+      },
+    })
+  })
+
   it('attributes a stored partner code on Dobles without the launch price', async () => {
     const { result, startSpy } = await startWithoutWaiver('DOB-SAB-HH', 2, {
       affiliate_code: 'PRUEBA',
