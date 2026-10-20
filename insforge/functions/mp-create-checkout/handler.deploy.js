@@ -12045,7 +12045,7 @@ function assertBuyerContactRequired(raw) {
     throw new CheckoutError("CONTACT_REQUIRED");
   }
 }
-var INVALID_PHONE_MESSAGE = "El tel\xE9fono no es v\xE1lido. Usa 10 d\xEDgitos de M\xE9xico, con o sin +52.";
+var INVALID_PHONE_MESSAGE = "El tel\xE9fono no es v\xE1lido. Usa 10 d\xEDgitos de M\xE9xico o un n\xFAmero internacional con + y de 8 a 15 d\xEDgitos.";
 function normalizeMexicanPhone(raw) {
   if (raw == null) return null;
   const trimmed = raw.trim();
@@ -12053,8 +12053,10 @@ function normalizeMexicanPhone(raw) {
   const compact = trimmed.replace(/[\s()-]/g, "");
   if (/^\+52\d{10}$/.test(compact)) return compact;
   if (/^52\d{10}$/.test(compact)) return `+${compact}`;
-  const digits = compact.replace(/\D/g, "");
-  if (digits.length === 10) return `+52${digits}`;
+  if (/^\d{10}$/.test(compact)) return `+52${compact}`;
+  if (compact.startsWith("+") && !compact.startsWith("+52") && /^\+\d{8,15}$/.test(compact)) {
+    return compact;
+  }
   throw new CheckoutError("INVALID_REQUEST", INVALID_PHONE_MESSAGE);
 }
 function parseCheckoutRequest(raw) {

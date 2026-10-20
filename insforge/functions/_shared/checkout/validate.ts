@@ -185,13 +185,12 @@ export function assertBuyerContactRequired(raw: unknown): void {
 }
 
 const INVALID_PHONE_MESSAGE =
-  'El teléfono no es válido. Usa 10 dígitos de México, con o sin +52.'
+  'El teléfono no es válido. Usa 10 dígitos de México o un número internacional con + y de 8 a 15 dígitos.'
 
 /**
- * Persist Mexican mobiles as +52XXXXXXXXXX.
- * Optional: missing/blank stays null. Anything else that is not 10 local digits
- * (already with +52 / 52, or after stripping spaces, dashes and parentheses)
- * is a validation error.
+ * Mexican numbers (10 digits, or 52 / +52 plus 10) persist as +52XXXXXXXXXX.
+ * A leading + with another country code and 8–15 digits total is kept as E.164.
+ * Optional: missing/blank stays null. Anything else is a validation error.
  */
 export function normalizeMexicanPhone(raw: string | null | undefined): string | null {
   if (raw == null) return null
@@ -200,8 +199,10 @@ export function normalizeMexicanPhone(raw: string | null | undefined): string | 
   const compact = trimmed.replace(/[\s()-]/g, '')
   if (/^\+52\d{10}$/.test(compact)) return compact
   if (/^52\d{10}$/.test(compact)) return `+${compact}`
-  const digits = compact.replace(/\D/g, '')
-  if (digits.length === 10) return `+52${digits}`
+  if (/^\d{10}$/.test(compact)) return `+52${compact}`
+  if (compact.startsWith('+') && !compact.startsWith('+52') && /^\+\d{8,15}$/.test(compact)) {
+    return compact
+  }
   throw new CheckoutError('INVALID_REQUEST', INVALID_PHONE_MESSAGE)
 }
 
