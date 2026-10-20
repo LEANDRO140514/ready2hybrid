@@ -259,6 +259,23 @@ function csvCell(value: string | number | null): string {
   return cell
 }
 
+/** UTF-8 byte order mark so Excel reads accents instead of guessing ANSI. */
+export const CSV_BOM = '\uFEFF'
+
+export function csvWithBom(csv: string): string {
+  return csv.startsWith(CSV_BOM) ? csv : CSV_BOM + csv
+}
+
+/**
+ * RFC 4180 field for the Meta file. Besides comma, quote and line breaks, a
+ * field with any whitespace is quoted too: a multi-word last name such as
+ * "águila aviles" must not be split into two cells by a reader that breaks on
+ * spaces, which would push the next value into the wrong column.
+ */
+function metaCell(value: string): string {
+  return /[",\s]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
+}
+
 /**
  * Meta customer file. Compatibility is pending an official check or a real
  * import. This exporter does not claim that check.
@@ -301,10 +318,12 @@ function metaPhone(value: string | null): { phone: string; country: string } {
   if (digits.startsWith('00')) digits = digits.slice(2)
   if (!digits) return { phone: '', country: '' }
   if (digits.startsWith('52')) return { phone: '', country: '' }
-  if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: digits, country: 'GB' }
-  if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: digits, country: 'ES' }
-  if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: digits, country: 'FR' }
-  if (explicit && digits.startsWith('1') && digits.length === 11) return { phone: digits, country: '' }
+  if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: `+${digits}`, country: 'GB' }
+  if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: `+${digits}`, country: 'ES' }
+  if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: `+${digits}`, country: 'FR' }
+  // +1 is shared by the US, Canada and the Caribbean: the code alone does not
+  // identify one country, so country stays empty instead of guessing.
+  if (explicit && digits.startsWith('1') && digits.length === 11) return { phone: `+${digits}`, country: '' }
   return { phone: '', country: '' }
 }
 
@@ -325,7 +344,7 @@ export function marketingContactsToMetaCsv(contacts: MarketingContact[]): string
     const { phone, country } = metaPhone(contact.phone)
     if (!email && !phone) continue
     const { fn, ln } = metaName(contact.name)
-    lines.push([email, phone, fn, ln, phone ? country : ''].join(','))
+    lines.push([email, phone, fn, ln, phone ? country : ''].map(metaCell).join(','))
   }
   return lines.join('\n')
 }

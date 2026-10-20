@@ -437,7 +437,7 @@ describe('marketing CSV and filters', () => {
       'email,phone,fn,ln,country',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 415 555 0142' }]).split('\n')[1]).toBe(
-      'ana@example.com,14155550142,ana,lópez,',
+      'ana@example.com,+14155550142,ana,lópez,',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '529991111111' }]).split('\n')[1]).toBe(
       'ana@example.com,+529991111111,ana,lópez,MX',

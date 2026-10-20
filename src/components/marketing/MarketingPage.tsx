@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   EMPTY_MARKETING_FILTERS,
   MARKETING_STATUS_LABEL,
+  csvWithBom,
   filterMarketingContacts,
   marketingContactsToCsv,
   marketingContactsToMetaCsv,
@@ -82,7 +83,7 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
   }
 
   function download(filename: string, csv: string) {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([csvWithBom(csv)], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
