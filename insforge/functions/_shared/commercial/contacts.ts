@@ -201,8 +201,10 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
     })
   }
 
-  // One contact per person: rows that share an email or a phone are merged,
-  // whether they came from checkout or from the legacy mirror.
+  // One contact per person: rows that share an email are merged, whether they
+  // came from checkout or from the legacy mirror. A phone merges only rows that
+  // have no email: two people with different emails who share a phone stay two
+  // contacts, so no contact mixes data of two people.
   const kept = atoms.filter((atom) => !isExcludedMarketingEmail(atom.email))
   const parent = kept.map((_, index) => index)
   const find = (index: number): number => {
@@ -218,7 +220,8 @@ export function assembleMarketingContacts(source: ContactSources): MarketingCont
   }
   const owner = new Map<string, number>()
   kept.forEach((atom, index) => {
-    const keys = [atom.email ? `email:${atom.email}` : null, mexicanPhoneKey(atom.phone) ? `phone:${mexicanPhoneKey(atom.phone)}` : null]
+    const phoneKey = atom.email ? null : mexicanPhoneKey(atom.phone)
+    const keys = [atom.email ? `email:${atom.email}` : null, phoneKey ? `phone:${phoneKey}` : null]
     for (const key of keys) {
       if (!key) continue
       const seen = owner.get(key)

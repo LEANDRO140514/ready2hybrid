@@ -5,16 +5,36 @@ import {
   MARKETING_STATUS_LABEL,
   csvWithBom,
   filterMarketingContacts,
+  buildMarketingBoard,
+  buildMarketingSegments,
   marketingContactsToCsv,
-  marketingContactsToMetaCsv,
   marketingCounts,
+  marketingFileName,
+  marketingSegmentCsv,
   type MarketingFilters,
   type MarketingPayload,
   type MarketingStatus,
 } from '../../sales-dashboard/marketing'
 import { useSalesPort } from '../../sales-dashboard/port'
+import { meridaFileStamp } from '../../treasury/books'
 
 const PAGE_SIZE = 25
+
+function formatStamp(date: Date): string {
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Merida',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function formatPct(value: number): string {
+  return `${value.toLocaleString('es-MX', { maximumFractionDigits: 1 })} %`
+}
 
 function formatDay(iso: string | null): string {
   if (!iso) return '—'
@@ -38,6 +58,7 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<MarketingFilters>(EMPTY_MARKETING_FILTERS)
   const [page, setPage] = useState(0)
+  const [loadedAt, setLoadedAt] = useState(() => new Date())
 
   useEffect(() => {
     let cancelled = false
@@ -49,7 +70,9 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
     port
       .loadContacts()
       .then((next) => {
-        if (!cancelled) setPayload(next)
+        if (cancelled) return
+        setPayload(next)
+        setLoadedAt(new Date())
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
@@ -64,6 +87,8 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
   const contacts = useMemo(() => payload?.contacts ?? [], [payload])
   const counts = useMemo(() => marketingCounts(contacts), [contacts])
   const filtered = useMemo(() => filterMarketingContacts(contacts, filters), [contacts, filters])
+  const segments = useMemo(() => buildMarketingSegments(contacts), [contacts])
+  const board = useMemo(() => buildMarketingBoard(segments), [segments])
 
   if (error) {
     return <p role="alert" data-testid="marketing-error">{error}</p>
@@ -96,6 +121,64 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
 
   return (
     <section className="finance-panel" data-testid="marketing-contacts" aria-label="Contactos para marketing">
+      <div data-testid="marketing-board" aria-label="Tablero de segmentos">
+        <p className="muted" data-testid="marketing-updated">
+          Actualizado al {formatStamp(loadedAt)} (hora de Mérida).
+        </p>
+        <p className="muted" data-testid="marketing-conversion">
+          Conversión de leads a compradores: {formatPct(board.conversionPct)} ({board.buyers} compradores de{' '}
+          {board.totalContacts} contactos que dejaron datos).
+        </p>
+        <div className="kpi-grid">
+          {board.cards.map((card) => (
+            <article key={card.key} className="kpi" data-testid={`segment-${card.key}`}>
+              <h3 className="kpi-label">{card.label}</h3>
+              <p className="kpi-value">
+                <span data-testid={`segment-${card.key}-rows`}>{card.rows}</span> contactos
+              </p>
+              <p className="muted">
+                {formatPct(card.pctEmail)} con correo · {formatPct(card.pctPhone)} con teléfono válido
+              </p>
+              <p className="muted">{card.use}</p>
+              <button
+                type="button"
+                className="chip"
+                data-testid={`download-${card.key}`}
+                onClick={() =>
+                  download(marketingFileName(card.key, new Date()), marketingSegmentCsv(card.key, segments))
+                }
+              >
+                Descargar {card.label}
+              </button>
+            </article>
+          ))}
+        </div>
+        <p className="muted" data-testid="marketing-overlap">
+          Compradores ∩ Retargeting: {board.overlap} (por correo o teléfono; debe ser 0).
+        </p>
+        <details data-testid="marketing-suspicious">
+          <summary>
+            Teléfonos sospechosos: {board.suspiciousPhones} (11 dígitos que empiezan en 1 con lada mexicana; no se
+            exportan)
+          </summary>
+          {segments.suspiciousPhones.length === 0 ? (
+            <p className="muted">Ninguno.</p>
+          ) : (
+            <ul>
+              {segments.suspiciousPhones.map((entry) => (
+                <li key={entry.contact.key}>
+                  {entry.contact.name ?? 'Sin nombre'} · {entry.contact.email ?? 'sin correo'} · {entry.contact.phone}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+        <p className="muted">
+          Los archivos Meta incluyen email, phone, fn, ln, country, ct y st (ct y st quedan vacíos porque no se
+          conocen). Excluyen cortesías, pruebas, reembolsos y contracargos, y se deduplican por correo. La
+          compatibilidad de estos archivos con Meta está pendiente de una comprobación oficial o de una importación.
+        </p>
+      </div>
       <p className="muted">
         {statuses.map((status) => `${counts[status]} ${MARKETING_STATUS_LABEL[status].toLowerCase()}`).join(' · ')}
       </p>
@@ -103,7 +186,8 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
         {payload.visitors} visitantes en la landing. {anonymous} no dejaron datos de contacto y no pueden exportarse
         como lista. Quien compró es PAID; quien no, es pendiente o dejó sus datos. La fecha de venta filtra a quien
         compró. Quien no compró se filtra por la fecha de registro. Legacy no tiene Community Partner ni consentimiento.
-        Los dos archivos de abajo usan este mismo filtro.
+        Los filtros de abajo solo afectan la tabla y la descarga de la vista filtrada; los archivos del tablero
+        siempre salen completos.
       </p>
       <div className="filter-grid">
         <label>
@@ -159,27 +243,12 @@ export function MarketingPage({ example }: { example?: MarketingPayload } = {}) 
           type="button"
           className="chip"
           data-testid="export-base-general"
-          onClick={() => download('base-general.csv', marketingContactsToCsv(filtered))}
+          onClick={() => download(`hex2026_vista-filtrada_${meridaFileStamp(new Date())}.csv`, marketingContactsToCsv(filtered))}
         >
-          Exportar base general
-        </button>
-        <button
-          type="button"
-          className="chip"
-          data-testid="export-meta"
-          onClick={() => download('meta-clientes.csv', marketingContactsToMetaCsv(filtered))}
-        >
-          Exportar para Meta
+          Descargar vista filtrada (base general)
         </button>
         <span className="muted" data-testid="marketing-count">{filtered.length} contactos</span>
       </div>
-      <p className="muted">
-        La base general conserva el teléfono original, las compras contadas, los productos, el importe, las fechas,
-        el origen y el consentimiento. Meta incluye el teléfono solo cuando el código internacional ya está
-        confirmado; si no se puede determinar, phone queda vacío y se conservan correo y nombre. La compatibilidad
-        de este archivo con Meta está pendiente de una comprobación oficial o de una importación. Quien no tiene
-        correo ni teléfono confirmado no entra en el archivo de Meta.
-      </p>
       <div className="table-wrap">
         <table>
           <thead>

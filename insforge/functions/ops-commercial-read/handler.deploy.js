@@ -147,7 +147,8 @@ function assembleMarketingContacts(source) {
   };
   const owner = /* @__PURE__ */ new Map();
   kept.forEach((atom, index) => {
-    const keys = [atom.email ? `email:${atom.email}` : null, mexicanPhoneKey(atom.phone) ? `phone:${mexicanPhoneKey(atom.phone)}` : null];
+    const phoneKey = atom.email ? null : mexicanPhoneKey(atom.phone);
+    const keys = [atom.email ? `email:${atom.email}` : null, phoneKey ? `phone:${phoneKey}` : null];
     for (const key of keys) {
       if (!key) continue;
       const seen = owner.get(key);

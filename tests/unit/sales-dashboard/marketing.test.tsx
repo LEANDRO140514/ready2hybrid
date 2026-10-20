@@ -262,7 +262,7 @@ describe('marketing CSV and filters', () => {
     expect(general).toContain('pedro@example.com')
     expect(general).toContain('not_recorded')
     expect(general).not.toContain('ana@example.com')
-    expect(meta.split('\n')[0]).toBe('email,phone,fn,ln,country')
+    expect(meta.split('\n')[0]).toBe('email,phone,fn,ln,country,ct,st')
     expect(meta).toContain('pedro@example.com')
     expect(meta).not.toContain('ana@example.com')
     expect(meta).not.toContain('not_recorded')
@@ -306,7 +306,7 @@ describe('marketing CSV and filters', () => {
         consent: 'not-recorded',
       },
     ])
-    expect(csv).toBe('email,phone,fn,ln,country\nluis@example.com,+529992222222,luis,peña,MX')
+    expect(csv).toBe('email,phone,fn,ln,country,ct,st\nluis@example.com,+529992222222,luis,peña,MX,,')
     expect(marketingContactsToCsv([
       {
         key: 'luis',
@@ -328,7 +328,7 @@ describe('marketing CSV and filters', () => {
     ])).toContain('9992222222')
   })
 
-  it('server assembly leaves out refunded orders, internal and test emails, and merges a shared phone', () => {
+  it('server assembly leaves out refunded orders, internal and test emails, and merges by email only', () => {
     const contacts = assembleMarketingContacts({
       buyers: [
         { id: 'b1', name: 'Ana', email: 'ana@example.com', phone: '999 111 1111', created_at: '2026-09-01T00:00:00Z' },
@@ -350,9 +350,33 @@ describe('marketing CSV and filters', () => {
         { id: 'l3', original_status: 'paid', commercial_status: 'LEGACY_PAID', original_name: 'Valentina', original_email: 'valentina.et2011@gmail.com', original_phone: null },
       ],
     })
-    expect(contacts.map((contact) => contact.email)).toEqual(['ana@example.com'])
+    // The legacy row has no email, so it is not folded into Ana by phone: that
+    // would mix data of what may be two people.
+    expect(contacts.map((contact) => contact.email)).toEqual(['ana@example.com', null])
     expect(contacts[0]?.status).toBe('PAID')
-    expect(contacts[0]?.origin).toBe('current+legacy')
+    expect(contacts[0]?.origin).toBe('current')
+    expect(contacts[1]?.status).toBe('PENDING')
+  })
+
+  it('merges rows without email by phone, and never two different emails that share a phone', () => {
+    const contacts = assembleMarketingContacts({
+      buyers: [
+        { id: 'b1', name: 'Ana', email: 'ana@example.com', phone: '999 111 1111', created_at: '2026-09-01T00:00:00Z' },
+        { id: 'b2', name: 'Pareja de Ana', email: 'pareja@example.com', phone: '999 111 1111', created_at: '2026-09-01T00:00:00Z' },
+      ],
+      orders: [
+        { id: 'o1', buyer_contact_id: 'b1', state: 'PAID', total_cents: 100000, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+        { id: 'o2', buyer_contact_id: 'b2', state: 'PAYMENT_PENDING', total_cents: 100000, created_at: '2026-09-02T00:00:00Z', updated_at: '2026-09-02T00:00:00Z' },
+      ],
+      items: [],
+      products: [],
+      legacy: [
+        { id: 'l1', original_status: 'pending', commercial_status: 'LEGACY_PENDING', original_name: 'Sin correo', original_email: null, original_phone: '9992223333' },
+        { id: 'l2', original_status: 'pending', commercial_status: 'LEGACY_PENDING', original_name: 'Sin correo', original_email: null, original_phone: '+52 999 222 3333' },
+      ],
+    })
+    expect(contacts.filter((contact) => contact.email).map((contact) => contact.status).sort()).toEqual(['PAID', 'PENDING'])
+    expect(contacts.filter((contact) => !contact.email)).toHaveLength(1)
   })
 
   it('normalizes Mexican phones to +52 and leaves invalid ones empty', () => {
@@ -367,7 +391,7 @@ describe('marketing CSV and filters', () => {
     expect(normalizeMxPhone(null)).toBeNull()
   })
 
-  it('drops internal and test contacts and merges the same person across checkout and legacy', () => {
+  it('drops internal and test contacts and merges the same email across checkout and legacy', () => {
     const base = {
       name: null, email: null, phone: null, status: 'PAID' as const, origin: 'current' as const, categories: [] as string[],
       paidCents: 0, firstAt: null, lastAt: null, saleAt: null, registeredAt: null, importedAt: null,
@@ -378,7 +402,7 @@ describe('marketing CSV and filters', () => {
       { ...base, key: 'leandro', email: 'Leandro.M.Espinosa@gmail.com' },
       { ...base, key: 'valentina', email: 'valentina.et2011@gmail.com' },
       { ...base, key: 'a', name: 'Ana', email: 'ana@example.com', phone: '999 111 1111', categories: ['Individual'], origin: 'current' },
-      { ...base, key: 'a-legacy', name: 'Ana López', email: null, phone: '+52 (999) 111-1111', status: 'PENDING', categories: ['Dobles'], origin: 'legacy' },
+      { ...base, key: 'a-legacy', name: 'Ana López', email: 'ANA@example.com', phone: '+52 (999) 111-1111', status: 'PENDING', categories: ['Dobles'], origin: 'legacy' },
       { ...base, key: 'b', email: 'bea@example.com', phone: null, status: 'LEAD' },
     ])
     expect(prepared.map((contact) => contact.email).sort()).toEqual(['ana@example.com', 'bea@example.com'])
@@ -425,22 +449,22 @@ describe('marketing CSV and filters', () => {
       consent: 'recorded' as const,
     }
     expect(META_FORMAT_STATUS).toBe('pending-official-check')
-    expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,+529991111111,ana,lópez,MX')
+    expect(marketingContactsToMetaCsv([row]).split('\n')[1]).toBe('ana@example.com,+529991111111,ana,lópez,MX,,')
     expect(marketingContactsToCsv([{ ...row, phone: '9991111111' }])).toContain('9991111111')
     expect(marketingContactsToMetaCsv([{ ...row, phone: '9991111111' }]).split('\n')[1]).toBe(
-      'ana@example.com,+529991111111,ana,lópez,MX',
+      'ana@example.com,+529991111111,ana,lópez,MX,,',
     )
     expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '9991111111' }]).split('\n')[1]).toBe(
-      ',+529991111111,ana,lópez,MX',
+      ',+529991111111,ana,lópez,MX,,',
     )
     expect(marketingContactsToMetaCsv([{ ...row, email: null, phone: '123' }]).trim()).toBe(
-      'email,phone,fn,ln,country',
+      'email,phone,fn,ln,country,ct,st',
     )
-    expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 415 555 0142' }]).split('\n')[1]).toBe(
-      'ana@example.com,+14155550142,ana,lópez,',
+    expect(marketingContactsToMetaCsv([{ ...row, phone: '+1 212 555 0142' }]).split('\n')[1]).toBe(
+      'ana@example.com,+12125550142,ana,lópez,,,',
     )
     expect(marketingContactsToMetaCsv([{ ...row, phone: '529991111111' }]).split('\n')[1]).toBe(
-      'ana@example.com,+529991111111,ana,lópez,MX',
+      'ana@example.com,+529991111111,ana,lópez,MX,,',
     )
     const header = marketingContactsToMetaCsv([row]).split('\n')[0]!.split(',')
     expect(header).toEqual([...META_CUSTOMER_COLUMNS])
@@ -548,10 +572,63 @@ describe('marketing page', () => {
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PENDING' } })
     expect(screen.getByTestId('marketing-count').textContent).toBe('2 contactos')
     expect(screen.getByTestId('export-base-general')).toBeTruthy()
-    expect(screen.getByTestId('export-meta')).toBeTruthy()
+    expect(screen.queryByTestId('export-meta')).toBeNull()
+    for (const key of ['general', 'lookalike', 'buyers', 'retargeting']) {
+      expect(screen.getByTestId(`segment-${key}`)).toBeTruthy()
+      expect(screen.getByTestId(`download-${key}`)).toBeTruthy()
+    }
+    expect(screen.getByTestId('marketing-updated').textContent).toMatch(/^Actualizado al /)
+    expect(screen.getByTestId('marketing-conversion').textContent).toContain('Conversión de leads a compradores')
+    expect(screen.getByTestId('marketing-overlap').textContent).toContain('Compradores ∩ Retargeting: 0')
   })
 
-  it('downloads both exports for the contacts that remain after the filter', async () => {
+  it('downloads the four segment files whole, with BOM and the agreed names', async () => {
+    const created: Blob[] = []
+    const names: string[] = []
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      created.push(blob as Blob)
+      return 'blob:csv'
+    })
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download)
+    })
+    render(
+      <App
+        initialPath="/ops/marketing"
+        authPort={session}
+        authorizationPort={authz('MARKETING')}
+        salesPort={portWithContacts()}
+      />,
+    )
+    await waitFor(() => expect(screen.getByTestId('marketing-contacts')).toBeTruthy())
+    // The table filter must not shrink the board files.
+    fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PAID' } })
+    for (const key of ['general', 'lookalike', 'buyers', 'retargeting']) {
+      fireEvent.click(screen.getByTestId(`download-${key}`))
+    }
+    expect(names[0]).toMatch(/^hex2026_base-general_\d{8}-\d{4}\.csv$/)
+    expect(names[1]).toMatch(/^hex2026_meta_lookalike_\d{8}-\d{4}\.csv$/)
+    expect(names[2]).toMatch(/^hex2026_meta_compradores_\d{8}-\d{4}\.csv$/)
+    expect(names[3]).toMatch(/^hex2026_meta_retargeting_\d{8}-\d{4}\.csv$/)
+    const [general, lookalike, buyers, retargeting] = await Promise.all(created.map((blob) => blob.text()))
+    // Blob.text() strips the BOM, so read the raw bytes.
+    for (const blob of created) {
+      const head = new Uint8Array(await blob.arrayBuffer()).slice(0, 3)
+      expect([...head]).toEqual([0xef, 0xbb, 0xbf])
+    }
+    expect(general).toContain('pedro@example.com')
+    expect(lookalike).toContain('pedro@example.com')
+    expect(lookalike).toContain('ana@example.com')
+    expect(buyers).toContain('ana@example.com')
+    expect(buyers).not.toContain('pedro@example.com')
+    expect(retargeting).toContain('pedro@example.com')
+    expect(retargeting).not.toContain('ana@example.com')
+    clicked.mockRestore()
+    vi.restoreAllMocks()
+  })
+
+  it('downloads the filtered base general', async () => {
     const created: Blob[] = []
     vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
       created.push(blob as Blob)
@@ -569,21 +646,21 @@ describe('marketing page', () => {
     await waitFor(() => expect(screen.getByTestId('marketing-contacts')).toBeTruthy())
     fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'PAID' } })
     fireEvent.click(screen.getByTestId('export-base-general'))
-    fireEvent.click(screen.getByTestId('export-meta'))
+    fireEvent.click(screen.getByTestId('download-lookalike'))
     const general = await created[0]?.text()
     const meta = await created[1]?.text()
     expect(general).toContain('ana@example.com')
     expect(general).toContain('recorded')
     expect(general).not.toContain('pedro@example.com')
-    expect(meta?.split('\n')[0]).toBe('email,phone,fn,ln,country')
+    expect(meta?.replace('\uFEFF', '').split('\n')[0]).toBe('email,phone,fn,ln,country,ct,st')
     expect(general).toContain('9991111111')
     expect(general).toContain('Individual Hombre,2,Individual Hombre,2500.00')
-    expect(meta).toContain('ana@example.com,+529991111111,ana,lópez,MX')
+    expect(meta).toContain('ana@example.com,+529991111111,ana,lópez,MX,,')
     expect(meta).not.toMatch(/(?<!\+52)9991111111/)
     expect(screen.getByTestId('marketing-contacts').textContent).toContain(
       'pendiente de una comprobación oficial o de una importación',
     )
-    expect(meta).not.toContain('pedro@example.com')
+    expect(meta).toContain('pedro@example.com')
     expect(meta).not.toContain('pay-')
     vi.restoreAllMocks()
   })

@@ -78,10 +78,10 @@ describe('Meta customer CSV: RFC 4180 and column integrity', () => {
       contact({ name: 'Adrian águila aviles', email: 'cuyado943@gmail.com', phone: '9811204320' }),
     ])
     const [header, row] = parseCsv(csv)
-    expect(header).toEqual(['email', 'phone', 'fn', 'ln', 'country'])
-    expect(row).toEqual(['cuyado943@gmail.com', '+529811204320', 'adrian', 'águila aviles', 'MX'])
+    expect(header).toEqual(['email', 'phone', 'fn', 'ln', 'country', 'ct', 'st'])
+    expect(row).toEqual(['cuyado943@gmail.com', '+529811204320', 'adrian', 'águila aviles', 'MX', '', ''])
     // The multi-word field is quoted so no reader splits it into two cells.
-    expect(csv.split('\n')[1]).toBe('cuyado943@gmail.com,+529811204320,adrian,"águila aviles",MX')
+    expect(csv.split('\n')[1]).toBe('cuyado943@gmail.com,+529811204320,adrian,"águila aviles",MX,,')
   })
 
   it('never puts a value of another column in country, whatever the name looks like', () => {
@@ -99,7 +99,7 @@ describe('Meta customer CSV: RFC 4180 and column integrity', () => {
     )
     const rows = parseCsv(csv)
     expect(rows).toHaveLength(names.length + 1)
-    for (const row of rows) expect(row).toHaveLength(5)
+    for (const row of rows) expect(row).toHaveLength(7)
     for (const row of rows.slice(1)) expect(['', 'MX', 'US', 'GB', 'ES', 'FR']).toContain(row[4])
   })
 
@@ -108,7 +108,7 @@ describe('Meta customer CSV: RFC 4180 and column integrity', () => {
       marketingContactsToMetaCsv([
         contact({ key: 'mx', email: 'mx@example.com', phone: '999 123 4567' }),
         contact({ key: 'mx2', email: 'mx2@example.com', phone: '+52 1 999 123 4567' }),
-        contact({ key: 'us', email: 'us@example.com', phone: '+1 415 555 0142' }),
+        contact({ key: 'us', email: 'us@example.com', phone: '+1 212 555 0142' }),
         contact({ key: 'gb', email: 'gb@example.com', phone: '+44 7911 123456' }),
         contact({ key: 'es', email: 'es@example.com', phone: '+34 612 345 678' }),
         contact({ key: 'bad', email: 'bad@example.com', phone: '12345' }),
@@ -117,7 +117,7 @@ describe('Meta customer CSV: RFC 4180 and column integrity', () => {
     expect(rows.map((row) => [row[0], row[1], row[4]])).toEqual([
       ['mx@example.com', '+529991234567', 'MX'],
       ['mx2@example.com', '+529991234567', 'MX'],
-      ['us@example.com', '+14155550142', ''],
+      ['us@example.com', '+12125550142', ''],
       ['gb@example.com', '+447911123456', 'GB'],
       ['es@example.com', '+34612345678', 'ES'],
       ['bad@example.com', '', ''],

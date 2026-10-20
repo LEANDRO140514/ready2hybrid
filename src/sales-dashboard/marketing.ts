@@ -3,6 +3,8 @@
  * Built on the server (`ops-commercial-read`, view `contacts`). The client
  * only filters and exports what the server already allowed this role to see.
  */
+import { meridaFileStamp } from '../treasury/books'
+
 export type MarketingStatus = 'PAID' | 'PENDING' | 'LEAD'
 
 export type MarketingContact = {
@@ -140,7 +142,9 @@ function mergeContacts(list: MarketingContact[]): MarketingContact {
 
 /**
  * Last line of defence before an export: internal and test contacts out, and
- * rows that share an email or a Mexican phone collapse into one person. The
+ * rows that share an email collapse into one person. A phone only identifies
+ * someone who has no email: two people with different emails who share a phone
+ * (a couple, a family) stay two rows, so no row mixes data of two people. The
  * server already does this; running it again is idempotent.
  */
 export function prepareMarketingContacts(contacts: MarketingContact[]): MarketingContact[] {
@@ -155,7 +159,7 @@ export function prepareMarketingContacts(contacts: MarketingContact[]): Marketin
   kept.forEach((contact, index) => {
     const email = contact.email?.trim().toLowerCase() ?? ''
     const phone = normalizeMxPhone(contact.phone)
-    for (const key of [email ? `e:${email}` : null, phone ? `p:${phone}` : null]) {
+    for (const key of [email ? `e:${email}` : null, !email && phone ? `p:${phone}` : null]) {
       if (!key) continue
       const seen = owner.get(key)
       if (seen === undefined) owner.set(key, index)
@@ -285,7 +289,33 @@ function metaCell(value: string): string {
  * Country is filled only when that code identifies one country. The general
  * export keeps the original phone.
  */
-export const META_CUSTOMER_COLUMNS = ['email', 'phone', 'fn', 'ln', 'country'] as const
+export const META_CUSTOMER_COLUMNS = ['email', 'phone', 'fn', 'ln', 'country', 'ct', 'st'] as const
+
+/**
+ * Known Mexican area codes (lada). Used only to catch a number written as
+ * +1 / 1 + 10 digits whose 10 digits start like a Mexican number. It is not an
+ * exhaustive numbering plan: a miss only means the number is treated as the +1
+ * number it claims to be, which is how it was exported before.
+ */
+const MX_LADAS_2 = new Set(['33', '55', '56', '81'])
+const MX_LADAS_3 = new Set((
+  '449 465 496 646 653 658 661 664 665 686 612 613 615 624 981 982 938 961 962 963 964 965 966 967 968 916 919 ' +
+  '614 625 626 627 628 635 639 648 656 842 844 861 862 864 866 871 872 877 878 312 313 314 315 618 674 675 676 677 ' +
+  '411 412 413 414 415 417 418 419 461 462 463 464 466 468 469 472 473 476 477 479 733 736 741 742 744 745 747 753 ' +
+  '754 755 756 757 738 746 748 759 761 771 772 773 774 775 776 317 321 322 341 342 343 344 345 346 347 348 349 372 ' +
+  '373 374 375 376 377 378 385 386 387 388 389 391 392 393 395 591 592 593 594 595 596 597 712 713 714 715 716 717 ' +
+  '718 719 721 722 723 724 725 726 728 729 351 352 353 354 355 356 357 358 359 421 422 423 424 425 426 429 434 435 ' +
+  '436 438 443 447 451 452 453 454 455 456 457 459 731 734 735 737 777 311 319 323 324 325 327 818 821 823 824 825 ' +
+  '826 828 829 951 953 954 958 971 972 222 223 224 231 232 233 236 237 238 241 243 244 245 246 247 248 249 427 441 ' +
+  '442 983 984 987 988 997 998 444 481 482 485 486 487 488 489 667 668 669 673 687 694 695 696 622 623 631 632 633 ' +
+  '634 636 637 638 641 642 643 644 645 647 651 652 913 914 917 923 932 933 934 936 937 993 831 832 833 834 835 836 ' +
+  '841 846 867 868 899 226 228 229 235 272 273 274 278 279 281 282 283 284 285 287 288 296 985 986 991 999 437 458 ' +
+  '492 493 494 495 498'
+).split(/\s+/))
+
+function startsWithMexicanLada(national: string): boolean {
+  return MX_LADAS_2.has(national.slice(0, 2)) || MX_LADAS_3.has(national.slice(0, 3))
+}
 
 export const META_FORMAT_STATUS = 'pending-official-check' as const
 
@@ -307,24 +337,32 @@ export function normalizeMxPhone(value: string | null | undefined): string | nul
   return /^[2-9]\d{9}$/.test(digits) ? `+52${digits}` : null
 }
 
-function metaPhone(value: string | null): { phone: string; country: string } {
+/**
+ * `suspicious`: 11 digits that start with 1 followed by a Mexican lada
+ * (+1 226 506 6374 is a Veracruz number typed with the wrong country code).
+ * It is reported to the page and never exported as +1.
+ */
+function metaPhone(value: string | null): { phone: string; country: string; suspicious: boolean } {
   const raw = value?.trim() ?? ''
-  if (!raw) return { phone: '', country: '' }
+  if (!raw) return { phone: '', country: '', suspicious: false }
   const mexican = normalizeMxPhone(raw)
-  if (mexican) return { phone: mexican, country: 'MX' }
+  if (mexican) return { phone: mexican, country: 'MX', suspicious: false }
   const compact = raw.replace(/[\s().-]/g, '')
   const explicit = compact.startsWith('+') || compact.startsWith('00')
   let digits = raw.replace(/\D/g, '')
   if (digits.startsWith('00')) digits = digits.slice(2)
-  if (!digits) return { phone: '', country: '' }
-  if (digits.startsWith('52')) return { phone: '', country: '' }
-  if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: `+${digits}`, country: 'GB' }
-  if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: `+${digits}`, country: 'ES' }
-  if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: `+${digits}`, country: 'FR' }
+  if (!digits) return { phone: '', country: '', suspicious: false }
+  if (digits.length === 11 && digits.startsWith('1') && startsWithMexicanLada(digits.slice(1))) {
+    return { phone: '', country: '', suspicious: true }
+  }
+  if (digits.startsWith('52')) return { phone: '', country: '', suspicious: false }
+  if (explicit && digits.startsWith('44') && digits.length === 12) return { phone: `+${digits}`, country: 'GB', suspicious: false }
+  if (explicit && digits.startsWith('34') && digits.length === 11) return { phone: `+${digits}`, country: 'ES', suspicious: false }
+  if (explicit && digits.startsWith('33') && digits.length === 11) return { phone: `+${digits}`, country: 'FR', suspicious: false }
   // +1 is shared by the US, Canada and the Caribbean: the code alone does not
   // identify one country, so country stays empty instead of guessing.
-  if (explicit && digits.startsWith('1') && digits.length === 11) return { phone: `+${digits}`, country: '' }
-  return { phone: '', country: '' }
+  if (explicit && digits.startsWith('1') && digits.length === 11) return { phone: `+${digits}`, country: '', suspicious: false }
+  return { phone: '', country: '', suspicious: false }
 }
 
 function metaName(value: string | null): { fn: string; ln: string } {
@@ -337,16 +375,221 @@ function metaName(value: string | null): { fn: string; ln: string } {
   return { fn: fn ?? '', ln: rest.join(' ') }
 }
 
-export function marketingContactsToMetaCsv(contacts: MarketingContact[]): string {
+/** One row of a Meta file, with the contact it came from. ct and st are not known and stay empty. */
+export type MetaEntry = {
+  contact: MarketingContact
+  email: string
+  phone: string
+  fn: string
+  ln: string
+  country: string
+  suspiciousPhone: boolean
+}
+
+function toMetaEntry(contact: MarketingContact): MetaEntry {
+  const { phone, country, suspicious } = metaPhone(contact.phone)
+  const { fn, ln } = metaName(contact.name)
+  return {
+    contact,
+    email: metaEmail(contact.email),
+    phone,
+    fn,
+    ln,
+    country: phone ? country : '',
+    suspiciousPhone: suspicious,
+  }
+}
+
+/**
+ * Rows Meta can match, one per person. The email is the identity. A phone
+ * identifies a row only when that row has no valid email, and then only
+ * against rows that already have a phone. Two different emails that share a
+ * phone stay two rows.
+ */
+function dedupeMetaEntries(entries: MetaEntry[]): MetaEntry[] {
+  const usable = entries.filter((entry) => entry.email || entry.phone)
+  const emails = new Set<string>()
+  const phones = new Set<string>()
+  const kept: MetaEntry[] = []
+  for (const entry of usable) {
+    if (!entry.email || emails.has(entry.email)) continue
+    emails.add(entry.email)
+    if (entry.phone) phones.add(entry.phone)
+    kept.push(entry)
+  }
+  for (const entry of usable) {
+    if (entry.email) continue
+    if (phones.has(entry.phone)) continue
+    phones.add(entry.phone)
+    kept.push(entry)
+  }
+  return kept
+}
+
+/** A buyer is an order PAID or LEGACY_PAID with an amount, or a sale whose payment is already counted on a current order. */
+export function isMarketingBuyer(contact: Pick<MarketingContact, 'status' | 'paidCents' | 'paymentCountedOnCurrent'>): boolean {
+  return contact.status === 'PAID' && (contact.paidCents > 0 || contact.paymentCountedOnCurrent)
+}
+
+export type MarketingSegmentKey = 'general' | 'lookalike' | 'buyers' | 'retargeting'
+
+export type MarketingSegments = {
+  /** Every contact, all fields (internal base). */
+  general: MarketingContact[]
+  /** Everyone Meta can match: buyers plus people who left data. */
+  lookalike: MetaEntry[]
+  /** Only buyers: the exclusion audience. */
+  buyers: MetaEntry[]
+  /** Left data and did not buy. Nobody who is in `buyers`, by email or by phone. */
+  retargeting: MetaEntry[]
+  /** Phones written as +1 with a Mexican lada. Reported, never exported. */
+  suspiciousPhones: MetaEntry[]
+}
+
+export function buildMarketingSegments(contacts: MarketingContact[]): MarketingSegments {
+  const prepared = prepareMarketingContacts(contacts)
+  const entries = prepared.map(toMetaEntry)
+  const buyerEntries = entries.filter((entry) => isMarketingBuyer(entry.contact))
+  const buyerEmails = new Set(
+    buyerEntries.flatMap((entry) => [entry.email, entry.contact.email?.trim().toLowerCase() ?? '']).filter(Boolean),
+  )
+  const buyerPhones = new Set(buyerEntries.map((entry) => entry.phone).filter(Boolean))
+  const retargeting = entries.filter((entry) => {
+    if (entry.contact.status === 'PAID') return false
+    const rawEmail = entry.contact.email?.trim().toLowerCase() ?? ''
+    if (entry.email && buyerEmails.has(entry.email)) return false
+    if (rawEmail && buyerEmails.has(rawEmail)) return false
+    if (entry.phone && buyerPhones.has(entry.phone)) return false
+    return true
+  })
+  return {
+    general: prepared,
+    lookalike: dedupeMetaEntries(entries),
+    buyers: dedupeMetaEntries(buyerEntries),
+    retargeting: dedupeMetaEntries(retargeting),
+    suspiciousPhones: entries.filter((entry) => entry.suspiciousPhone),
+  }
+}
+
+/** How many retargeting rows share an email or a phone with a buyer row. Must be 0. */
+export function buyersRetargetingOverlap(segments: Pick<MarketingSegments, 'buyers' | 'retargeting'>): number {
+  const emails = new Set(segments.buyers.map((entry) => entry.email).filter(Boolean))
+  const phones = new Set(segments.buyers.map((entry) => entry.phone).filter(Boolean))
+  return segments.retargeting.filter(
+    (entry) => (entry.email && emails.has(entry.email)) || (entry.phone && phones.has(entry.phone)),
+  ).length
+}
+
+export function metaEntriesToCsv(entries: MetaEntry[]): string {
   const lines = [META_CUSTOMER_COLUMNS.join(',')]
-  for (const contact of contacts) {
-    const email = metaEmail(contact.email)
-    const { phone, country } = metaPhone(contact.phone)
-    if (!email && !phone) continue
-    const { fn, ln } = metaName(contact.name)
-    lines.push([email, phone, fn, ln, phone ? country : ''].map(metaCell).join(','))
+  for (const entry of entries) {
+    lines.push([entry.email, entry.phone, entry.fn, entry.ln, entry.country, '', ''].map(metaCell).join(','))
   }
   return lines.join('\n')
+}
+
+/** Meta file for every person in the list that Meta can match (the lookalike audience). */
+export function marketingContactsToMetaCsv(contacts: MarketingContact[]): string {
+  return metaEntriesToCsv(dedupeMetaEntries(contacts.map(toMetaEntry)))
+}
+
+export const MARKETING_SEGMENT_LABEL: Record<MarketingSegmentKey, string> = {
+  general: 'Base general',
+  lookalike: 'Meta · Lookalike',
+  buyers: 'Meta · Compradores (exclusión)',
+  retargeting: 'Meta · Retargeting',
+}
+
+export const MARKETING_SEGMENT_USE: Record<MarketingSegmentKey, string> = {
+  general: 'Uso interno: todos los contactos con todos sus campos. No se sube a Meta.',
+  lookalike:
+    'En Meta crea un público de clientes y úsalo como semilla de un público similar (lookalike): todos los contactos válidos, compradores y leads.',
+  buyers:
+    'En Meta súbelo como público de exclusión en las campañas de venta para no mostrar anuncios a quien ya compró.',
+  retargeting:
+    'En Meta úsalo como público de remarketing: dejaron sus datos o abandonaron el pago y no han comprado. Ningún comprador aparece aquí.',
+}
+
+const SEGMENT_FILE_SLUG: Record<MarketingSegmentKey, string> = {
+  general: 'base-general',
+  lookalike: 'meta_lookalike',
+  buyers: 'meta_compradores',
+  retargeting: 'meta_retargeting',
+}
+
+/** hex2026_meta_<segmento>_<AAAAMMDD-HHmm>.csv, time in America/Mérida. */
+export function marketingFileName(segment: MarketingSegmentKey, now: Date): string {
+  return `hex2026_${SEGMENT_FILE_SLUG[segment]}_${meridaFileStamp(now)}.csv`
+}
+
+export function marketingSegmentCsv(segment: MarketingSegmentKey, segments: MarketingSegments): string {
+  return segment === 'general'
+    ? marketingContactsToCsv(segments.general)
+    : metaEntriesToCsv(segments[segment])
+}
+
+export type MarketingSegmentCard = {
+  key: MarketingSegmentKey
+  label: string
+  use: string
+  rows: number
+  withEmail: number
+  withPhone: number
+  pctEmail: number
+  pctPhone: number
+}
+
+export type MarketingBoard = {
+  cards: MarketingSegmentCard[]
+  totalContacts: number
+  buyers: number
+  /** Buyers as a share of everyone who left data (buyers included). */
+  conversionPct: number
+  suspiciousPhones: number
+  overlap: number
+}
+
+function pct(part: number, whole: number): number {
+  return whole === 0 ? 0 : Math.round((part / whole) * 1000) / 10
+}
+
+export function buildMarketingBoard(segments: MarketingSegments): MarketingBoard {
+  const generalEntries = segments.general.map(toMetaEntry)
+  const sets: Record<MarketingSegmentKey, { withEmail: number; withPhone: number; rows: number }> = {
+    general: {
+      rows: segments.general.length,
+      withEmail: generalEntries.filter((entry) => entry.email).length,
+      withPhone: generalEntries.filter((entry) => entry.phone).length,
+    },
+    lookalike: countMeta(segments.lookalike),
+    buyers: countMeta(segments.buyers),
+    retargeting: countMeta(segments.retargeting),
+  }
+  const keys: MarketingSegmentKey[] = ['general', 'lookalike', 'buyers', 'retargeting']
+  const buyers = segments.general.filter(isMarketingBuyer).length
+  return {
+    cards: keys.map((key) => ({
+      key,
+      label: MARKETING_SEGMENT_LABEL[key],
+      use: MARKETING_SEGMENT_USE[key],
+      ...sets[key],
+      pctEmail: pct(sets[key].withEmail, sets[key].rows),
+      pctPhone: pct(sets[key].withPhone, sets[key].rows),
+    })),
+    totalContacts: segments.general.length,
+    buyers,
+    conversionPct: pct(buyers, segments.general.length),
+    suspiciousPhones: segments.suspiciousPhones.length,
+    overlap: buyersRetargetingOverlap(segments),
+  }
+}
+
+function countMeta(entries: MetaEntry[]) {
+  return {
+    rows: entries.length,
+    withEmail: entries.filter((entry) => entry.email).length,
+    withPhone: entries.filter((entry) => entry.phone).length,
+  }
 }
 
 export function marketingContactsToCsv(contacts: MarketingContact[]): string {
