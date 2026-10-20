@@ -1510,3 +1510,11 @@ This unit does NOT authorize that mutation.
 - NO TICKET ISSUED
 - SALES_STATUS = CLOSED
 - events.status = CONFIGURADO
+
+## 2026-10-19/20 — Presale extension to 26 Oct (owner-authorized "PUBLICA PREVENTA")
+
+- Payments: `mp-create-checkout` deployed from committed bundle `721c1fd` (base `f3f8f78`). Live == committed (sha 21de872ba5a7, 456877 chars). Previous live == `f3f8f78` bundle (sha feb8e8adbd39).
+- Calendar: PRESALE until 27-oct 00:00 America/Merida, REGULAR from then. No SQL, no secrets, no webhook change.
+- Landing: `feat/preventa-ext-27oct` fast-forwarded to `main` (7371d43..8a185b0). Vercel production deployment hprh71bp3 (previous: 8lxn0s5bk, built from 7371d43). Live bundle contains the new label.
+- Smoke (unpaid HALF-IND-M): 19-oct 23:21 and 20-oct 00:37 Merida both PAYMENT_PENDING, 90000, PRESALE.
+- Rollback: payments `git show f3f8f78:insforge/functions/mp-create-checkout/handler.deploy.js` redeployed; landing Vercel rollback to 8lxn0s5bk or `git revert 8a185b0`. Revert both or neither.
