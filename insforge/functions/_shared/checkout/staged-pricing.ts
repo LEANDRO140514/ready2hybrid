@@ -64,6 +64,8 @@ export const CARDS_ONLY_FROM = meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
 export const COMPETITOR_SALES_CLOSED_MESSAGE =
   'La venta en línea de competidores cerró el 13 de noviembre a las 11:00. Escríbenos al WhatsApp 990 230 2378.'
 
+export const PUBLIC_PASS_SALES_CLOSED_MESSAGE = 'La venta en línea de este acceso ya cerró.'
+
 /**
  * Spectator passes stay on sale during the event (ENFORMA 2026-09-26), each
  * until the end of its first valid day (America/Merida). Competition sales
@@ -81,6 +83,13 @@ export function isEventDaySaleOpen(productCode: string, now: Date): boolean {
   const closeMs = EVENT_DAY_SALES_CLOSE_MS[productCode]
   const t = now.getTime()
   return closeMs != null && t >= SALES_CLOSED_AT_MS && t < closeMs
+}
+
+/** Closed-sales text by product: spectator passes have their own per-day window. */
+export function salesClosedMessage(productCode: string): string {
+  return productCode in EVENT_DAY_SALES_CLOSE_MS
+    ? PUBLIC_PASS_SALES_CLOSED_MESSAGE
+    : COMPETITOR_SALES_CLOSED_MESSAGE
 }
 
 const STAGE_ORDER: CommercialStage[] = ['LAUNCH', 'PRESALE', 'REGULAR']

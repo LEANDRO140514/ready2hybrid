@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CheckoutError } from './errors'
+import { CheckoutError, INVALID_PHONE_MESSAGE } from './errors'
 import { journeyForProductCode } from './journeys'
 import {
   resolveSelectableProvider,
@@ -184,11 +184,9 @@ export function assertBuyerContactRequired(raw: unknown): void {
   }
 }
 
-const INVALID_PHONE_MESSAGE =
-  'El teléfono no es válido. Usa 10 dígitos de México o un número internacional con + y de 8 a 15 dígitos.'
-
 /**
  * Mexican numbers (10 digits, or 52 / +52 plus 10) persist as +52XXXXXXXXXX.
+ * The legacy mobile form 521 / +52 1 plus 10 digits also persists as +52XXXXXXXXXX (the 1 is dropped).
  * A leading + with another country code and 8–15 digits total is kept as E.164.
  * Optional: missing/blank stays null. Anything else is a validation error.
  */
@@ -197,6 +195,8 @@ export function normalizeMexicanPhone(raw: string | null | undefined): string | 
   const trimmed = raw.trim()
   if (trimmed.length === 0) return null
   const compact = trimmed.replace(/[\s()-]/g, '')
+  const legacyMobile = /^\+?521(\d{10})$/.exec(compact)
+  if (legacyMobile) return `+52${legacyMobile[1]}`
   if (/^\+52\d{10}$/.test(compact)) return compact
   if (/^52\d{10}$/.test(compact)) return `+${compact}`
   if (/^\d{10}$/.test(compact)) return `+52${compact}`

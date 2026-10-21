@@ -61,10 +61,15 @@ const MESSAGES: Record<PublicErrorCode, { message: string; retry: PublicErrorBod
   },
 }
 
+export const INVALID_PHONE_MESSAGE =
+  'El teléfono no es válido. Usa 10 dígitos de México o un número internacional con + y de 8 a 15 dígitos.'
+
 export class CheckoutError extends Error {
   readonly code: PublicErrorCode
   readonly status: number
   readonly retry: PublicErrorBody['error']['retry']
+  /** What the client receives. `message` keeps the full detail for logs. */
+  readonly publicMessage: string
 
   constructor(code: PublicErrorCode, detail?: string) {
     const meta = MESSAGES[code]
@@ -72,16 +77,28 @@ export class CheckoutError extends Error {
     this.code = code
     this.status = meta.status
     this.retry = meta.retry
+    // The detail reaches the client only for SALES_CLOSED and the phone validation.
+    // Everything else (CONFIGURATION_ERROR, ...) gets the generic MESSAGES text.
+    const clientSafeDetail =
+      code === 'SALES_CLOSED' || (code === 'INVALID_REQUEST' && detail === INVALID_PHONE_MESSAGE)
+    this.publicMessage = clientSafeDetail && detail ? detail : meta.message
   }
 
   toPublicBody(): PublicErrorBody {
     return {
       error: {
         code: this.code,
-        message: this.message,
+        message: this.publicMessage,
         retry: this.retry,
       },
     }
+  }
+}
+
+/** Sends the detail hidden from the client to the log. Never put secret values in details. */
+export function logHiddenCheckoutDetail(error: CheckoutError): void {
+  if (error.message !== error.publicMessage) {
+    console.error(`checkout ${error.code}: ${error.message}`)
   }
 }
 

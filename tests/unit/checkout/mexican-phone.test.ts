@@ -18,6 +18,18 @@ describe('normalizeMexicanPhone', () => {
     expect(normalizeMexicanPhone('52 9811204320')).toBe('+529811204320')
   })
 
+  it('drops the legacy mobile 1 after the 52 country code', () => {
+    expect(normalizeMexicanPhone('+52 1 981 120 4320')).toBe('+529811204320')
+    expect(normalizeMexicanPhone('5219811204320')).toBe('+529811204320')
+    expect(normalizeMexicanPhone('+5219811204320')).toBe('+529811204320')
+    expect(normalizeMexicanPhone('52 1 (981) 120-4320')).toBe('+529811204320')
+  })
+
+  it('does not treat other 52-prefixed lengths as the legacy mobile form', () => {
+    expect(() => normalizeMexicanPhone('52198112043')).toThrow(CheckoutError)
+    expect(() => normalizeMexicanPhone('+52198112043201')).toThrow(CheckoutError)
+  })
+
   it('keeps a US number in E.164', () => {
     expect(normalizeMexicanPhone('+1 305 555 0123')).toBe('+13055550123')
   })
