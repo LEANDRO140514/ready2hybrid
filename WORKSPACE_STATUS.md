@@ -1525,3 +1525,10 @@ This unit does NOT authorize that mutation.
 - Deploy: `send-ticket-email` from committed bundle `72544da`. Live before == committed `fcaf01a` bundle (sha256 1f7c47398e88). Live now == local (sha256 328fbd9ccfcf, 29216 chars). Bundle diff vs previous: only the two kit text strings.
 - Tickets already sent with the old text: 25 SENT in total (none carried a kit rule before 19-oct 01:44 Merida); 2 sent since the 3-hour text commit. They are NOT resent (resending rotates the QR).
 - Rollback: `git show fcaf01a:insforge/functions/send-ticket-email/handler.deploy.js` redeployed.
+## 2026-10-21 - Kit delivery schedule defined (owner-authorized)
+
+- Schedule: Club Cumbres, Thu 12 nov from 17:00 h until Fri 13 nov 12:00 h. Removes "horario por definir" and "ENFORMA avisara el horario". Last-minute exception (Fri 13 until 11:00, 3 h before competition) unchanged.
+- Fix: branch `fix/horario-kits` (from `origin/main` 766eafc), commit `aa26890`, PR #8 (not merged). Text only in `_shared/email/pdf.ts` (ticket PDF and confirmation email), plus `AGENTS.md` and `tests/unit/tickets/kit-delivery-copy.test.ts`. No logic, no SQL, no mp-create-checkout, no mp-webhook.
+- Deploy: `send-ticket-email` from committed bundle `aa26890`. Live before == `origin/main` bundle (sha 328fbd9ccfcf, 29216 chars). Live now == committed (sha 90f80db9f349, 29112 chars; file sha256 b8cfee1ca3bea36acaecdbb0a17b897151f2de9b5b2537d0e82052941bac8f93). Bundle diff vs live: 2 lines, only the PDF text literal and the email paragraph.
+- Tickets already sent keep the previous text. NOT resent (resending rotates the QR).
+- Rollback: `git show 766eafc:insforge/functions/send-ticket-email/handler.deploy.js` redeployed.
