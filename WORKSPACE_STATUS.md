@@ -10,7 +10,7 @@
 - Backend: InsForge
 - Pagos: Mercado Pago Checkout Pro
 - TICKET-PDF-PALETTE: DEPLOYED TO MAIN (2026-09-12 America/Merida)
-  `send-ticket-email` desplegada desde el bundle del commit `3f90fbe`;
+  `send-ticket-email` desplegada desde el bundle del commit `aa26890` (SHA vivo `90f80db9f349`, 2026-10-21; la paleta se desplegó el 2026-09-12 desde `3f90fbe`);
   código vivo verificado idéntico al bundle, con cabecera lima `#E6F2B1`
   y texto `#111111`. Commit publicado en `origin/main`. Sin invocar SEND/SWEEP.
 - Evento (contrato efectivo SPEC-030 v0.3.0): 2026-11-13 → 2026-11-15
