@@ -115,7 +115,7 @@ describe('mp-client payment_methods serialization', () => {
     expect(types.filter((t) => t.id === 'ticket')).toHaveLength(1)
   })
 
-  it('public passes are card-only from 13 nov 00:00 Merida; everything else still excludes only ticket', async () => {
+  it('every product is card-only from 13 nov 00:00 Merida', async () => {
     const ticketOnly = [{ id: 'ticket' }]
     const cardOnly = [...CARD_ONLY_EXCLUDED_PAYMENT_TYPES]
     expect(cardOnly.map((type) => type.id)).not.toContain('credit_card')
@@ -125,14 +125,14 @@ describe('mp-client payment_methods serialization', () => {
     const before = await capturePolicy('PUB-VIE', dateFromMeridaWall(2026, 11, 12, 12, 0, 0))
     expect(before.payment_methods.excluded_payment_types).toEqual(ticketOnly)
 
-    const atClose = await capturePolicy('PUB-VIE', dateFromMeridaWall(2026, 11, 13, 0, 0, 0))
-    expect(atClose.payment_methods.excluded_payment_types).toEqual(cardOnly)
+    const competitorBefore = await capturePolicy('IND-H', dateFromMeridaWall(2026, 11, 12, 23, 59, 0), true)
+    expect(competitorBefore.payment_methods.excluded_payment_types).toEqual(ticketOnly)
 
-    const competition = await capturePolicy('IND-H', dateFromMeridaWall(2026, 11, 13, 10, 0, 0), true)
-    expect(competition.payment_methods.excluded_payment_types).toEqual(ticketOnly)
+    const atCutoff = await capturePolicy('IND-H', dateFromMeridaWall(2026, 11, 13, 0, 0, 0), true)
+    expect(atCutoff.payment_methods.excluded_payment_types).toEqual(cardOnly)
 
-    const sunday = await capturePolicy('PUB-DOM', dateFromMeridaWall(2026, 11, 15, 12, 0, 0))
-    expect(sunday.payment_methods.excluded_payment_types).toEqual(cardOnly)
+    const duringMorning = await capturePolicy('PUB-VIE', dateFromMeridaWall(2026, 11, 13, 10, 0, 0))
+    expect(duringMorning.payment_methods.excluded_payment_types).toEqual(cardOnly)
   })
 
   it('excluded policy → installments 1 + ticket', async () => {

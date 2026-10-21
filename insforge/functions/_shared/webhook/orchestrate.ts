@@ -9,6 +9,12 @@ import {
   normalizeProviderPaymentStatus,
   type NormalizedPaymentState,
 } from './normalize'
+import {
+  isReversalState,
+  revokeTicketsAfterReversal,
+  type RevokeTicketResult,
+  type TicketToRevoke,
+} from './revoke-on-reversal'
 
 export type WebhookApplyInput = {
   providerNotificationId: string
@@ -42,6 +48,8 @@ export type WebhookApplyResult = {
 
 export type WebhookRepository = {
   applyPaymentTx: (input: WebhookApplyInput) => Promise<WebhookApplyResult>
+  listTicketsForOrder?: (orderId: string) => Promise<TicketToRevoke[]>
+  revokeTicket?: (ticketId: string) => Promise<RevokeTicketResult>
 }
 
 export type OrchestrateDeps = {
@@ -231,6 +239,22 @@ export async function orchestrateWebhook(
     outcome !== 'DUPLICATE' &&
     outcome !== 'VERIFICATION_REJECTED' &&
     outcome !== 'REJECTED_VERIFICATION'
+
+  if (
+    isReversalState(normalizedState) &&
+    apply.order_id &&
+    deps.repo.listTicketsForOrder &&
+    deps.repo.revokeTicket
+  ) {
+    await revokeTicketsAfterReversal({
+      orderId: apply.order_id,
+      normalizedState,
+      tickets: {
+        listTicketsForOrder: deps.repo.listTicketsForOrder,
+        revokeTicket: deps.repo.revokeTicket,
+      },
+    })
+  }
 
   return {
     status: 200,

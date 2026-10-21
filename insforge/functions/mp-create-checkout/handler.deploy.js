@@ -198,7 +198,7 @@ var CheckoutError = class extends Error {
     return {
       error: {
         code: this.code,
-        message: MESSAGES[this.code].message,
+        message: this.message,
         retry: this.retry
       }
     };
@@ -221,14 +221,16 @@ var STAGE_WINDOWS = {
   },
   PRESALE: {
     startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0)
+    endMs: meridaWallToUtcMs(2026, 10, 27, 0, 0, 0)
   },
   REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
+    startMs: meridaWallToUtcMs(2026, 10, 27, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 13, 11, 0, 0)
   }
 };
 var SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs;
+var CARDS_ONLY_FROM = meridaWallToUtcMs(2026, 11, 13, 0, 0, 0);
+var COMPETITOR_SALES_CLOSED_MESSAGE = "La venta en l\xEDnea de competidores cerr\xF3 el 13 de noviembre a las 11:00. Escr\xEDbenos al WhatsApp 990 230 2378.";
 var EVENT_DAY_SALES_CLOSE_MS = Object.freeze({
   "PUB-VIE": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
   "PUB-3D": meridaWallToUtcMs(2026, 11, 14, 0, 0, 0),
@@ -369,7 +371,6 @@ function buildOrderCommercialSnapshot(input) {
 }
 
 // insforge/functions/_shared/checkout/payment-policy.ts
-var PUBLIC_PASS_CODES = /* @__PURE__ */ new Set(["PUB-VIE", "PUB-SAB", "PUB-DOM", "PUB-3D"]);
 var CARD_ONLY_EXCLUDED_PAYMENT_TYPES = [
   { id: "ticket" },
   { id: "bank_transfer" },
@@ -378,8 +379,8 @@ var CARD_ONLY_EXCLUDED_PAYMENT_TYPES = [
   { id: "digital_wallet" },
   { id: "digital_currency" }
 ];
-function publicEventCardsOnly(productCode, now) {
-  return PUBLIC_PASS_CODES.has(productCode) && now.getTime() >= SALES_CLOSED_AT_MS;
+function publicEventCardsOnly(_productCode, now) {
+  return now.getTime() >= CARDS_ONLY_FROM;
 }
 function toCheckoutPaymentPolicy(msiEligible, cardsOnly = false) {
   const maximumInstallments = msiEligible === true ? 3 : msiEligible === false ? 1 : null;
@@ -11931,6 +11932,7 @@ var buyerContactSchema = external_exports.object({
   email: external_exports.string().min(1).max(320),
   name: external_exports.string().min(1).max(200),
   phone: external_exports.string().min(1).max(40).optional(),
+  // normalized in parseCheckoutRequest
   /** Opt-in marketing/contact consent. False/omitted → no consent timestamp. */
   contact_consent: external_exports.boolean().optional()
 }).strict();
@@ -12043,6 +12045,20 @@ function assertBuyerContactRequired(raw) {
     throw new CheckoutError("CONTACT_REQUIRED");
   }
 }
+var INVALID_PHONE_MESSAGE = "El tel\xE9fono no es v\xE1lido. Usa 10 d\xEDgitos de M\xE9xico o un n\xFAmero internacional con + y de 8 a 15 d\xEDgitos.";
+function normalizeMexicanPhone(raw) {
+  if (raw == null) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  const compact = trimmed.replace(/[\s()-]/g, "");
+  if (/^\+52\d{10}$/.test(compact)) return compact;
+  if (/^52\d{10}$/.test(compact)) return `+${compact}`;
+  if (/^\d{10}$/.test(compact)) return `+52${compact}`;
+  if (compact.startsWith("+") && !compact.startsWith("+52") && /^\+\d{8,15}$/.test(compact)) {
+    return compact;
+  }
+  throw new CheckoutError("INVALID_REQUEST", INVALID_PHONE_MESSAGE);
+}
 function parseCheckoutRequest(raw) {
   assertNoClientMoneyAuthority(raw);
   assertBuyerContactRequired(raw);
@@ -12054,7 +12070,12 @@ function parseCheckoutRequest(raw) {
   if (!journeyForProductCode(parsed.data.product_code)) {
     throw new CheckoutError("PRODUCT_NOT_FOUND");
   }
-  return { ...parsed.data, quantity };
+  const phone = normalizeMexicanPhone(parsed.data.buyer.phone);
+  return {
+    ...parsed.data,
+    quantity,
+    buyer: { ...parsed.data.buyer, ...phone == null ? { phone: void 0 } : { phone } }
+  };
 }
 function loadRuntimeProviderEnablement(env2) {
   const raw = env2("PAYMENTS_RUNTIME_ENABLED_PROVIDERS")?.trim();
@@ -12140,6 +12161,9 @@ async function orchestrateCheckoutStart(rawBody, deps) {
     if ("error" in commercial) {
       if (commercial.error === "MULTIDAY_FAIL_CLOSED" || commercial.error === "PRODUCT_DISABLED") {
         throw new CheckoutError("PRODUCT_NOT_AVAILABLE");
+      }
+      if (commercial.error === "SALES_CLOSED") {
+        throw new CheckoutError("SALES_CLOSED", COMPETITOR_SALES_CLOSED_MESSAGE);
       }
       throw new CheckoutError(commercial.error);
     }

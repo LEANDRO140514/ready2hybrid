@@ -38,8 +38,8 @@ function meridaWallToUtcMs(y: number, m: number, d: number, hh = 0, mm = 0, ss =
  * Half-open [start, end) in UTC instants for America/Merida walls.
  * Commercial calendar confirmed 2026-10-06 (SPEC-030 v0.4.1):
  *   LAUNCH   through 24 sep 2026 inclusive
- *   PRESALE  25 sep – 19 oct 2026 inclusive (extended from 16 oct, CEO request 2026-10-15)
- *   REGULAR  20 oct – 12 nov 2026 inclusive; sales close 13 nov 00:00 Merida
+ *   PRESALE  25 sep – 26 oct 2026 inclusive (extended from 19 oct, owner request 2026-10-19)
+ *   REGULAR  27 oct – 13 nov 2026 11:00 America/Merida; competitor sales close then
  */
 export const STAGE_WINDOWS = {
   LAUNCH: {
@@ -48,15 +48,21 @@ export const STAGE_WINDOWS = {
   },
   PRESALE: {
     startMs: meridaWallToUtcMs(2026, 9, 25, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 10, 27, 0, 0, 0),
   },
   REGULAR: {
-    startMs: meridaWallToUtcMs(2026, 10, 20, 0, 0, 0),
-    endMs: meridaWallToUtcMs(2026, 11, 13, 0, 0, 0),
+    startMs: meridaWallToUtcMs(2026, 10, 27, 0, 0, 0),
+    endMs: meridaWallToUtcMs(2026, 11, 13, 11, 0, 0),
   },
 } as const
 
 export const SALES_CLOSED_AT_MS = STAGE_WINDOWS.REGULAR.endMs
+
+/** Cash confirms too late to emit a ticket. From this instant every product is card-only. */
+export const CARDS_ONLY_FROM = meridaWallToUtcMs(2026, 11, 13, 0, 0, 0)
+
+export const COMPETITOR_SALES_CLOSED_MESSAGE =
+  'La venta en línea de competidores cerró el 13 de noviembre a las 11:00. Escríbenos al WhatsApp 990 230 2378.'
 
 /**
  * Spectator passes stay on sale during the event (ENFORMA 2026-09-26), each

@@ -11,14 +11,16 @@ import {
   resolveCommercialOffer,
   resolveEffectiveStage,
   SALES_CLOSED_AT_MS,
+  CARDS_ONLY_FROM,
   isSoldOut,
 } from '../../../insforge/functions/_shared/checkout/staged-pricing'
+import { publicEventCardsOnly } from '../../../insforge/functions/_shared/checkout/payment-policy'
 
 describe('staged pricing — time boundaries (America/Merida half-open)', () => {
   const launchStart = dateFromMeridaWall(2026, 8, 11, 0, 0, 0)
   const presaleStart = dateFromMeridaWall(2026, 9, 25, 0, 0, 0)
-  const regularStart = dateFromMeridaWall(2026, 10, 20, 0, 0, 0)
-  const salesClosed = dateFromMeridaWall(2026, 11, 13, 0, 0, 0)
+  const regularStart = dateFromMeridaWall(2026, 10, 27, 0, 0, 0)
+  const salesClosed = dateFromMeridaWall(2026, 11, 13, 11, 0, 0)
   /** Test probe only: authority is the half-open boundary, not 23:59:59. */
   const immediatelyBefore = (boundary: Date) => new Date(boundary.getTime() - 1)
   const immediatelyAfter = (boundary: Date) => new Date(boundary.getTime() + 1)
@@ -48,7 +50,7 @@ describe('staged pricing — time boundaries (America/Merida half-open)', () => 
     expect(resolveCalendarStage(regularStart)).toBe('REGULAR')
   })
 
-  it('REGULAR until close; SALES_CLOSED at and after 2026-11-13 00:00 Merida', () => {
+  it('REGULAR until close; SALES_CLOSED at and after 2026-11-13 11:00 Merida', () => {
     expect(resolveCalendarStage(immediatelyBefore(salesClosed))).toBe('REGULAR')
     expect(resolveCalendarStage(salesClosed)).toBeNull()
     expect(resolveEffectiveStage(salesClosed, 40, 0)).toBe('SALES_CLOSED')
@@ -84,7 +86,7 @@ describe('staged pricing — calendar-only authority (no quota)', () => {
 
   it('follows calendar when ahead of any historical threshold notion', () => {
     expect(maxStage('REGULAR', 'LAUNCH')).toBe('REGULAR')
-    const duringRegular = dateFromMeridaWall(2026, 10, 20)
+    const duringRegular = dateFromMeridaWall(2026, 10, 27)
     expect(resolveEffectiveStage(duringRegular, 40, 0)).toBe('REGULAR')
   })
 
@@ -212,11 +214,15 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
     ['16 oct 23:59', dateFromMeridaWall(2026, 10, 16, 23, 59, 0), 'PRESALE'],
     ['17 oct 00:01', dateFromMeridaWall(2026, 10, 17, 0, 1, 0), 'PRESALE'],
     ['19 oct 23:59', dateFromMeridaWall(2026, 10, 19, 23, 59, 0), 'PRESALE'],
-    ['20 oct 00:01', dateFromMeridaWall(2026, 10, 20, 0, 1, 0), 'REGULAR'],
+    ['20 oct 00:01', dateFromMeridaWall(2026, 10, 20, 0, 1, 0), 'PRESALE'],
+    ['26 oct 23:59', dateFromMeridaWall(2026, 10, 26, 23, 59, 0), 'PRESALE'],
+    ['27 oct 00:01', dateFromMeridaWall(2026, 10, 27, 0, 1, 0), 'REGULAR'],
     ['7 nov 12:00', dateFromMeridaWall(2026, 11, 7, 12, 0, 0), 'REGULAR'],
     ['10 nov 12:00', dateFromMeridaWall(2026, 11, 10, 12, 0, 0), 'REGULAR'],
     ['12 nov 23:59', dateFromMeridaWall(2026, 11, 12, 23, 59, 0), 'REGULAR'],
-    ['13 nov 00:01', dateFromMeridaWall(2026, 11, 13, 0, 1, 0), 'SALES_CLOSED'],
+    ['13 nov 00:01', dateFromMeridaWall(2026, 11, 13, 0, 1, 0), 'REGULAR'],
+    ['13 nov 10:59', dateFromMeridaWall(2026, 11, 13, 10, 59, 0), 'REGULAR'],
+    ['13 nov 11:00', dateFromMeridaWall(2026, 11, 13, 11, 0, 0), 'SALES_CLOSED'],
   ]
 
   it.each(CASES)('%s Merida → %s', (_label, now, expected) => {
@@ -239,6 +245,8 @@ describe('staged pricing — ENFORMA calendar 2026-09-23 (America/Merida)', () =
   it('stage does not flip the evening before in UTC (24 sep 18:30 Merida = 25 sep 00:30 UTC)', () => {
     expect(resolveCalendarStage(new Date('2026-09-25T00:30:00Z'))).toBe('LAUNCH')
     expect(resolveCalendarStage(new Date('2026-10-20T00:30:00Z'))).toBe('PRESALE')
+    expect(resolveCalendarStage(new Date('2026-10-27T05:59:59Z'))).toBe('PRESALE')
+    expect(resolveCalendarStage(new Date('2026-10-27T06:00:00Z'))).toBe('REGULAR')
     expect(resolveCalendarStage(new Date('2026-11-13T00:30:00Z'))).toBe('REGULAR')
   })
 
@@ -255,8 +263,8 @@ describe('staged pricing — spectator sales during the event (ENFORMA 2026-09-2
   const offer = (productCode: string, now: Date) =>
     resolveCommercialOffer({ productCode, totalCupo: 60, consumedUnits: 0, now })
 
-  it('competition closes at 13 nov 00:00 while spectator passes stay on sale', () => {
-    const now = dateFromMeridaWall(2026, 11, 13, 10, 0, 0)
+  it('competition closes at 13 nov 11:00 while spectator passes stay on sale', () => {
+    const now = dateFromMeridaWall(2026, 11, 13, 11, 0, 0)
     for (const code of ['IND-H', 'DOB-SAB-MH', 'REL-2H2M', 'HALF-IND-M', 'HALF-DOB-MH']) {
       expect(offer(code, now)).toEqual({ error: 'SALES_CLOSED' })
     }
@@ -281,6 +289,32 @@ describe('staged pricing — spectator sales during the event (ENFORMA 2026-09-2
       expect(offer('PUB-3D', now)).toEqual({ error: 'PRODUCT_DISABLED' })
       expect(offer('PUB-DOM', now)).toEqual({ error: 'PRODUCT_DISABLED' })
     }
+  })
+
+  it('paquete 21: presale, regular, cards-only and competitor close at Merida walls', () => {
+    const offer = (now: Date) =>
+      resolveCommercialOffer({ productCode: 'HALF-IND-M', totalCupo: 60, consumedUnits: 0, now })
+    const at = (y: number, m: number, d: number, hh: number, mm: number) =>
+      dateFromMeridaWall(y, m, d, hh, mm, 0)
+
+    const stillPresale = offer(at(2026, 10, 26, 23, 59))
+    expect(!('error' in stillPresale) && stillPresale.commercial_stage).toBe('PRESALE')
+    expect(!('error' in stillPresale) && stillPresale.unit_price_cents).toBe(90000)
+
+    const regularOpen = offer(at(2026, 10, 27, 0, 0))
+    expect(!('error' in regularOpen) && regularOpen.commercial_stage).toBe('REGULAR')
+
+    expect(publicEventCardsOnly('HALF-IND-M', at(2026, 11, 12, 23, 59))).toBe(false)
+    expect(publicEventCardsOnly('HALF-IND-M', at(2026, 11, 13, 0, 0))).toBe(true)
+    expect(publicEventCardsOnly('IND-H', at(2026, 11, 13, 0, 0))).toBe(true)
+    expect(CARDS_ONLY_FROM).toBe(at(2026, 11, 13, 0, 0).getTime())
+
+    const stillOpen = offer(at(2026, 11, 13, 10, 59))
+    expect(!('error' in stillOpen) && stillOpen.commercial_stage).toBe('REGULAR')
+    expect(publicEventCardsOnly('HALF-IND-M', at(2026, 11, 13, 10, 59))).toBe(true)
+
+    expect(offer(at(2026, 11, 13, 11, 0))).toEqual({ error: 'SALES_CLOSED' })
+    expect(SALES_CLOSED_AT_MS).toBe(at(2026, 11, 13, 11, 0).getTime())
   })
 
   it('spectator price before close is unchanged', () => {

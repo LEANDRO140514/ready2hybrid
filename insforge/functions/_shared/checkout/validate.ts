@@ -39,7 +39,7 @@ const buyerContactSchema = z
     public_ref: z.string().min(1).max(128).optional(),
     email: z.string().min(1).max(320),
     name: z.string().min(1).max(200),
-    phone: z.string().min(1).max(40).optional(),
+    phone: z.string().min(1).max(40).optional(), // normalized in parseCheckoutRequest
     /** Opt-in marketing/contact consent. False/omitted → no consent timestamp. */
     contact_consent: z.boolean().optional(),
   })
@@ -184,6 +184,28 @@ export function assertBuyerContactRequired(raw: unknown): void {
   }
 }
 
+const INVALID_PHONE_MESSAGE =
+  'El teléfono no es válido. Usa 10 dígitos de México o un número internacional con + y de 8 a 15 dígitos.'
+
+/**
+ * Mexican numbers (10 digits, or 52 / +52 plus 10) persist as +52XXXXXXXXXX.
+ * A leading + with another country code and 8–15 digits total is kept as E.164.
+ * Optional: missing/blank stays null. Anything else is a validation error.
+ */
+export function normalizeMexicanPhone(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return null
+  const compact = trimmed.replace(/[\s()-]/g, '')
+  if (/^\+52\d{10}$/.test(compact)) return compact
+  if (/^52\d{10}$/.test(compact)) return `+${compact}`
+  if (/^\d{10}$/.test(compact)) return `+52${compact}`
+  if (compact.startsWith('+') && !compact.startsWith('+52') && /^\+\d{8,15}$/.test(compact)) {
+    return compact
+  }
+  throw new CheckoutError('INVALID_REQUEST', INVALID_PHONE_MESSAGE)
+}
+
 export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity: number } {
   assertNoClientMoneyAuthority(raw)
   assertBuyerContactRequired(raw)
@@ -197,7 +219,12 @@ export function parseCheckoutRequest(raw: unknown): CheckoutRequest & { quantity
   if (!journeyForProductCode(parsed.data.product_code)) {
     throw new CheckoutError('PRODUCT_NOT_FOUND')
   }
-  return { ...parsed.data, quantity }
+  const phone = normalizeMexicanPhone(parsed.data.buyer.phone)
+  return {
+    ...parsed.data,
+    quantity,
+    buyer: { ...parsed.data.buyer, ...(phone == null ? { phone: undefined } : { phone }) },
+  }
 }
 
 /** Default go-live enablement: Mercado Pago only. No silent customer fallback. */

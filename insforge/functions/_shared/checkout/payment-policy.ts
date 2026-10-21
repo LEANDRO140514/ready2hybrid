@@ -3,16 +3,14 @@
  * Does not call Mercado Pago. Does not infer eligibility from SKU/name/price.
  */
 import { CheckoutError } from './errors'
-import { SALES_CLOSED_AT_MS } from './staged-pricing'
+import { CARDS_ONLY_FROM } from './staged-pricing'
 
 export type CheckoutPaymentPolicy = {
   maximumInstallments: 1 | 3
   excludeTicketPayments: true
-  /** From 13 nov 2026 00:00 America/Mérida, public passes take cards only. */
+  /** From 13 nov 2026 00:00 America/Mérida, every product takes cards only. */
   cardsOnly?: boolean
 }
-
-const PUBLIC_PASS_CODES = new Set(['PUB-VIE', 'PUB-SAB', 'PUB-DOM', 'PUB-3D'])
 
 /** Credit, debit, and prepaid stay available. Cash, transfer, ATM, and wallet do not. */
 export const CARD_ONLY_EXCLUDED_PAYMENT_TYPES = [
@@ -25,11 +23,12 @@ export const CARD_ONLY_EXCLUDED_PAYMENT_TYPES = [
 ] as const
 
 /**
- * Public passes created at or after sales close (13 nov 2026 00:00 America/Mérida)
- * are card-only. Every other product, and public passes before that instant, are not.
+ * From 13 nov 2026 00:00 America/Mérida, every product is card-only.
+ * Cash and transfer confirm too late and would land without a ticket.
+ * The product code stays in the signature for callers; the cutoff does not depend on it.
  */
-export function publicEventCardsOnly(productCode: string, now: Date): boolean {
-  return PUBLIC_PASS_CODES.has(productCode) && now.getTime() >= SALES_CLOSED_AT_MS
+export function publicEventCardsOnly(_productCode: string, now: Date): boolean {
+  return now.getTime() >= CARDS_ONLY_FROM
 }
 
 /**

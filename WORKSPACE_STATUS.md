@@ -1510,3 +1510,18 @@ This unit does NOT authorize that mutation.
 - NO TICKET ISSUED
 - SALES_STATUS = CLOSED
 - events.status = CONFIGURADO
+
+## 2026-10-19/20 — Presale extension to 26 Oct (owner-authorized "PUBLICA PREVENTA")
+
+- Payments: `mp-create-checkout` deployed from committed bundle `721c1fd` (base `f3f8f78`). Live == committed (sha 21de872ba5a7, 456877 chars). Previous live == `f3f8f78` bundle (sha feb8e8adbd39).
+- Calendar: PRESALE until 27-oct 00:00 America/Merida, REGULAR from then. No SQL, no secrets, no webhook change.
+- Landing: `feat/preventa-ext-27oct` fast-forwarded to `main` (7371d43..8a185b0). Vercel production deployment hprh71bp3 (previous: 8lxn0s5bk, built from 7371d43). Live bundle contains the new label.
+- Smoke (unpaid HALF-IND-M): 19-oct 23:21 and 20-oct 00:37 Merida both PAYMENT_PENDING, 90000, PRESALE.
+- Rollback: payments `git show f3f8f78:insforge/functions/mp-create-checkout/handler.deploy.js` redeployed; landing Vercel rollback to 8lxn0s5bk or `git revert 8a185b0`. Revert both or neither.
+## 2026-10-20 - Kit delivery rule correction (owner-authorized)
+
+- Rule: kits at Club Cumbres from Thu 12 nov (schedule TBD) to Fri 13 nov 12:00; ENFORMA announces the schedule by social media, email and WhatsApp. Exception only for last-minute signups (Fri 13 until online sales close at 11:00): pick up at least 3 h before their competition and write to the official WhatsApp 990 230 2378.
+- Fix: branch `fix/entrega-kits` (from `feat/paquete-21oct`), commit `72544da`. Text only in `_shared/email/pdf.ts` (ticket PDF and confirmation email). No logic, no SQL, no mp-create-checkout, no mp-webhook.
+- Deploy: `send-ticket-email` from committed bundle `72544da`. Live before == committed `fcaf01a` bundle (sha256 1f7c47398e88). Live now == local (sha256 328fbd9ccfcf, 29216 chars). Bundle diff vs previous: only the two kit text strings.
+- Tickets already sent with the old text: 25 SENT in total (none carried a kit rule before 19-oct 01:44 Merida); 2 sent since the 3-hour text commit. They are NOT resent (resending rotates the QR).
+- Rollback: `git show fcaf01a:insforge/functions/send-ticket-email/handler.deploy.js` redeployed.

@@ -20,6 +20,7 @@ import {
 } from './sales'
 import {
   buildOrderCommercialSnapshot,
+  COMPETITOR_SALES_CLOSED_MESSAGE,
   resolveCommercialOffer,
 } from './staged-pricing'
 import {
@@ -229,6 +230,9 @@ export async function orchestrateCheckoutStart(
     if ('error' in commercial) {
       if (commercial.error === 'MULTIDAY_FAIL_CLOSED' || commercial.error === 'PRODUCT_DISABLED') {
         throw new CheckoutError('PRODUCT_NOT_AVAILABLE')
+      }
+      if (commercial.error === 'SALES_CLOSED') {
+        throw new CheckoutError('SALES_CLOSED', COMPETITOR_SALES_CLOSED_MESSAGE)
       }
       throw new CheckoutError(commercial.error)
     }

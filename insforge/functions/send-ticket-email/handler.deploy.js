@@ -258,7 +258,7 @@ async function generateTicketPdf(input) {
   y += 8;
   doc.setFontSize(9);
   const kitNotice = doc.splitTextToSize(
-    "Competidores: pres\xE9ntate en mesas al menos 3 horas antes de tu competencia y escr\xEDbenos al WhatsApp oficial 990 230 2378 para la entrega de tu kit.",
+    "Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre (horario por definir) al viernes 13 de noviembre a las 12:00 h. ENFORMA avisar\xE1 el horario por redes, correo y WhatsApp. Si te inscribes de \xFAltima hora (viernes 13, hasta las 11:00 h), recoge tu kit al menos 3 horas antes de tu competencia y escribe al WhatsApp oficial 990 230 2378.",
     textWidth
   );
   doc.text(kitNotice, pageWidth / 2, y, { align: "center" });
@@ -286,7 +286,9 @@ function buildEmailHtml(input) {
 
   <p>Adjuntamos tu boleto en formato PDF. En \xE9l encontrar\xE1s un c\xF3digo QR que deber\xE1s presentar en el acceso al evento para validar tu entrada.</p>
 
-  <p>Competidores: pres\xE9ntate en mesas al menos 3 horas antes de tu competencia y escr\xEDbenos al <a href="https://wa.me/529902302378">WhatsApp oficial 990 230 2378</a> para la entrega de tu kit.</p>
+  <p>Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre (horario por definir) al viernes 13 de noviembre a las 12:00 h. ENFORMA avisar\xE1 el horario por redes, correo y WhatsApp.</p>
+
+  <p>Si te inscribes de \xFAltima hora (viernes 13, hasta el cierre de la venta en l\xEDnea a las 11:00 h), recoge tu kit al menos 3 horas antes de tu competencia y escribe al <a href="https://wa.me/529902302378">WhatsApp oficial 990 230 2378</a>.</p>
 
   <p>Te recomendamos conservar este correo y llevar el boleto contigo, impreso o en tu dispositivo, el d\xEDa del evento.</p>
 

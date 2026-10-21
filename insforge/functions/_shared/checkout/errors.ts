@@ -78,7 +78,7 @@ export class CheckoutError extends Error {
     return {
       error: {
         code: this.code,
-        message: MESSAGES[this.code].message,
+        message: this.message,
         retry: this.retry,
       },
     }
