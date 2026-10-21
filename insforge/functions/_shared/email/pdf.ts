@@ -188,7 +188,7 @@ export async function generateTicketPdf(input: TicketPdfInput): Promise<string> 
   y += 8
   doc.setFontSize(9)
   const kitNotice = doc.splitTextToSize(
-    'Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre (horario por definir) al viernes 13 de noviembre a las 12:00 h. ENFORMA avisará el horario por redes, correo y WhatsApp. Si te inscribes de última hora (viernes 13, hasta las 11:00 h), recoge tu kit al menos 3 horas antes de tu competencia y escribe al WhatsApp oficial 990 230 2378.',
+    'Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre a partir de las 17:00 h hasta el viernes 13 de noviembre a las 12:00 h. Si te inscribes de última hora (viernes 13, hasta las 11:00 h), recoge tu kit al menos 3 horas antes de tu competencia y escribe al WhatsApp oficial 990 230 2378.',
     textWidth,
   )
   doc.text(kitNotice, pageWidth / 2, y, { align: 'center' })
@@ -229,7 +229,7 @@ export function buildEmailHtml(input: {
 
   <p>Adjuntamos tu boleto en formato PDF. En él encontrarás un código QR que deberás presentar en el acceso al evento para validar tu entrada.</p>
 
-  <p>Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre (horario por definir) al viernes 13 de noviembre a las 12:00 h. ENFORMA avisará el horario por redes, correo y WhatsApp.</p>
+  <p>Competidores: la entrega de kits es en Club Cumbres, del jueves 12 de noviembre a partir de las 17:00 h hasta el viernes 13 de noviembre a las 12:00 h.</p>
 
   <p>Si te inscribes de última hora (viernes 13, hasta el cierre de la venta en línea a las 11:00 h), recoge tu kit al menos 3 horas antes de tu competencia y escribe al <a href="https://wa.me/529902302378">WhatsApp oficial 990 230 2378</a>.</p>
 
