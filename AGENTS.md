@@ -65,7 +65,7 @@ Origen legacy: proyecto InsForge `enforma` (hybrid-registro), solo lectura desde
 - Venta en línea de competidores cierra el 13 nov 2026 a las 11:00 America/Merida.
 - Desde el 13 nov 00:00: solo pago con tarjeta para todos los productos.
 - Pases PUB-3D y PUB-DOM: cancelados (apagados en checkout). WOD y FOT no se venden.
-- Entrega de kits: Club Cumbres, desde el jueves 12 nov (horario por definir) hasta el viernes 13 nov a las 12:00 h; ENFORMA avisa el horario por redes, correo y WhatsApp.
+- Entrega de kits: Club Cumbres, desde el jueves 12 nov a partir de las 17:00 h hasta el viernes 13 nov a las 12:00 h.
 - Excepcion solo para inscripciones de ultima hora (viernes 13, hasta el cierre de venta en linea a las 11:00 h): recoger el kit al menos 3 h antes de su competencia y escribir al WhatsApp oficial 990 230 2378 (https://wa.me/529902302378). La regla de 3 h NO aplica a todos.
 - Toda venta nueva entra por la landing. hybrid-registro solo para cortesías (staff, jueces, invitados) con monto $0.
 - Legacy pagado con monto 0 = cortesía: cuenta como inscripción, no como venta.
