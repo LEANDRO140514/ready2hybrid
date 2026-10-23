@@ -36,7 +36,7 @@ async function buildPurchaseEvent(ctx, options) {
     // Pseudonymous internal id, hashed: keeps the event from being rejected as anonymous.
     external_id: [await hashIdentifier(ctx.buyerContactId)]
   };
-  if (ctx.contact?.consent) {
+  if (options.includeContactData && ctx.contact?.consent) {
     const email = normalizeEmail(ctx.contact.email);
     const phone = normalizePhone(ctx.contact.phone);
     if (email) user_data.em = [await hashIdentifier(email)];
@@ -133,6 +133,7 @@ async function runMetaCapiSync(req, deps) {
   const configuredSource = clean(env2("META_CAPI_ACTION_SOURCE"));
   const actionSource = configuredSource === "website" || configuredSource === "other" ? configuredSource : "system_generated";
   const eventSourceUrl = clean(env2("META_CAPI_EVENT_SOURCE_URL")) || DEFAULT_SOURCE_URL;
+  const includeContactData = clean(env2("META_CAPI_SEND_CONTACT_DATA")).toLowerCase() === "true";
   const endpoint = `https://graph.facebook.com/${graphVersion}/${datasetId}/events`;
   const startedAt = now().getTime();
   const counts = { sent: 0, retry: 0, failed: 0, skipped: 0 };
@@ -151,7 +152,7 @@ async function runMetaCapiSync(req, deps) {
     }
     const built = await buildPurchaseEvent(
       { ...base, approvedAt: row.approvedAt },
-      { eventSourceUrl, actionSource, now: now() }
+      { eventSourceUrl, actionSource, now: now(), includeContactData }
     );
     if (!built.ok) {
       await repo.markSkipped(row.id, built.reason);

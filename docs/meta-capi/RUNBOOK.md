@@ -17,13 +17,13 @@ It never touches checkout, `webhook_apply_payment_tx`, tickets or emails. It onl
 
 - `event_time` = latest approved payment time (Meta rejects events older than 7 days; those are `SKIPPED: TOO_OLD`).
 - `custom_data`: `value` in pesos, `currency` MXN, product codes.
-- `user_data`: hashed `external_id` (pseudonymous contact id) always; hashed email and phone **only when the buyer gave marketing consent** (`contact_consent_at`); `fbc` when the stored touch has an `fbclid`.
+- `user_data`: hashed `external_id` (pseudonymous contact id) always; `fbc` when the stored touch has an `fbclid`. **No email or phone by default.** Only if the owner sets `META_CAPI_SEND_CONTACT_DATA=true`, hashed email and phone are added, and then only for buyers with marketing consent (`contact_consent_at`).
 - No raw email, phone, name or roster. Logs carry counts and outbox ids only.
 
 ## Open items that must be settled before going live
 
 1. **`action_source`.** Meta requires `client_user_agent` for `website` events and we do not have the buyer's user agent when the payment is approved. The default is therefore `system_generated`. **Validate in Test Events that Meta marks the server event as deduplicated against the browser `Purchase` with the same `event_id`.** If it does not, do not go live: it would double count purchases.
-2. **Consent and privacy notice.** The notice does not name advertising or Meta. Decide with legal before sending hashed email/phone.
+2. **Consent and privacy notice.** The consent checkbox covers news and event notices, and the privacy notice does not name advertising or Meta. Email and phone therefore stay **off** (`META_CAPI_SEND_CONTACT_DATA` unset). Do not turn it on until legal decides. Note the browser Pixel already sends a hashed email through automatic advanced matching; that is a separate setting in Events Manager.
 3. **Graph API version.** Default `v23.0`, overridable with `META_GRAPH_VERSION`. Confirm it is current when deploying.
 4. **No backfill.** `META_CAPI_SINCE` is mandatory and nothing before it is queued. Meta deduplicates only within 48 hours, so replaying older purchases would double count the ones the Pixel already saw.
 
@@ -39,6 +39,7 @@ Set by the owner. The access token is created in Events Manager (dataset 1274781
 | `META_CAPI_SINCE` | ISO time. Only purchases approved at or after it are queued. |
 | `META_CAPI_SCHEDULE_SECRET` | Secret. Bearer the schedule sends; the function rejects anything else. |
 | `META_CAPI_TEST_EVENT_CODE` | Optional. While set, the run is in **test** mode: events carry the code, never count for ads, and use their own outbox rows. |
+| `META_CAPI_SEND_CONTACT_DATA` | Optional. Only the exact value `true` adds hashed email and phone (consented buyers only). Unset or anything else = never sent. |
 | `META_CAPI_ACTION_SOURCE` | Optional. `system_generated` (default), `website` or `other`. |
 | `META_CAPI_EVENT_SOURCE_URL` | Optional. Defaults to the landing URL. |
 | `META_GRAPH_VERSION` | Optional. Defaults to `v23.0`. |

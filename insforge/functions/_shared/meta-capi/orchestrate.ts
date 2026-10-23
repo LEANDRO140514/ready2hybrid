@@ -97,6 +97,8 @@ export async function runMetaCapiSync(req: Request, deps: CapiDeps): Promise<Cap
   const actionSource: ActionSource =
     configuredSource === 'website' || configuredSource === 'other' ? configuredSource : 'system_generated'
   const eventSourceUrl = clean(env('META_CAPI_EVENT_SOURCE_URL')) || DEFAULT_SOURCE_URL
+  // Off unless exactly "true": no email or phone leaves for Meta by default.
+  const includeContactData = clean(env('META_CAPI_SEND_CONTACT_DATA')).toLowerCase() === 'true'
   const endpoint = `https://graph.facebook.com/${graphVersion}/${datasetId}/events`
 
   const startedAt = now().getTime()
@@ -120,7 +122,7 @@ export async function runMetaCapiSync(req: Request, deps: CapiDeps): Promise<Cap
 
     const built = await buildPurchaseEvent(
       { ...base, approvedAt: row.approvedAt },
-      { eventSourceUrl, actionSource, now: now() },
+      { eventSourceUrl, actionSource, now: now(), includeContactData },
     )
     if (!built.ok) {
       await repo.markSkipped(row.id, built.reason)

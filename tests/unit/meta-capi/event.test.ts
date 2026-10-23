@@ -27,7 +27,9 @@ const opts = {
   eventSourceUrl: URL,
   actionSource: 'system_generated' as const,
   now: new Date('2026-10-25T00:00:00Z'),
+  includeContactData: false,
 }
+const withContact = { ...opts, includeContactData: true }
 
 describe('identifier normalization and hashing', () => {
   it('lowercases and trims email, rejects non-emails', () => {
@@ -93,8 +95,21 @@ describe('buildPurchaseEvent', () => {
     })
   })
 
-  it('hashes email and phone only with consent and never ships raw PII', async () => {
+  it('sends no email or phone by default, even for a buyer who gave marketing consent', async () => {
     const built = await buildPurchaseEvent(base, opts)
+    if (!built.ok) throw new Error('expected ok')
+    expect(built.event.user_data.em).toBeUndefined()
+    expect(built.event.user_data.ph).toBeUndefined()
+    const text = JSON.stringify(built.event)
+    expect(text).not.toContain(sha('ana@example.com'))
+    expect(text).not.toContain(sha('529991234567'))
+    expect(text).not.toContain('ana@example.com')
+    expect(text).not.toContain('9991234567')
+    expect(built.event.user_data.external_id).toEqual([sha('b-1')])
+  })
+
+  it('with the contact switch on, hashes email and phone only with consent and never ships raw PII', async () => {
+    const built = await buildPurchaseEvent(base, withContact)
     if (!built.ok) throw new Error('expected ok')
     expect(built.event.user_data.em).toEqual([sha('ana@example.com')])
     expect(built.event.user_data.ph).toEqual([sha('529991234567')])
@@ -104,9 +119,9 @@ describe('buildPurchaseEvent', () => {
     expect(text).not.toContain('9991234567')
   })
 
-  it('omits email and phone when there is no marketing consent', async () => {
+  it('with the contact switch on, still omits email and phone when there is no marketing consent', async () => {
     const ctx = { ...base, contact: { ...base.contact!, consent: false } }
-    const built = await buildPurchaseEvent(ctx, opts)
+    const built = await buildPurchaseEvent(ctx, withContact)
     if (!built.ok) throw new Error('expected ok')
     expect(built.event.user_data.em).toBeUndefined()
     expect(built.event.user_data.ph).toBeUndefined()

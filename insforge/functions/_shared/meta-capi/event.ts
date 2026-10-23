@@ -19,6 +19,12 @@ export type BuildOptions = {
   eventSourceUrl: string
   actionSource: ActionSource
   now: Date
+  /**
+   * Hash and send email and phone. Off unless the owner turns it on, and even
+   * then only for buyers with marketing consent. Required, so no caller can
+   * forget to decide.
+   */
+  includeContactData: boolean
 }
 
 export type MetaEvent = {
@@ -89,7 +95,7 @@ export async function buildPurchaseEvent(ctx: PurchaseContext, options: BuildOpt
     // Pseudonymous internal id, hashed: keeps the event from being rejected as anonymous.
     external_id: [await hashIdentifier(ctx.buyerContactId)],
   }
-  if (ctx.contact?.consent) {
+  if (options.includeContactData && ctx.contact?.consent) {
     const email = normalizeEmail(ctx.contact.email)
     const phone = normalizePhone(ctx.contact.phone)
     if (email) user_data.em = [await hashIdentifier(email)]

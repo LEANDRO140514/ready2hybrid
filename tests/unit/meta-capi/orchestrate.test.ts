@@ -211,6 +211,53 @@ describe('sending', () => {
   })
 })
 
+describe('contact data switch (META_CAPI_SEND_CONTACT_DATA)', () => {
+  const sentUserData = (fetchImpl: typeof fetch) => {
+    const init = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit
+    return JSON.parse(String(init.body)).data[0].user_data as Record<string, unknown>
+  }
+
+  it('sends no email or phone when the variable is not set, even with buyer consent', async () => {
+    const { result, fetchImpl } = run()
+    await result
+    const userData = sentUserData(fetchImpl)
+    expect(userData.em).toBeUndefined()
+    expect(userData.ph).toBeUndefined()
+    expect(userData.external_id).toHaveLength(1)
+  })
+
+  it.each(['false', '', 'yes', '1', 'on'])('keeps contact data off for %j', async (value) => {
+    const { result, fetchImpl } = run({ env: { META_CAPI_SEND_CONTACT_DATA: value } })
+    await result
+    const userData = sentUserData(fetchImpl)
+    expect(userData.em).toBeUndefined()
+    expect(userData.ph).toBeUndefined()
+  })
+
+  it('sends hashed email and phone only when set to true and the buyer consented', async () => {
+    const { result, fetchImpl } = run({ env: { META_CAPI_SEND_CONTACT_DATA: 'true' } })
+    await result
+    const userData = sentUserData(fetchImpl)
+    expect(userData.em).toHaveLength(1)
+    expect(userData.ph).toHaveLength(1)
+    expect(JSON.stringify(userData)).not.toContain('ana@example.com')
+  })
+
+  it('still sends none for a buyer without consent when set to true', async () => {
+    const noConsent = new Map([
+      ['o-1', { ...context, contact: { email: 'ana@example.com', phone: '9991234567', consent: false } }],
+    ])
+    const { result, fetchImpl } = run({
+      env: { META_CAPI_SEND_CONTACT_DATA: 'true' },
+      repo: makeRepo([claimed()], noConsent),
+    })
+    await result
+    const userData = sentUserData(fetchImpl)
+    expect(userData.em).toBeUndefined()
+    expect(userData.ph).toBeUndefined()
+  })
+})
+
 describe('privacy of logs and responses', () => {
   it('never logs or returns the token, the secret, or buyer data', async () => {
     const fetchImpl = vi.fn(async () =>
